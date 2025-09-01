@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Product — Static Template</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-white">
+  <div class="max-w-6xl mx-auto px-4 py-8">
+    <!-- Breadcrumbs -->
+    <nav class="text-sm text-slate-600 mb-6">
+      <a href="index.html" class="hover:underline">Search products</a>
+      <span class="mx-2">/</span>
+      <span>View product</span>
+    </nav>
+
+    <!-- Title + Brand + Actions -->
+    <header class="mb-8">
+      <h1 class="text-4xl font-extrabold text-slate-900">Maali Sky 20% THC Flower</h1>
+      <a href="#" class="text-indigo-700 font-medium hover:underline">Maali</a>
+    </header>
+
+    <!-- Details Grid -->
+    <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
+      <!-- Type -->
+      <div>
+        <div class="text-slate-500 text-sm">Type</div>
+        <div class="mt-1 flex items-center gap-2 text-slate-900">
+          <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 ring-1 ring-slate-200">🍃</span>
+          <span>Flower</span>
+        </div>
+      </div>
+
+      <!-- TGA Product Category -->
+      <div>
+        <div class="text-slate-500 text-sm">TGA Product Category</div>
+        <div class="mt-1 text-slate-900">Category 5</div>
+      </div>
+
+      <!-- THC / CBD bars -->
+      <div class="md:col-span-2 lg:col-span-2">
+        <div class="flex items-start justify-between gap-8">
+          <!-- THC -->
+          <div class="flex-1">
+            <div class="flex items-center gap-2">
+              <div class="text-slate-900 font-semibold">THC</div>
+              <div class="text-slate-400 text-sm">?</div>
+            </div>
+            <div class="text-slate-700">20%</div>
+            <div class="mt-2 h-1.5 w-full rounded-full bg-purple-100">
+              <div class="h-1.5 rounded-full bg-purple-400" style="width: 80%"></div>
+            </div>
+          </div>
+          <!-- CBD -->
+          <div class="w-56">
+            <div class="flex items-center gap-2">
+              <div class="text-slate-900 font-semibold">CBD</div>
+              <div class="text-slate-400 text-sm">?</div>
+            </div>
+            <div class="text-slate-700">&lt;1%</div>
+            <div class="mt-2 h-1.5 w-full rounded-full bg-amber-100">
+              <div class="h-1.5 rounded-full bg-amber-400" style="width: 10%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Schedule -->
+      <div>
+        <div class="text-slate-500 text-sm">Schedule</div>
+        <div class="mt-1 text-slate-900">8</div>
+      </div>
+
+      <!-- Plant Species -->
+      <div>
+        <div class="text-slate-500 text-sm">Plant Species</div>
+        <div class="mt-1 text-slate-900">Sativa dominant</div>
+      </div>
+
+      <!-- Cultivar -->
+      <div>
+        <div class="text-slate-500 text-sm">Cultivar</div>
+        <div class="mt-1 text-slate-900">Royal Moby</div>
+      </div>
+
+      <!-- Aromas & Flavours -->
+      <div class="md:col-span-2 lg:col-span-3">
+        <div class="text-slate-500 text-sm">Aromas & Flavours</div>
+        <div class="mt-1 text-slate-900">Blueberry, Citrus, Earthy, Herbal, Pepper</div>
+      </div>
+    </section>
+
+    <!-- Quick chips -->
+    <section class="flex flex-wrap items-center gap-3 mb-8">
+      <span class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-3 py-1.5 text-sm text-slate-800">
+        🏥 46 pharmacies
+      </span>
+      <span class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-3 py-1.5 text-sm text-slate-800">
+        🚚 Dispensed in 24 hours
+      </span>
+      <span class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-3 py-1.5 text-sm text-slate-800">
+        ❓ Learn more
+      </span>
+    </section>
+
+    <!-- Pricing table -->
+    <section class="overflow-x-auto rounded-xl border border-slate-200">
+      <table class="min-w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-600">
+          <tr>
+            <th class="px-4 py-3 font-semibold">Size</th>
+            <th class="px-4 py-3 font-semibold">Price (per mg)</th>
+            <th class="px-4 py-3 font-semibold">Price (per g)</th>
+            <th class="px-4 py-3 font-semibold">RRP</th>
+            <th class="px-4 py-3 font-semibold">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-200">
+          <tr>
+            <td class="px-4 py-3">10g</td>
+            <td class="px-4 py-3">$0.06</td>
+            <td class="px-4 py-3">$12.90</td>
+            <td class="px-4 py-3">$129</td>
+            <td class="px-4 py-3">
+              <span class="inline-flex items-center gap-2 text-emerald-700">
+                <span class="h-2.5 w-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                In stock
+                <span class="text-slate-500">Updated: 3/7/2025</span>
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</body>
+</html>
