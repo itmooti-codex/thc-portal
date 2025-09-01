@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dynamic Table Example</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body>
+    <!-- Grid -->
+    <div class="!grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4"
+        data-dynamic-list="7M75T2nXdllEV2Iq3m2Zw" data-entity="thc" data-entity-key="awWH16PsRms2px8-93-Uw"
+        data-limit="500">
+
+        <!-- Card -->
+        <div
+            class="group relative rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-all">
+            <!-- Header -->
+            <div class="p-5 pb-3">
+                <div class="flex items-start gap-3">
+                    <div class="flex-1">
+                        <h3 class="text-xl font-semibold text-slate-900 leading-tight">
+                            [Item_Name]
+                        </h3>
+                        <p class="mt-1 text-sm text-slate-600">
+                            [Brand]
+                        </p>
+                    </div>
+
+                    <!-- Country flag (small, top-right). Replace src token if you have a flag URL; otherwise shows text code -->
+                    <div class="shrink-0">
+                        <img src="https://flagsapi.com/[Origin_Country]/flat/24.png" alt="[Origin_Country] flag"
+                            class="h-5 w-7 rounded-sm ring-1 ring-slate-200 object-cover" />
+                    </div>
+
+                </div>
+
+                <!-- Badges row (THC / CBD) -->
+                <div class="mt-4 flex flex-wrap items-center gap-2">
+                    <span
+                        class="inline-flex items-center rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-medium text-purple-800">
+                        [Strength_1][Strength_Unit] THC
+                    </span>
+                    <span
+                        class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">
+                        [CBD]% CBD
+                    </span>
+                </div>
+            </div>
+
+            <!-- Meta row: type/price/status/count -->
+            <div class="px-5 pb-4">
+                <div class="flex flex-wrap items-center gap-4 text-sm text-slate-700">
+                    <!-- Type -->
+                    <div class="flex items-center gap-2">
+                        <span
+                            class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 ring-1 ring-slate-200">🍃</span>
+                        <span class="truncate">[Type]</span>
+                    </div>
+
+                    <!-- Price per unit (text placeholder to match $/g or $/mg) -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-slate-500">$</span>
+                        <span class="font-medium">[Retail_Price]</span>
+                        <span class="text-slate-500">/ [Quantity_Unit]</span>
+                    </div>
+
+                    <!-- Status -->
+                    <div class="flex items-center gap-2">
+                        <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+                        <span>[Status]</span>
+                    </div>
+
+                    <!-- Script count -->
+                    <div class="ml-auto flex items-center gap-1 text-slate-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M16 14a4 4 0 10-8 0v3h8v-3zM12 10a3 3 0 100-6 3 3 0 000 6z" />
+                        </svg>
+                        <span class="tabular-nums">[Script_Count]</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Divider -->
+            <div class="border-t border-slate-200"></div>
+
+            <!-- Footer actions -->
+            <div class="p-4 flex items-center justify-between">
+                <a href="[Item_Profile_Page_URL]" target="_blank" rel="noopener"
+                    class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                    View
+                </a>
+
+                <div class="flex items-center gap-3">
+                    <button type="button"
+                        class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                        <!-- compare icon -->
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M7 3a1 1 0 0 1 1 1v14h2a1 1 0 1 1 0 2H6a1 1 0 1 1 0-2h1V4a1 1 0 0 1 1-1Zm10 0a1 1 0 0 1 1 1v10h1a1 1 0 1 1 0 2h-4a1 1 0 1 1 0-2h1V4a1 1 0 0 1 1-1Z" />
+                        </svg>
+                        Compare
+                    </button>
+
+                    <!-- tiny checkbox square (top-right style) -->
+                    <label class="inline-flex items-center gap-2 text-sm text-slate-600">
+                        <input type="checkbox"
+                            class="h-5 w-5 rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                    </label>
+                </div>
+            </div>
+        </div>
+        <!-- /Card -->
+
+    </div>
+
+
+    <script async src="https://static-au03.vitalstats.app/static/dynamic-list/v1/latest.js" crossorigin="anonymous">
+    </script>
+</body>
+
+</html>
