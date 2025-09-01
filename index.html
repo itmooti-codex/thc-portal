@@ -6,14 +6,96 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dynamic Table Example</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script async src="https://static-au03.vitalstats.app/static/dynamic-list/v1/latest.js"
+        crossorigin="anonymous"></script>
+    <style>
+        [type=checkbox]:checked,
+        [type=checkbox]:not(:checked) {
+            opacity: 100% !important;
+            pointer-events: all !important;
+            position: relative !important;
+        }
+
+        /* Sidebar width: never exceeds 500px or viewport width */
+        :root {
+            --compare-w: 300px;
+        }
+
+        .grid-root {
+            transition: margin-right 200ms ease;
+        }
+
+        .compare-sidebar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 100vh;
+            width: var(--compare-w);
+            transform: translateX(100%);
+            transition: transform 200ms ease;
+            z-index: 40;
+        }
+
+        .compare-open .compare-sidebar {
+            transform: translateX(0);
+        }
+
+        /* Overlap mode: do not push grid */
+        .compare-open .grid-root {
+            margin-right: 0;
+        }
+
+        /* Optional auto grid helper (unused currently) */
+        .grid-auto {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        }
+
+        /* Floating toggle (FAB) with counter */
+        .compare-fab {
+            position: fixed;
+            right: 16px;
+            bottom: 16px;
+            height: 52px;
+            width: 52px;
+            border-radius: 9999px;
+            z-index: 50;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, .1), 0 4px 6px -4px rgba(0, 0, 0, .1);
+        }
+
+        .compare-fab .badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            height: 22px;
+            min-width: 22px;
+            padding: 0 6px;
+            border-radius: 9999px;
+            background: #ef4444;
+            color: #fff;
+            font-size: 12px;
+            line-height: 22px;
+            text-align: center;
+        }
+
+        /* Heart button styling: color only, no circle */
+        .heart-btn svg {
+            fill: currentColor;
+        }
+
+        .heart-btn.active {
+            color: #ef4444;
+        }
+    </style>
+
 </head>
 
 <body>
+
     <!-- Grid -->
-    <div class="!grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4"
+    <div class="grid-root !grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4"
         data-dynamic-list="7M75T2nXdllEV2Iq3m2Zw" data-entity="thc" data-entity-key="awWH16PsRms2px8-93-Uw"
         data-limit="500">
-
         <!-- Card -->
         <div
             class="group relative rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-all">
@@ -21,35 +103,24 @@
             <div class="p-5 pb-3">
                 <div class="flex items-start gap-3">
                     <div class="flex-1">
-                        <h3 class="text-xl font-semibold text-slate-900 leading-tight">
-                            [Item_Name]
-                        </h3>
-                        <p class="mt-1 text-sm text-slate-600">
-                            [Brand]
-                        </p>
+                        <h3 class="text-xl font-semibold text-slate-900 leading-tight">[Item_Name]</h3>
+                        <p class="mt-1 text-sm text-slate-600">[Brand]</p>
                     </div>
-
-                    <!-- Country flag (small, top-right). Replace src token if you have a flag URL; otherwise shows text code -->
                     <div class="shrink-0">
-                        <img src="https://flagsapi.com/[Origin_Country]/flat/24.png" alt="[Origin_Country] flag"
-                            class="h-5 w-7 rounded-sm ring-1 ring-slate-200 object-cover" />
+                        <img src="https://flagsapi.com/[Origin_Country]/flat/24.png"
+                            class="h-5 w-7 rounded-sm ring-1 ring-slate-200 object-cover js-flag" />
                     </div>
-
                 </div>
-
                 <!-- Badges row (THC / CBD) -->
                 <div class="mt-4 flex flex-wrap items-center gap-2">
                     <span
-                        class="inline-flex items-center rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-medium text-purple-800">
-                        [Strength_1][Strength_Unit] THC
-                    </span>
+                        class="inline-flex items-center rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-medium text-purple-800">[Strength_1][Strength_Unit]
+                        THC</span>
                     <span
-                        class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">
-                        [CBD]% CBD
-                    </span>
+                        class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">[CBD]%
+                        CBD</span>
                 </div>
             </div>
-
             <!-- Meta row: type/price/status/count -->
             <div class="px-5 pb-4">
                 <div class="flex flex-wrap items-center gap-4 text-sm text-slate-700">
@@ -59,20 +130,17 @@
                             class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 ring-1 ring-slate-200">🍃</span>
                         <span class="truncate">[Type]</span>
                     </div>
-
                     <!-- Price per unit (text placeholder to match $/g or $/mg) -->
                     <div class="flex items-center gap-2">
                         <span class="text-slate-500">$</span>
                         <span class="font-medium">[Retail_Price]</span>
                         <span class="text-slate-500">/ [Quantity_Unit]</span>
                     </div>
-
                     <!-- Status -->
                     <div class="flex items-center gap-2">
                         <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
                         <span>[Status]</span>
                     </div>
-
                     <!-- Script count -->
                     <div class="ml-auto flex items-center gap-1 text-slate-500">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
@@ -84,42 +152,214 @@
                     </div>
                 </div>
             </div>
-
             <!-- Divider -->
             <div class="border-t border-slate-200"></div>
-
             <!-- Footer actions -->
             <div class="p-4 flex items-center justify-between">
-                <a href="product.html" rel="noopener"
+                <a href="[Item_Detail_Page_URL]" rel="noopener" target="_blank"
                     class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
                     View
                 </a>
-
+                <!-- Heart button: toggles filled red vs. outlined black -->
                 <div class="flex items-center gap-3">
                     <button type="button"
-                        class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                        <!-- compare icon -->
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                        class="heart-btn js-heart inline-flex items-center justify-center p-1 text-slate-600 hover:text-red-600"
+                        aria-pressed="false" title="Save" data-item-id="[Unique_ID]" data-item-name="[Item_Name]">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="h-5 w-5">
                             <path
-                                d="M7 3a1 1 0 0 1 1 1v14h2a1 1 0 1 1 0 2H6a1 1 0 1 1 0-2h1V4a1 1 0 0 1 1-1Zm10 0a1 1 0 0 1 1 1v10h1a1 1 0 1 1 0 2h-4a1 1 0 1 1 0-2h1V4a1 1 0 0 1 1-1Z" />
+                                d="M12.001 4.529c2.349-2.532 6.351-2.532 8.7 0 2.3 2.48 2.3 6.5 0 8.98l-7.1 7.65a1 1 0 0 1-1.4 0l-7.2-7.65c-2.3-2.48-2.3-6.5 0-8.98 2.349-2.532 6.351-2.532 8.7 0z" />
                         </svg>
-                        Compare
                     </button>
-
-                    <!-- tiny checkbox square (top-right style) -->
-                    <label class="inline-flex items-center gap-2 text-sm text-slate-600">
+                    <div
+                        class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                        <span class="text-sm font-medium text-slate-700">Create Script</span>
                         <input type="checkbox"
-                            class="h-5 w-5 rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                    </label>
+                            class="cursor-pointer js-compare !block h-5 w-5 rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            data-item-id="[Unique_ID]" data-item-name="[Item_Name]">
+                    </div>
                 </div>
             </div>
         </div>
         <!-- /Card -->
-
     </div>
 
+    <!-- Compare Sidebar -->
+    <aside id="compareSidebar" class="compare-sidebar bg-white border-l border-slate-200 shadow-xl hidden">
+        <div class="h-full flex flex-col">
+            <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-900">Selected items</h2>
+                    <p class="text-sm text-slate-500">Uncheck or remove to close</p>
+                </div>
+                <button id="compareClose"
+                    class="inline-flex items-center justify-center h-8 w-8 rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50"
+                    aria-label="Collapse">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M10 8.586l4.243-4.243 1.414 1.414L11.414 10l4.243 4.243-1.414 1.414L10 11.414l-4.243 4.243-1.414-1.414L8.586 10 4.343 5.757l1.414-1.414L10 8.586z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+            <div id="compareList" class="flex-1 overflow-y-auto divide-y divide-slate-100"></div>
+            <div class="sticky bottom-0 border-t border-slate-200 p-4 bg-white">
+                <button
+                    class="w-full inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                    Create Script
+                </button>
+            </div>
+        </div>
+    </aside>
 
-    <script async src="https://static-au03.vitalstats.app/static/dynamic-list/v1/latest.js" crossorigin="anonymous">
+    <!-- Floating toggle for collapsed state -->
+    <button id="compareFab" class="compare-fab hidden bg-indigo-600 text-white flex items-center justify-center"
+        aria-label="Open compare">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+            <path
+                d="M3 6.75A.75.75 0 013.75 6h16.5a.75.75 0 010 1.5H3.75A.75.75 0 013 6.75zm0 5.25a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75a.75.75 0 01-.75-.75zm0 5.25a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H3.75a.75.75 0 01-.75-.75z" />
+        </svg>
+        <span id="compareCountFab" class="badge">0</span>
+    </button>
+
+    <script>
+        // Compare sidebar logic
+        (function () {
+            var selected = new Map();
+            var sidebar = document.getElementById('compareSidebar');
+            var list = document.getElementById('compareList');
+            var fab = document.getElementById('compareFab');
+            var fabCount = document.getElementById('compareCountFab');
+            var collapsed = false;
+
+            function renderSidebar() {
+                list.innerHTML = '';
+                selected.forEach(function (entry, id) {
+                    var row = document.createElement('div');
+                    row.className = 'flex items-center justify-between px-4 py-3';
+                    var name = document.createElement('div');
+                    name.className = 'text-slate-800 text-sm font-medium truncate';
+                    name.textContent = entry.name || id;
+                    var btn = document.createElement('button');
+                    btn.className = 'ml-3 inline-flex items-center justify-center h-7 w-7 rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50';
+                    btn.setAttribute('aria-label', 'Remove');
+                    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 8.586l4.243-4.243 1.414 1.414L11.414 10l4.243 4.243-1.414 1.414L10 11.414l-4.243 4.243-1.414-1.414L8.586 10 4.343 5.757l1.414-1.414L10 8.586z" clip-rule="evenodd"/></svg>';
+                    btn.addEventListener('click', function () {
+                        if (entry.checkbox) {
+                            entry.checkbox.checked = false;
+                            entry.checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    });
+                    row.appendChild(name);
+                    row.appendChild(btn);
+                    list.appendChild(row);
+                });
+
+                if (selected.size > 0) {
+                    sidebar.classList.remove('hidden');
+                    fab.classList.remove('hidden');
+                    fabCount.textContent = String(selected.size);
+                    if (!collapsed) {
+                        document.documentElement.classList.add('compare-open');
+                    } else {
+                        document.documentElement.classList.remove('compare-open');
+                    }
+                } else {
+                    sidebar.classList.add('hidden');
+                    fab.classList.add('hidden');
+                    document.documentElement.classList.remove('compare-open');
+                    collapsed = false;
+                }
+            }
+
+            function handleChange(ev) {
+                var cb = ev.target;
+                if (!cb.classList.contains('js-compare')) return;
+                var id = cb.getAttribute('data-item-id');
+                var name = cb.getAttribute('data-item-name');
+                if (cb.checked) {
+                    selected.set(id, { name: name, checkbox: cb });
+                    // Auto-open when first adding
+                    if (selected.size === 1) collapsed = false;
+                } else {
+                    selected.delete(id);
+                }
+                renderSidebar();
+            }
+
+            document.addEventListener('change', handleChange);
+
+            // Cleanup if dynamic list refreshes
+            document.addEventListener('DOMContentLoaded', function () {
+                var host = document.querySelector('[data-dynamic-list]');
+                if (!host) return;
+                var mo = new MutationObserver(function () {
+                    selected.forEach(function (entry, id) {
+                        if (!entry.checkbox || !document.body.contains(entry.checkbox)) {
+                            selected.delete(id);
+                        }
+                    });
+                    renderSidebar();
+                });
+                mo.observe(host, { childList: true, subtree: true });
+            });
+
+            // Sidebar explicit close button
+            var closeBtn = document.getElementById('compareClose');
+            closeBtn.addEventListener('click', function () {
+                if (selected.size > 0) {
+                    collapsed = true;
+                    renderSidebar();
+                }
+            });
+
+            // FAB expands the sidebar
+            fab.addEventListener('click', function () {
+                if (selected.size > 0) {
+                    collapsed = false;
+                    renderSidebar();
+                }
+            });
+        })();
+
+        // Heart/save button logic with localStorage persistence
+        (function () {
+            var KEY = 'hearted_items_v1';
+            function loadSet() {
+                try { var arr = JSON.parse(localStorage.getItem(KEY) || '[]'); return new Set(arr); } catch { return new Set(); }
+            }
+            function saveSet(set) {
+                localStorage.setItem(KEY, JSON.stringify(Array.from(set)));
+            }
+            var loved = loadSet();
+
+            function applyHearts() {
+                var nodes = document.querySelectorAll('.js-heart');
+                for (var i = 0; i < nodes.length; i++) {
+                    var b = nodes[i];
+                    var id = b.getAttribute('data-item-id');
+                    var on = loved.has(id);
+                    b.classList.toggle('active', on);
+                    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+                }
+            }
+
+            document.addEventListener('click', function (e) {
+                var btn = e.target.closest('.js-heart');
+                if (!btn) return;
+                var id = btn.getAttribute('data-item-id');
+                if (loved.has(id)) loved.delete(id); else loved.add(id);
+                saveSet(loved);
+                applyHearts();
+            });
+
+            document.addEventListener('DOMContentLoaded', function () {
+                applyHearts();
+                var host = document.querySelector('[data-dynamic-list]');
+                if (!host) return;
+                var mo = new MutationObserver(function () { applyHearts(); });
+                mo.observe(host, { childList: true, subtree: true });
+            });
+        })();
     </script>
 </body>
 
