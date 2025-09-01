@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Medicines Database</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .range {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 9999px;
+            background: #e5e7eb;
+            /* default gray track */
+            outline: none;
+        }
+
+        .range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 9999px;
+            background: #6366f1;
+            /* indigo-500 */
+            border: 3px solid #fff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .15);
+            cursor: pointer;
+            margin-top: -7px;
+            /* align with 4px track */
+        }
+
+        .range::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 9999px;
+            background: #6366f1;
+            border: 3px solid #fff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .15);
+            cursor: pointer;
+        }
+
+        h3 {
+            font-family: "RecoletaBold";
+        }
+    </style>
+</head>
+
+<body class="bg-white text-slate-900 antialiased">
+    <div class="flex flex-col flex-auto p-6 max-w-md mx-auto">
+        <!-- search-section -->
+        <div class="font-Balto text-bg-indigo-950">
+            <!-- breadcrumb -->
+            <div class="flex flex-row flex-wrap ">
+                <nav class="text-sm text-slate-500">
+                    <ol class="flex items-center gap-2">
+                        <li><a href="#" class=" text-slate-900">Search</a></li>
+                        <li class="text-slate-400">/</li>
+                        <li class="text-slate-900">Medicines Database</li>
+                    </ol>
+                </nav>
+            </div>
+
+            <!-- Page header -->
+            <header class="mt-4">
+                <h2 class="text-2xl font-bold tracking-tight">Medicines Database</h2>
+                <p class="mt-3 max-w-3xl text-slate-900">
+                    Start your product search with your patient in mind. Product order
+                    is weighted toward products with clinical research and case studies first,
+                    followed by transparency into the product.
+                </p>
+            </header>
+
+
+            <!-- Product details -->
+            <section class="mt-8">
+                <!-- Product type -->
+                <h3 class="mt-6 text-2xl font-medium tracking-tight font-bold">Product type</h3>
+                <div class="mt-3 flex flex-wrap gap-3">
+                    <!-- Chip -->
+                    <button type="button"
+                        class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                        <span class="inline-block text-2xl leading-none bg-[rgb(255,231,159)] rounded-2xl px-1 py-1">
+                            🍃
+                        </span>
+
+                        <span class="font-medium">Flower</span>
+                        <span
+                            class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">99+</span>
+                    </button>
+
+                    <button type="button"
+                        class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                        <span class="text-2xl leading-none">🛢️</span>
+                        <span class="font-medium">Oil</span>
+                        <span
+                            class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">99+</span>
+                    </button>
+
+                    <button type="button"
+                        class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                        <span class="text-2xl leading-none">💨</span>
+                        <span class="font-medium">Liquid vape cartridge</span>
+                        <span
+                            class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">99+</span>
+                    </button>
+
+                    <button type="button"
+                        class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                        <span class="text-2xl leading-none">🍬</span>
+                        <span class="font-medium">Gummy</span>
+                        <span
+                            class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">72</span>
+                    </button>
+
+                    <button type="button"
+                        class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                        <span class="text-2xl leading-none">🍪</span>
+                        <span class="font-medium">Edible</span>
+                        <span
+                            class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">67</span>
+                    </button>
+
+                    <button type="button" class="self-center px-1 text-indigo-700 font-medium hover:underline">view
+                        more</button>
+                </div>
+
+                <!-- Price -->
+                <h3 class="mt-6 text-2xl font-semibold tracking-tight font-bold">Price</h3>
+                <div class="mt-3">
+                    <div class="relative h-5 flex items-center">
+                        <!-- visual extra handle to mimic two-thumbs -->
+                        <span
+                            class="pointer-events-none absolute left-1/3 top-1/2 -translate-y-1/2 w-[18px] h-[18px] rounded-full bg-indigo-500 ring-2 ring-white shadow"></span>
+                        <input class="range" type="range" min="0" max="650" value="220" />
+                    </div>
+                    <div class="mt-2 flex justify-between text-sm text-slate-600">
+                        <span>$0</span>
+                        <span>$650</span>
+                    </div>
+                </div>
+
+
+                <!-- Stock status -->
+                <div class="mt-6 gap-2 flex flex-row flex-wrap flex-auto">
+                    <div
+                        class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-4 shadow-sm">
+                        <span
+                            class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white text-sm">✓</span>
+                        <span class="font-medium text-green-700">In stock</span>
+                        <span
+                            class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">99+</span>
+                    </div>
+
+                    <div
+                        class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm">
+                        <span
+                            class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-400 text-white text-sm">i</span>
+                        <span class="font-semibold text-amber-700">Limited stock</span>
+                        <span
+                            class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 shadow-sm">17</span>
+                    </div>
+
+                    <div
+                        class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm">
+                        <span
+                            class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-white text-sm">✕</span>
+                        <span class="font-semibold text-rose-700">Out of stock</span>
+                        <span
+                            class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 shadow-sm">87</span>
+                    </div>
+
+                    <div
+                        class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm">
+                        <span
+                            class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-white text-sm">!</span>
+                        <span class="font-semibold text-slate-900">Unknown</span>
+                        <span
+                            class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 shadow-sm">55</span>
+                    </div>
+                </div>
+
+                <label class="relative inline-flex items-center cursor-pointer my-4">
+                    <input type="checkbox" value="" class="sr-only peer">
+
+                    <div class="w-11 h-3 bg-gray-200 peer-focus:outline-none rounded-full peer-checked:bg-[#5653F9]
+                                relative
+                                after:content-[''] after:absolute after:top-[-5px] after:left-[0px] 
+                                after:bg-white after:border after:border-gray-300 after:rounded-full 
+                                after:h-6 after:w-6 after:transition-all
+                                peer-checked:after:translate-x-5 peer-checked:after:border-white peer-checked:after:bg-[rgb(67,56,202)]">
+                    </div>
+
+                    <span class="ml-3 text-sm font-medium text-gray-700">Has concession price</span>
+                </label>
+
+
+
+
+                <!-- Dropdowns -->
+                <div class="mt-4 space-y-3">
+                    <button type="button"
+                        class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-4 py-3 text-left shadow-sm hover:shadow transition">
+                        <span class="text-slate-600">Brand</span>
+                        <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path d="M7 10l5 5 5-5z"></path>
+                        </svg>
+                    </button>
+
+                    <button type="button"
+                        class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-4 py-3 text-left shadow-sm hover:shadow transition">
+                        <span class="text-slate-600">Chemovar/Strain</span>
+                        <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path d="M7 10l5 5 5-5z"></path>
+                        </svg>
+                    </button>
+
+                    <button type="button"
+                        class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-4 py-3 text-left shadow-sm hover:shadow transition">
+                        <span class="text-slate-600">Species</span>
+                        <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path d="M7 10l5 5 5-5z"></path>
+                        </svg>
+                    </button>
+
+                    <button type="button"
+                        class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-4 py-3 text-left shadow-sm hover:shadow transition">
+                        <span class="text-slate-600">Ratio</span>
+                        <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path d="M7 10l5 5 5-5z"></path>
+                        </svg>
+                    </button>
+
+                    <button type="button"
+                        class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-4 py-3 text-left shadow-sm hover:shadow transition">
+                        <span class="text-slate-600">TGA category</span>
+                        <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path d="M7 10l5 5 5-5z"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Patient feedback -->
+                <h3 class="mt-6 text-2xl font-semibold tracking-tight font-bold">Patient feedback</h3>
+                <div class="mt-3 space-y-3">
+                    <button type="button"
+                        class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-4 py-3 text-left shadow-sm hover:shadow transition">
+                        <span class="text-slate-700">Feelings</span>
+                        <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path d="M7 10l5 5 5-5z"></path>
+                        </svg>
+                    </button>
+                    <button type="button"
+                        class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-4 py-3 text-left shadow-sm hover:shadow transition">
+                        <span class="text-slate-700">Conditions</span>
+                        <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path d="M7 10l5 5 5-5z"></path>
+                        </svg>
+                    </button>
+                    <button type="button"
+                        class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-4 py-3 text-left shadow-sm hover:shadow transition">
+                        <span class="text-slate-700">Symptoms</span>
+                        <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path d="M7 10l5 5 5-5z"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Day/Night -->
+                <h3 class="mt-6 text-2xl font-semibold tracking-tight font-bold">Day/Night</h3>
+                <div class="mt-3 flex flex-wrap gap-3">
+                    <button type="button"
+                        class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
+                        Both/Either
+                        <span
+                            class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 shadow-sm">99+</span>
+                    </button>
+                    <button type="button"
+                        class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
+                        Night
+                        <span
+                            class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 shadow-sm">99+</span>
+                    </button>
+                    <button type="button"
+                        class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
+                        Unknown
+                        <span
+                            class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 shadow-sm">99+</span>
+                    </button>
+                    <button type="button"
+                        class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
+                        Day
+                        <span
+                            class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 shadow-sm">99+</span>
+                    </button>
+                </div>
+
+                <!-- Product content -->
+                <h3 class="mt-6 text-2xl font-semibold tracking-tight font-bold">Product content</h3>
+                <div class="mt-3 space-y-3">
+                    <button type="button"
+                        class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-4 py-3 text-left shadow-sm hover:shadow transition">
+                        <span class="text-slate-700">Minor cannabinoids</span>
+                        <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path d="M7 10l5 5 5-5z"></path>
+                        </svg>
+                    </button>
+                    <button type="button"
+                        class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-4 py-3 text-left shadow-sm hover:shadow transition">
+                        <span class="text-slate-700">Terpenes</span>
+                        <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path d="M7 10l5 5 5-5z"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Product cultivation -->
+                <h3 class="mt-6 text-2xl font-semibold tracking-tight font-bold">Product cultivation</h3>
+                <div class="mt-3 space-y-3">
+                    <button type="button"
+                        class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-4 py-3 text-left shadow-sm hover:shadow transition">
+                        <span class="text-slate-700">Origin</span>
+                        <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path d="M7 10l5 5 5-5z"></path>
+                        </svg>
+                    </button>
+                    <button type="button"
+                        class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-4 py-3 text-left shadow-sm hover:shadow transition">
+                        <span class="text-slate-700">Light source</span>
+                        <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M7 10l5 5 5-5z"></path>
+                        </svg>
+                    </button>
+                    <button type="button"
+                        class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-4 py-3 text-left shadow-sm hover:shadow transition">
+                        <span class="text-slate-700">Harvest method</span>
+                        <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M7 10l5 5 5-5z"></path>
+                        </svg>
+                    </button>
+                    <button type="button"
+                        class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-4 py-3 text-left shadow-sm hover:shadow transition">
+                        <span class="text-slate-700">Trim method</span>
+                        <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path d="M7 10l5 5 5-5z"></path>
+                        </svg>
+                    </button>
+                    <button type="button"
+                        class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-4 py-3 text-left shadow-sm hover:shadow transition">
+                        <span class="text-slate-700">Growing medium</span>
+                        <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M7 10l5 5 5-5z"></path>
+                        </svg>
+                    </button>
+                    <button type="button"
+                        class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-4 py-3 text-left shadow-sm hover:shadow transition">
+                        <span class="text-slate-700">Sterilisation</span>
+                        <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M7 10l5 5 5-5z"></path>
+                        </svg>
+                    </button>
+                    <button type="button"
+                        class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-4 py-3 text-left shadow-sm hover:shadow transition">
+                        <span class="text-slate-700">Packaging</span>
+                        <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path d="M7 10l5 5 5-5z"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Cured/Not cured pills -->
+                <div class="mt-3 flex flex-wrap gap-3">
+                    <button type="button"
+                        class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
+                        Not cured
+                        <span
+                            class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 shadow-sm">99+</span>
+                    </button>
+                    <button type="button"
+                        class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
+                        Cured
+                        <span
+                            class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 shadow-sm">99+</span>
+                    </button>
+                </div>
+
+                <!-- Bottom toggles -->
+                <div class="mt-6 space-y-3">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <span
+                            class="toggle relative inline-flex h-6 w-11 items-center rounded-full bg-slate-200 transition data-[on=true]:bg-slate-400"
+                            data-on="false">
+                            <span
+                                class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition data-[on=true]:translate-x-5"></span>
+                        </span>
+                        <span class="text-slate-700">Hide products coming soon</span>
+                    </label>
+
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <span
+                            class="toggle relative inline-flex h-6 w-11 items-center rounded-full bg-indigo-300 transition data-[on=true]:bg-indigo-600"
+                            data-on="true">
+                            <span
+                                class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition data-[on=true]:translate-x-5"></span>
+                        </span>
+                        <span class="text-slate-700">Hide discontinued products</span>
+                    </label>
+                </div>
+
+                <!-- Reset button -->
+                <button type="button"
+                    class="mt-6 inline-flex items-center gap-2 border-2 rounded-lg px-3 py-2 shadow-sm hover:shadow transition">
+                    <svg class="w-5 h-5" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                            d="M7.11 8.53L5.7 7.11C4.8 8.27 4.24 9.61 4.07 11h2.02c.14-.87.49-1.72 1.02-2.47zM6.09 13H4.07c.17 1.39.72 2.73 1.62 3.89l1.41-1.42c-.52-.75-.87-1.59-1.01-2.47zm1.01 5.32c1.16.9 2.51 1.44 3.9 1.61V17.9c-.87-.15-1.71-.49-2.46-1.03L7.1 18.32zM13 4.07V1L8.45 5.55 13 10V6.09c2.84.48 5 2.94 5 5.91s-2.16 5.43-5 5.91v2.02c3.95-.49 7-3.85 7-7.93s-3.05-7.44-7-7.93z">
+                        </path>
+                    </svg>
+                    Reset
+                </button>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        // Toggle behavior: click any .toggle to flip its data-on state
+        document.addEventListener('click', (e) => {
+            const t = e.target.closest('.toggle');
+            if (!t) return;
+            t.dataset.on = t.dataset.on === 'true' ? 'false' : 'true';
+        });
+
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        balto: ['"Balto"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                        RecoletaBold: ['"RecoletaBold"', 'ui-sans-serif', 'system-ui', 'sans-serif']
+                    },
+                },
+            },
+        }
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Price Range Slider</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+            padding: 30px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #2d3748;
+            font-weight: 600;
+        }
+
+        .price-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #4a5568;
+            background: #f7fafc;
+            padding: 8px 16px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .slider-container {
+            position: relative;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            margin: 40px 0;
+        }
+
+        .slider-track {
+            height: 6px;
+            background: linear-gradient(to right, #4f46e5, #7c3aed);
+            border-radius: 3px;
+            position: absolute;
+            left: 0%;
+            right: 0%;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 100%;
+            position: absolute;
+            top: -7px;
+            height: 6px;
+            background: transparent;
+            pointer-events: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+            pointer-events: auto;
+            box-shadow: 0 2px 6px rgba(79, 70, 229, 0.4);
+            border: 3px solid white;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            -moz-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+            pointer-events: auto;
+            box-shadow: 0 2px 6px rgba(79, 70, 229, 0.4);
+            border: 3px solid white;
+        }
+
+        .range-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+
+        .range-labels span {
+            font-size: 16px;
+            color: #718096;
+            font-weight: 500;
+        }
+
+        .slider-value {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4f46e5;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .slider-value::after {
+            content: "";
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid #4f46e5;
+        }
+
+        .price-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .price-info div {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .price-info .label {
+            font-size: 14px;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+
+        .price-info .value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .apply-btn {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 25px;
+            transition: all 0.3s ease;
+        }
+
+        .apply-btn:hover {
+            background: #4338ca;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+
+        @media (max-width: 500px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+
+            .price-value {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Price</h1>
+            <div class="price-value">$235</div>
+        </div>
+
+        <div class="slider-container">
+            <div class="slider-track"></div>
+            <input type="range" min="0" max="650" value="235" class="slider" id="slider">
+            <div class="slider-value">$235</div>
+        </div>
+
+        <div class="range-labels">
+            <span>$0</span>
+            <span>$650</span>
+        </div>
+
+        <div class="price-info">
+            <div>
+                <span class="label">MIN PRICE</span>
+                <span class="value">$0</span>
+            </div>
+            <div>
+                <span class="label">MAX PRICE</span>
+                <span class="value">$650</span>
+            </div>
+        </div>
+
+        <button class="apply-btn">Apply Filter</button>
+    </div>
+
+    <script>
+        const slider = document.getElementById('slider');
+        const sliderValue = document.querySelector('.slider-value');
+        const priceValue = document.querySelector('.price-value');
+        const sliderTrack = document.querySelector('.slider-track');
+
+        // Update slider value display
+        function updateSliderValue() {
+            const value = slider.value;
+            sliderValue.textContent = '$' + value;
+            priceValue.textContent = '$' + value;
+
+            // Update track fill
+            const percent = (value / slider.max) * 100;
+            sliderTrack.style.right = (100 - percent) + '%';
+
+            // Position the value indicator
+            sliderValue.style.left = percent + '%';
+        }
+
+        // Initialize
+        updateSliderValue();
+
+        // Add event listener
+        slider.addEventListener('input', updateSliderValue);
+    </script>
+</body>
+
+</html>
