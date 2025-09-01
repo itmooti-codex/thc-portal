@@ -1,513 +1,836 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Product — Static Template</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-white">
-  <div class="max-w-6xl mx-auto px-4 py-8">
-    <!-- Breadcrumbs -->
-    <nav class="text-sm text-slate-600 mb-6">
-      <a href="index.html" class="hover:underline">Search products</a>
-      <span class="mx-2">/</span>
-      <span>View product</span>
-    </nav>
 
-    <!-- Title + Brand + Actions -->
-    <header class="mb-8">
-      <h1 class="text-4xl font-extrabold text-slate-900">Maali Sky 20% THC Flower</h1>
-      <a href="#" class="text-indigo-700 font-medium hover:underline">Maali</a>
-    </header>
-
-    <!-- Details Grid -->
-    <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
-      <!-- Type -->
-      <div>
-        <div class="text-slate-500 text-sm">Type</div>
-        <div class="mt-1 flex items-center gap-2 text-slate-900">
-          <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 ring-1 ring-slate-200">🍃</span>
-          <span>Flower</span>
-        </div>
+<body>
+  <div class="bg-white">
+    <div class="max-w-6xl mx-auto px-4 py-8">
+      <!-- Breadcrumbs -->
+      <div class="text-sm mb-6">
+        <a href="#" class="hover:underline">Search products</a>
+        <span class="mx-2">/</span>
+        <span>View product</span>
       </div>
 
-      <!-- TGA Product Category -->
-      <div>
-        <div class="text-slate-500 text-sm">TGA Product Category</div>
-        <div class="mt-1 text-slate-900">Category 5</div>
-      </div>
+      <!-- Title + Brand + Actions -->
+      <header class="mb-8">
+        <h1 class="text-4xl font-extrabold text-slate-900">[Page//Item Name]</h1>
+        <a href="#" class="text-indigo-700 font-medium hover:underline">[Page//Brand]</a>
+      </header>
 
-      <!-- THC / CBD bars -->
-      <div class="md:col-span-2 lg:col-span-2">
-        <div class="flex items-start justify-between gap-8">
-          <!-- THC -->
-          <div class="flex-1">
-            <div class="flex items-center gap-2">
-              <div class="text-slate-900 font-semibold">THC</div>
-              <div class="text-slate-400 text-sm">?</div>
-            </div>
-            <div class="text-slate-700">20%</div>
-            <div class="mt-2 h-1.5 w-full rounded-full bg-purple-100">
-              <div class="h-1.5 rounded-full bg-purple-400" style="width: 80%"></div>
-            </div>
-          </div>
-          <!-- CBD -->
-          <div class="w-56">
-            <div class="flex items-center gap-2">
-              <div class="text-slate-900 font-semibold">CBD</div>
-              <div class="text-slate-400 text-sm">?</div>
-            </div>
-            <div class="text-slate-700">&lt;1%</div>
-            <div class="mt-2 h-1.5 w-full rounded-full bg-amber-100">
-              <div class="h-1.5 rounded-full bg-amber-400" style="width: 10%"></div>
-            </div>
+      <!-- Details Grid -->
+      <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
+        <!-- Type -->
+        <div>
+          <div class="text-slate-500 text-sm">Type</div>
+          <div class="mt-1 flex items-center gap-2 text-slate-900">
+            <span
+              class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 ring-1 ring-slate-200">🍃</span>
+            <span>[Page//Type]</span>
           </div>
         </div>
-      </div>
 
-      <!-- Schedule -->
-      <div>
-        <div class="text-slate-500 text-sm">Schedule</div>
-        <div class="mt-1 text-slate-900">8</div>
-      </div>
+        <!-- TGA Product Category -->
+        <div>
+          <div class="text-slate-500 text-sm">TGA Product Category</div>
+          <div class="mt-1 text-slate-900">Category [Page//TGA Category]</div>
+        </div>
 
-      <!-- Plant Species -->
-      <div>
-        <div class="text-slate-500 text-sm">Plant Species</div>
-        <div class="mt-1 text-slate-900">Sativa dominant</div>
-      </div>
+        <!-- THC / CBD bars -->
+        <div class="md:col-span-2 lg:col-span-2">
+          <div class="flex items-start justify-between gap-8">
+            <!-- THC -->
+            <div class="flex-1" data-hero-metric="THC" data-scale="0.01">
+              <div class="flex items-center gap-2">
+                <div class="text-slate-900 font-semibold">THC</div>
+                <div class="text-slate-400 text-sm">?</div>
+              </div>
+              <div class="text-slate-700 metric-value"></div>
+              <div class="mt-2 h-1.5 w-full rounded-full bg-purple-100">
+                <div class="h-1.5 rounded-full bg-purple-400 metric-bar"></div>
+              </div>
+            </div>
+            <!-- CBD -->
+            <div class="w-56" data-hero-metric="CBD" data-scale="0.01">
+              <div class="flex items-center gap-2">
+                <div class="text-slate-900 font-semibold">CBD</div>
+                <div class="text-slate-400 text-sm">?</div>
+              </div>
+              <div class="text-slate-700 metric-value"></div>
+              <div class="mt-2 h-1.5 w-full rounded-full bg-amber-100">
+                <div class="h-1.5 rounded-full bg-amber-400 metric-bar"></div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-      <!-- Cultivar -->
-      <div>
-        <div class="text-slate-500 text-sm">Cultivar</div>
-        <div class="mt-1 text-slate-900">Royal Moby</div>
-      </div>
+        <!-- Schedule -->
+        <div>
+          <div class="text-slate-500 text-sm">Schedule</div>
+          <div class="mt-1 text-slate-900">[Page//TGA Schedule]</div>
+        </div>
 
-      <!-- Aromas & Flavours -->
-      <div class="md:col-span-2 lg:col-span-3">
-        <div class="text-slate-500 text-sm">Aromas & Flavours</div>
-        <div class="mt-1 text-slate-900">Blueberry, Citrus, Earthy, Herbal, Pepper</div>
-      </div>
-    </section>
+        <!-- Plant Species -->
+        <div>
+          <div class="text-slate-500 text-sm">Plant Species</div>
+          <div class="mt-1 text-slate-900">[Page//Plant Species]</div>
+        </div>
 
-    <!-- Quick chips -->
-    <section class="flex flex-wrap items-center gap-3 mb-8">
-      <span class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-3 py-1.5 text-sm text-slate-800">
-        🏥 46 pharmacies
-      </span>
-      <span class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-3 py-1.5 text-sm text-slate-800">
-        🚚 Dispensed in 24 hours
-      </span>
-      <span class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-3 py-1.5 text-sm text-slate-800">
-        ❓ Learn more
-      </span>
-    </section>
+        <!-- Cultivar -->
+        <div>
+          <div class="text-slate-500 text-sm">Cultivar</div>
+          <div class="mt-1 text-slate-900">[Page//Cultivar]</div>
+        </div>
 
-    <!-- Pricing table -->
-    <section class="overflow-x-auto rounded-xl border border-slate-200">
-      <table class="min-w-full text-left text-sm">
-        <thead class="bg-slate-50 text-slate-600">
-          <tr>
-            <th class="px-4 py-3 font-semibold">Size</th>
-            <th class="px-4 py-3 font-semibold">Price (per mg)</th>
-            <th class="px-4 py-3 font-semibold">Price (per g)</th>
-            <th class="px-4 py-3 font-semibold">RRP</th>
-            <th class="px-4 py-3 font-semibold">Status</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-200">
-          <tr>
-            <td class="px-4 py-3">10g</td>
-            <td class="px-4 py-3">$0.06</td>
-            <td class="px-4 py-3">$12.90</td>
-            <td class="px-4 py-3">$129</td>
-            <td class="px-4 py-3">
-              <span class="inline-flex items-center gap-2 text-emerald-700">
-                <span class="h-2.5 w-2.5 rounded-full bg-emerald-500 inline-block"></span>
-                In stock
-                <span class="text-slate-500">Updated: 3/7/2025</span>
+        <!-- Aromas & Flavours -->
+        <div class="md:col-span-2 lg:col-span-3">
+          <div class="text-slate-500 text-sm">Aromas & Flavours</div>
+          <div class="mt-1 text-slate-900">N/A</div>
+        </div>
+      </section>
+
+      <!-- Quick chips -->
+      <section class="flex flex-wrap items-center gap-3 mb-8">
+        <span
+          class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-3 py-1.5 text-sm text-slate-800">
+          🏥 [Page//Pharmacy Deal] pharmacies
+        </span>
+        <span
+          class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-3 py-1.5 text-sm text-slate-800">
+          🚚 Dispensed in N/A
+        </span>
+        <span
+          class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-3 py-1.5 text-sm text-slate-800">
+          ❓ Learn more
+        </span>
+      </section>
+
+      <!-- Pricing table -->
+      <section class="rounded-xl border border-slate-200">
+        <!-- Desktop / tablet table -->
+        <div class="overflow-x-auto hidden sm:block">
+          <table class="min-w-full text-left text-sm">
+            <thead class="bg-slate-50 text-slate-600">
+              <tr>
+                <th class="px-4 py-3 font-semibold">Size</th>
+                <th class="px-4 py-3 font-semibold">Price (per mg)</th>
+                <th class="px-4 py-3 font-semibold">Price (per g)</th>
+                <th class="px-4 py-3 font-semibold">RRP</th>
+                <th class="px-4 py-3 font-semibold">Status</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200">
+              <tr>
+                <td class="px-4 py-3">[Page//PackSize][Page//Quantity Unit]</td>
+                <td class="px-4 py-3">[Page//Retail Price]</td>
+                <td class="px-4 py-3">[Page//Retail Price]</td>
+                <td class="px-4 py-3">[Page//Retail Price]</td>
+                <td class="px-4 py-3">
+                  <span class="inline-flex items-center gap-2" style="color: [Page//Status ##color_field_hex];">
+                    <span class="h-2.5 w-2.5 rounded-full inline-block"
+                      style="background-color: [Page//Status ##color_field_hex];"></span>
+                    [Page//Status]
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Mobile stacked card -->
+        <div class="sm:hidden p-3">
+          <div class="rounded-lg border border-slate-200 p-4">
+            <div class="flex items-center justify-between">
+              <div class="text-slate-900 font-semibold">[Page//PackSize][Page//Quantity Unit]</div>
+              <span class="inline-flex items-center gap-2 text-sm" style="color: [Page//Status ##color_field_hex];">
+                <span class="h-2.5 w-2.5 rounded-full inline-block"
+                  style="background-color: [Page//Status ##color_field_hex]"></span>
+                [Page//Status]
               </span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
-
-    <!-- Additional Info Cards -->
-    <div class="mt-8 space-y-6">
-      <!-- Patient Resources -->
-      <section class="rounded-2xl border border-slate-200 shadow-sm">
-        <div class="p-6">
-          <div class="flex items-start justify-between">
-            <h2 class="text-lg font-semibold text-slate-900">Patient Resources</h2>
-            <span class="text-slate-400">▴</span>
-          </div>
-          <div class="mt-4">
-            <div class="text-slate-500 text-sm">Storage Conditions</div>
-            <div class="mt-2 border-b border-slate-200"></div>
-            <p class="mt-3 text-slate-800">Store in a cool dark place below 30 degrees Celsius.</p>
+            </div>
+            <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <div>
+                <dt class="text-slate-500">Price (per mg)</dt>
+                <dd class="text-slate-900">[Page//Retail Price]</dd>
+              </div>
+              <div>
+                <dt class="text-slate-500">Price (per g)</dt>
+                <dd class="text-slate-900">[Page//Retail Price]</dd>
+              </div>
+              <div>
+                <dt class="text-slate-500">RRP</dt>
+                <dd class="text-slate-900">[Page//Retail Price]</dd>
+              </div>
+            </dl>
           </div>
         </div>
       </section>
 
-      <!-- Manufacturing & Requirements -->
-      <section class="rounded-2xl border border-slate-200 shadow-sm">
-        <div class="p-6">
-          <div class="flex items-start justify-between">
-            <h2 class="text-lg font-semibold text-slate-900">Manufacturing & Requirements</h2>
-            <span class="text-slate-400">▴</span>
+      <!-- Additional Info Cards -->
+      <div class="mt-8 space-y-6">
+        <!-- Patient Resources -->
+        <section class="rounded-2xl border border-slate-200 shadow-sm">
+          <div class="p-6">
+            <div class="flex items-start justify-between">
+              <h2 class="text-lg font-semibold text-slate-900">Patient Resources</h2>
+              <span class="text-slate-400">▴</span>
+            </div>
+            <div class="mt-4">
+              <div class="text-slate-500 text-sm">Dosage Instructions</div>
+              <div class="mt-2 border-b border-slate-200"></div>
+              <p class="mt-3 text-slate-800">[Page//Dosage Instructions]</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Manufacturing & Requirements -->
+        <section class="rounded-2xl border border-slate-200 shadow-sm">
+          <div class="p-6">
+            <div class="flex items-start justify-between">
+              <h2 class="text-lg font-semibold text-slate-900">Manufacturing & Requirements</h2>
+              <span class="text-slate-400">▴</span>
+            </div>
+
+            <div class="mt-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              <!-- API Origin -->
+              <div>
+                <div class="text-slate-500 text-sm">API Origin <span class="text-slate-400">?</span></div>
+                <div class="mt-2 border-b border-slate-200"></div>
+                <div class="mt-3 flex items-center gap-2 text-slate-900">
+                  <img src="https://flagsapi.com/[Page//Origin Country]/flat/24.png" alt="Australia"
+                    class="h-5 w-7 rounded-sm ring-1 ring-slate-200" />
+                  [Page//Origin Country]
+                </div>
+              </div>
+
+              <!-- Country Of Manufacture -->
+              <div>
+                <div class="text-slate-500 text-sm">Country Of Manufacture</div>
+                <div class="mt-2 border-b border-slate-200"></div>
+                <div class="mt-3 flex items-center gap-2 text-slate-900">
+                  <img src="https://flagsapi.com/[Page//Origin Country]/flat/24.png" alt="Australia"
+                    class="h-5 w-7 rounded-sm ring-1 ring-slate-200" />
+                  [Page//Origin Country]
+                </div>
+              </div>
+
+              <!-- Country Of Packaging -->
+              <div>
+                <div class="text-slate-500 text-sm">Country Of Packaging</div>
+                <div class="mt-2 border-b border-slate-200"></div>
+                <div class="mt-3 flex items-center gap-2 text-slate-900">
+                  <img src="https://flagsapi.com/[Page//Origin Country]/flat/24.png" alt="Australia"
+                    class="h-5 w-7 rounded-sm ring-1 ring-slate-200" />
+                  [Page//Origin Country]
+                </div>
+              </div>
+
+              <!-- Sterilisation Method -->
+              <div>
+                <div class="text-slate-500 text-sm">Sterilisation Method</div>
+                <div class="mt-2 border-b border-slate-200"></div>
+                <div class="mt-3 text-slate-900">N/A</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Growing Conditions -->
+        <section class="rounded-2xl border border-slate-200 shadow-sm">
+          <div class="p-6">
+            <div class="flex items-start justify-between">
+              <h2 class="text-lg font-semibold text-slate-900">Growing Conditions</h2>
+              <span class="text-slate-400">▴</span>
+            </div>
+
+            <div class="mt-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              <!-- Light Source -->
+              <div>
+                <div class="text-slate-500 text-sm">Light Source</div>
+                <div class="mt-2 border-b border-slate-200"></div>
+                <div class="mt-3 text-slate-900">N/A</div>
+              </div>
+
+              <!-- Growing Medium -->
+              <div>
+                <div class="text-slate-500 text-sm">Growing Medium</div>
+                <div class="mt-2 border-b border-slate-200"></div>
+                <div class="mt-3 text-slate-900">N/A</div>
+              </div>
+
+              <!-- Harvest Method -->
+              <div>
+                <div class="text-slate-500 text-sm">Harvest Method</div>
+                <div class="mt-2 border-b border-slate-200"></div>
+                <div class="mt-3 text-slate-900">N/A</div>
+              </div>
+
+              <!-- Trim Method -->
+              <div>
+                <div class="text-slate-500 text-sm">Trim Method</div>
+                <div class="mt-2 border-b border-slate-200"></div>
+                <div class="mt-3 text-slate-900">N/A</div>
+              </div>
+            </div>
+
+            <!-- Cured -->
+            <div class="mt-6 max-w-xl">
+              <div class="text-slate-500 text-sm">Cured</div>
+              <div class="mt-2 border-b border-slate-200"></div>
+              <div class="mt-3 text-slate-900">N/A</div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Batch Information -->
+      <section class="mt-10">
+        <h2 class="text-lg font-semibold text-slate-900">Batch Information</h2>
+        <label class="mt-3 block text-xs text-slate-500">Batch number</label>
+        <div class="mt-1 relative w-72">
+          <select
+            class="block w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-3 pr-9 text-sm text-slate-800 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            <option>N/A</option>
+          </select>
+          <svg class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400"
+            viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path fill-rule="evenodd"
+              d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+              clip-rule="evenodd" />
+          </svg>
+        </div>
+
+        <!-- Certificate of Analysis -->
+        <div class="mt-8 flex items-start justify-between">
+          <div>
+            <div class="text-slate-900 font-semibold">Certificate of Analysis <span
+                class="text-slate-400 align-middle">?</span></div>
+            <div class="mt-2 text-sm text-slate-700">N/A</div>
+          </div>
+          <button
+            class="mt-2 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-indigo-800 hover:bg-slate-50"
+            aria-label="Download CoA">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" />
+            </svg>
+          </button>
+        </div>
+        <div class="mt-4 border-b border-slate-200"></div>
+
+        <!-- Dates table (responsive) -->
+        <div class="mt-6 rounded-xl border border-violet-200">
+          <!-- Desktop/tablet grid -->
+          <div class="hidden sm:grid">
+            <div class="grid grid-cols-1 md:grid-cols-4 text-slate-700 text-sm">
+              <div class="px-4 py-3 font-semibold border-b border-violet-200">Harvest Date</div>
+              <div class="px-4 py-3 font-semibold border-b border-violet-200">Packaging date</div>
+              <div class="px-4 py-3 font-semibold border-b border-violet-200">Market Entry Date</div>
+              <div class="px-4 py-3 font-semibold border-b border-violet-200">Expiry</div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4">
+              <div class="px-4 py-6 text-slate-700">-</div>
+              <div class="px-4 py-6 text-slate-700">-</div>
+              <div class="px-4 py-6 text-slate-700">-</div>
+              <div class="px-4 py-6 text-slate-700">-</div>
+            </div>
           </div>
 
-          <div class="mt-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <!-- API Origin -->
-            <div>
-              <div class="text-slate-500 text-sm">API Origin <span class="text-slate-400">?</span></div>
-              <div class="mt-2 border-b border-slate-200"></div>
-              <div class="mt-3 flex items-center gap-2 text-slate-900">
-                <img src="https://flagsapi.com/AU/flat/24.png" alt="Australia" class="h-5 w-7 rounded-sm ring-1 ring-slate-200"/>
-                Australia
+          <!-- Mobile stacked -->
+          <div class="sm:hidden p-3 text-sm">
+            <div class="grid grid-cols-1 gap-4">
+              <div class="rounded-lg border border-violet-200 p-4">
+                <div class="text-slate-500">Harvest Date</div>
+                <div class="mt-1 text-slate-900">-</div>
               </div>
-            </div>
-
-            <!-- Country Of Manufacture -->
-            <div>
-              <div class="text-slate-500 text-sm">Country Of Manufacture</div>
-              <div class="mt-2 border-b border-slate-200"></div>
-              <div class="mt-3 flex items-center gap-2 text-slate-900">
-                <img src="https://flagsapi.com/AU/flat/24.png" alt="Australia" class="h-5 w-7 rounded-sm ring-1 ring-slate-200"/>
-                Australia
+              <div class="rounded-lg border border-violet-200 p-4">
+                <div class="text-slate-500">Packaging date</div>
+                <div class="mt-1 text-slate-900">-</div>
               </div>
-            </div>
-
-            <!-- Country Of Packaging -->
-            <div>
-              <div class="text-slate-500 text-sm">Country Of Packaging</div>
-              <div class="mt-2 border-b border-slate-200"></div>
-              <div class="mt-3 flex items-center gap-2 text-slate-900">
-                <img src="https://flagsapi.com/AU/flat/24.png" alt="Australia" class="h-5 w-7 rounded-sm ring-1 ring-slate-200"/>
-                Australia
+              <div class="rounded-lg border border-violet-200 p-4">
+                <div class="text-slate-500">Market Entry Date</div>
+                <div class="mt-1 text-slate-900">-</div>
               </div>
-            </div>
-
-            <!-- Sterilisation Method -->
-            <div>
-              <div class="text-slate-500 text-sm">Sterilisation Method</div>
-              <div class="mt-2 border-b border-slate-200"></div>
-              <div class="mt-3 text-slate-900">E-Beam</div>
+              <div class="rounded-lg border border-violet-200 p-4">
+                <div class="text-slate-500">Expiry</div>
+                <div class="mt-1 text-slate-900">-</div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Growing Conditions -->
-      <section class="rounded-2xl border border-slate-200 shadow-sm">
-        <div class="p-6">
-          <div class="flex items-start justify-between">
-            <h2 class="text-lg font-semibold text-slate-900">Growing Conditions</h2>
-            <span class="text-slate-400">▴</span>
+      <!-- Cannabinoids & Terpenes -->
+      <section class="mt-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Cannabinoid Card -->
+        <div class="rounded-2xl border border-violet-200" data-scale-default="0.01" id="cannabinoid-card">
+          <div class="grid grid-cols-3 text-sm text-slate-600">
+            <div class="px-4 py-3 font-semibold col-span-2">Cannabinoid</div>
+            <div class="px-4 py-3 font-semibold text-right">Reported level</div>
+          </div>
+          <div class="border-t border-violet-200"></div>
+
+          <!-- THC row -->
+          <div class="grid grid-cols-3 items-center" data-cannabinoid="THC">
+            <div class="px-4 py-3 text-slate-800 col-span-1">THC</div>
+            <div class="px-4 py-3 col-span-1">
+              <div class="h-1.5 w-full rounded-full bg-purple-100">
+                <div class="h-1.5 rounded-full bg-purple-400 metric-bar"></div>
+              </div>
+            </div>
+            <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
           </div>
 
-          <div class="mt-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <!-- Light Source -->
-            <div>
-              <div class="text-slate-500 text-sm">Light Source</div>
-              <div class="mt-2 border-b border-slate-200"></div>
-              <div class="mt-3 text-slate-900">Natural light source</div>
+          <!-- CBD row -->
+          <div class="grid grid-cols-3 items-center border-t border-violet-200" data-cannabinoid="CBD">
+            <div class="px-4 py-3 text-slate-800 col-span-1">CBD</div>
+            <div class="px-4 py-3 col-span-1">
+              <div class="h-1.5 w-full rounded-full bg-amber-100">
+                <div class="h-1.5 rounded-full bg-amber-400 metric-bar"></div>
+              </div>
             </div>
-
-            <!-- Growing Medium -->
-            <div>
-              <div class="text-slate-500 text-sm">Growing Medium</div>
-              <div class="mt-2 border-b border-slate-200"></div>
-              <div class="mt-3 text-slate-900">Soil</div>
-            </div>
-
-            <!-- Harvest Method -->
-            <div>
-              <div class="text-slate-500 text-sm">Harvest Method</div>
-              <div class="mt-2 border-b border-slate-200"></div>
-              <div class="mt-3 text-slate-900">Hand</div>
-            </div>
-
-            <!-- Trim Method -->
-            <div>
-              <div class="text-slate-500 text-sm">Trim Method</div>
-              <div class="mt-2 border-b border-slate-200"></div>
-              <div class="mt-3 text-slate-900">Hand</div>
-            </div>
+            <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
           </div>
 
-          <!-- Cured -->
-          <div class="mt-6 max-w-xl">
-            <div class="text-slate-500 text-sm">Cured</div>
-            <div class="mt-2 border-b border-slate-200"></div>
-            <div class="mt-3 text-slate-900">Yes (21 Days) - Dry cured</div>
+          <!-- Totals -->
+          <div class="border-t border-violet-200"></div>
+          <div class="flex items-center justify-between px-4 py-3 text-sm">
+            <div class="text-slate-700">Equivalent Total THC <span class="text-indigo-600">?</span></div>
+            <div class="text-slate-800" id="total-thc"></div>
+          </div>
+          <div class="border-t border-violet-200"></div>
+          <div class="flex items-center justify-between px-4 py-3 text-sm">
+            <div class="text-slate-700">Equivalent Total CBD <span class="text-indigo-600">?</span></div>
+            <div class="text-slate-800" id="total-cbd"></div>
+          </div>
+        </div>
+
+        <!-- Terpene Card -->
+        <div class="rounded-2xl border border-violet-200" data-scale-default="0.01">
+          <div class="grid grid-cols-3 text-sm text-slate-600">
+            <div class="px-4 py-3 font-semibold col-span-2">
+              Terpene <span class="text-indigo-600">?</span>
+              <a href="#" class="ml-2 text-indigo-700 hover:underline">Learn more</a>
+            </div>
+            <div class="px-4 py-3 font-semibold text-right">Reported level</div>
+          </div>
+          <div class="border-t border-violet-200"></div>
+
+          <!-- Terpene rows -->
+          <div class="divide-y divide-violet-200" data-scale-default="0.01">
+            <!-- Each row lists a terpene. JS fills value + bar using data-terpene -->
+            <!-- Terpene -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Terpene">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Terpene</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-orange-100">
+                  <div class="h-1.5 rounded-full bg-orange-400 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Myrcene -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Myrcene">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Myrcene</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-orange-100">
+                  <div class="h-1.5 rounded-full bg-orange-400 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Limonene -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Limonene">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Limonene</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-yellow-100">
+                  <div class="h-1.5 rounded-full bg-yellow-500 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Beta-caryophyllene -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Beta-caryophyllene">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Beta-caryophyllene</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-amber-100">
+                  <div class="h-1.5 rounded-full bg-amber-500 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Humulene -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Humulene">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Humulene</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-lime-100">
+                  <div class="h-1.5 rounded-full bg-lime-500 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Linalool -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Linalool">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Linalool</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-purple-100">
+                  <div class="h-1.5 rounded-full bg-purple-400 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Caryophyllene-oxide -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Caryophyllene-oxide">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Caryophyllene-oxide</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-amber-100">
+                  <div class="h-1.5 rounded-full bg-amber-400 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Alpha-bisabolol -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Alpha-bisabolol">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Alpha-bisabolol</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-indigo-100">
+                  <div class="h-1.5 rounded-full bg-indigo-400 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Alpha-pinene -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Alpha-pinene">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Alpha-pinene</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-green-100">
+                  <div class="h-1.5 rounded-full bg-green-500 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Terpinolene -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Terpinolene">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Terpinolene</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-emerald-100">
+                  <div class="h-1.5 rounded-full bg-emerald-500 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Beta-pinene -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Beta-pinene">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Beta-pinene</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-green-100">
+                  <div class="h-1.5 rounded-full bg-green-400 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Trans-caryophyllene -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Trans-caryophyllene">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Trans-caryophyllene</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-amber-100">
+                  <div class="h-1.5 rounded-full bg-amber-600 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Ocimene -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Ocimene">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Ocimene</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-teal-100">
+                  <div class="h-1.5 rounded-full bg-teal-500 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Farnesene -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Farnesene">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Farnesene</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-emerald-100">
+                  <div class="h-1.5 rounded-full bg-emerald-400 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Delta-3-carene -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Delta-3-carene">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Delta-3-carene</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-cyan-100">
+                  <div class="h-1.5 rounded-full bg-cyan-500 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Nerolidol -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Nerolidol">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Nerolidol</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-rose-100">
+                  <div class="h-1.5 rounded-full bg-rose-400 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Terpineol -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Terpineol">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Terpineol</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-gray-100">
+                  <div class="h-1.5 rounded-full bg-gray-400 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Guaiol -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Guaiol">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Guaiol</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-rose-100">
+                  <div class="h-1.5 rounded-full bg-rose-400 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Trans-Nerolidol -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Trans-Nerolidol">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Trans-Nerolidol</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-rose-100">
+                  <div class="h-1.5 rounded-full bg-rose-500 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Camphene -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Camphene">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Camphene</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-slate-100">
+                  <div class="h-1.5 rounded-full bg-slate-400 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Fenchyl -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Fenchyl">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Fenchyl</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-slate-100">
+                  <div class="h-1.5 rounded-full bg-slate-400 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Borneol -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Borneol">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Borneol</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-slate-100">
+                  <div class="h-1.5 rounded-full bg-slate-400 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Phytol -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Phytol">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Phytol</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-slate-100">
+                  <div class="h-1.5 rounded-full bg-slate-400 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+
+            <!-- Others -->
+            <div class="grid grid-cols-3 items-center" data-terpene="Others">
+              <div class="px-4 py-3 text-slate-800 col-span-1">Others</div>
+              <div class="px-4 py-3 col-span-1">
+                <div class="h-1.5 w-full rounded-full bg-gray-100">
+                  <div class="h-1.5 rounded-full bg-gray-400 metric-bar"></div>
+                </div>
+              </div>
+              <div class="px-4 py-3 text-right text-slate-800 col-span-1 metric-value"></div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Disclaimer -->
+      <section class="mt-10">
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-6">
+          <h3 class="text-sm font-semibold text-slate-800">Disclaimer: information provided for educational purposes
+            only</h3>
+          <div class="mt-3 space-y-3 text-sm leading-6 text-slate-700">
+            <p>
+              The information on this website is presented for the purpose of disseminating educational health
+              information relating to prescription-only medical cannabis treatment options available in Australia. This
+              information is provided free of charge for the benefit of patients who have been prescribed such a
+              treatment, and is deliberately presented in a neutral, balanced and informative manner without any
+              endorsement or recommendation of any particular option.
+            </p>
+            <p>
+              While reasonable care is taken to ensure the accuracy of the material contained on this website, the
+              information on the site is made available on the basis that it is not providing professional advice on a
+              particular matter.
+            </p>
+            <p>
+              This website is not a substitute for independent professional advice from a registered health
+              practitioner. Nothing contained in this site is intended to be used as medical advice and it is not
+              intended to be used to diagnose, treat, cure or prevent any disease, nor should it be used for therapeutic
+              purposes or as a substitute for your own health professional’s advice.
+            </p>
+            <p>
+              Importantly, the majority of medicinal cannabis treatment options available in Australia are unapproved
+              medicines which means they are not registered on the Australian Register of Therapeutic Goods. Unapproved
+              medicines have not been evaluated by the medicines regulator in Australia (the Therapeutic Goods
+              Administration (TGA)), in relation to quality, safety and efficacy, and must be accessed via schemes
+              administered by the TGA for accessing unapproved medicines. Notwithstanding the above, all medicinal
+              cannabis medicines supplied in Australia by sponsors must comply with minimum quality and safety standards
+              set out in Therapeutic Goods Order 93.
+            </p>
+            <p>
+              We do not accept any liability for any injury, loss or damage incurred by use of or reliance on the
+              information provided on this website.
+            </p>
           </div>
         </div>
       </section>
     </div>
-    
-    <!-- Batch Information -->
-    <section class="mt-10">
-      <h2 class="text-lg font-semibold text-slate-900">Batch Information</h2>
-      <label class="mt-3 block text-xs text-slate-500">Batch number</label>
-      <div class="mt-1 relative w-72">
-        <select class="block w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-3 pr-9 text-sm text-slate-800 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
-          <option>ME-B000004</option>
-        </select>
-        <svg class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
-        </svg>
-      </div>
-
-      <!-- Certificate of Analysis -->
-      <div class="mt-8 flex items-start justify-between">
-        <div>
-          <div class="text-slate-900 font-semibold">Certificate of Analysis <span class="text-slate-400 align-middle">?</span></div>
-          <div class="mt-2 text-sm text-slate-700">CoA (Batch: ME-B000004)</div>
-        </div>
-        <button class="mt-2 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-indigo-800 hover:bg-slate-50" aria-label="Download CoA">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" />
-          </svg>
-        </button>
-      </div>
-      <div class="mt-4 border-b border-slate-200"></div>
-
-      <!-- Dates table -->
-      <div class="mt-6 rounded-xl border border-violet-200">
-        <div class="grid grid-cols-1 md:grid-cols-4 text-slate-700 text-sm">
-          <div class="px-4 py-3 font-semibold border-b border-violet-200">Harvest Date</div>
-          <div class="px-4 py-3 font-semibold border-b border-violet-200">Packaging date</div>
-          <div class="px-4 py-3 font-semibold border-b border-violet-200">Market Entry Date</div>
-          <div class="px-4 py-3 font-semibold border-b border-violet-200">Expiry</div>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-4">
-          <div class="px-4 py-6 text-slate-700">-</div>
-          <div class="px-4 py-6 text-slate-700">-</div>
-          <div class="px-4 py-6 text-slate-700">-</div>
-          <div class="px-4 py-6 text-slate-700">-</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Cannabinoids & Terpenes -->
-    <section class="mt-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- Cannabinoid Card -->
-      <div class="rounded-2xl border border-violet-200">
-        <div class="grid grid-cols-3 text-sm text-slate-600">
-          <div class="px-4 py-3 font-semibold col-span-2">Cannabinoid</div>
-          <div class="px-4 py-3 font-semibold text-right">Reported level</div>
-        </div>
-        <div class="border-t border-violet-200"></div>
-
-        <!-- THC row -->
-        <div class="grid grid-cols-3 items-center">
-          <div class="px-4 py-3 text-slate-800 col-span-1">THC</div>
-          <div class="px-4 py-3 col-span-1">
-            <div class="h-1.5 w-full rounded-full bg-purple-100">
-              <div class="h-1.5 rounded-full bg-purple-400" style="width: 80%"></div>
-            </div>
-          </div>
-          <div class="px-4 py-3 text-right text-slate-800 col-span-1">19.89%</div>
-        </div>
-
-        <!-- CBD row -->
-        <div class="grid grid-cols-3 items-center border-t border-violet-200">
-          <div class="px-4 py-3 text-slate-800 col-span-1">CBD</div>
-          <div class="px-4 py-3 col-span-1">
-            <div class="h-1.5 w-full rounded-full bg-amber-100">
-              <div class="h-1.5 rounded-full bg-amber-400" style="width: 6%"></div>
-            </div>
-          </div>
-          <div class="px-4 py-3 text-right text-slate-800 col-span-1">&lt;0.06%</div>
-        </div>
-
-        <!-- Totals -->
-        <div class="border-t border-violet-200"></div>
-        <div class="flex items-center justify-between px-4 py-3 text-sm">
-          <div class="text-slate-700">Equivalent Total THC <span class="text-indigo-600">?</span></div>
-          <div class="text-slate-800">19.89%</div>
-        </div>
-        <div class="border-t border-violet-200"></div>
-        <div class="flex items-center justify-between px-4 py-3 text-sm">
-          <div class="text-slate-700">Equivalent Total CBD <span class="text-indigo-600">?</span></div>
-          <div class="text-slate-800">0.06%</div>
-        </div>
-      </div>
-
-      <!-- Terpene Card -->
-      <div class="rounded-2xl border border-violet-200">
-        <div class="grid grid-cols-3 text-sm text-slate-600">
-          <div class="px-4 py-3 font-semibold col-span-2">
-            Terpene <span class="text-indigo-600">?</span>
-            <a href="#" class="ml-2 text-indigo-700 hover:underline">Learn more</a>
-          </div>
-          <div class="px-4 py-3 font-semibold text-right">Reported level</div>
-        </div>
-        <div class="border-t border-violet-200"></div>
-
-        <!-- Terpene rows -->
-        <!-- Row helper classes -->
-        <div class="divide-y divide-violet-200">
-          <!-- item -->
-          <div class="grid grid-cols-3 items-center">
-            <div class="px-4 py-3 text-slate-800 col-span-1">Terpinolene</div>
-            <div class="px-4 py-3 col-span-1">
-              <div class="h-1.5 w-full rounded-full bg-emerald-100">
-                <div class="h-1.5 rounded-full bg-emerald-500" style="width: 60%"></div>
-              </div>
-            </div>
-            <div class="px-4 py-3 text-right text-slate-800 col-span-1">0.60%</div>
-          </div>
-
-          <div class="grid grid-cols-3 items-center">
-            <div class="px-4 py-3 text-slate-800 col-span-1">Beta caryophyllene</div>
-            <div class="px-4 py-3 col-span-1">
-              <div class="h-1.5 w-full rounded-full bg-amber-100">
-                <div class="h-1.5 rounded-full bg-amber-500" style="width: 20%"></div>
-              </div>
-            </div>
-            <div class="px-4 py-3 text-right text-slate-800 col-span-1">0.20%</div>
-          </div>
-
-          <div class="grid grid-cols-3 items-center">
-            <div class="px-4 py-3 text-slate-800 col-span-1">Myrcene</div>
-            <div class="px-4 py-3 col-span-1">
-              <div class="h-1.5 w-full rounded-full bg-orange-100">
-                <div class="h-1.5 rounded-full bg-orange-400" style="width: 18%"></div>
-              </div>
-            </div>
-            <div class="px-4 py-3 text-right text-slate-800 col-span-1">0.18%</div>
-          </div>
-
-          <div class="grid grid-cols-3 items-center">
-            <div class="px-4 py-3 text-slate-800 col-span-1">Alpha pinene</div>
-            <div class="px-4 py-3 col-span-1">
-              <div class="h-1.5 w-full rounded-full bg-green-100">
-                <div class="h-1.5 rounded-full bg-green-500" style="width: 11%"></div>
-              </div>
-            </div>
-            <div class="px-4 py-3 text-right text-slate-800 col-span-1">0.11%</div>
-          </div>
-
-          <div class="grid grid-cols-3 items-center">
-            <div class="px-4 py-3 text-slate-800 col-span-1">Ocimene</div>
-            <div class="px-4 py-3 col-span-1">
-              <div class="h-1.5 w-full rounded-full bg-teal-100">
-                <div class="h-1.5 rounded-full bg-teal-500" style="width: 10%"></div>
-              </div>
-            </div>
-            <div class="px-4 py-3 text-right text-slate-800 col-span-1">0.10%</div>
-          </div>
-
-          <div class="grid grid-cols-3 items-center">
-            <div class="px-4 py-3 text-slate-800 col-span-1">Humulene</div>
-            <div class="px-4 py-3 col-span-1">
-              <div class="h-1.5 w-full rounded-full bg-lime-100">
-                <div class="h-1.5 rounded-full bg-lime-500" style="width: 8%"></div>
-              </div>
-            </div>
-            <div class="px-4 py-3 text-right text-slate-800 col-span-1">0.08%</div>
-          </div>
-
-          <div class="grid grid-cols-3 items-center">
-            <div class="px-4 py-3 text-slate-800 col-span-1">Limonene</div>
-            <div class="px-4 py-3 col-span-1">
-              <div class="h-1.5 w-full rounded-full bg-yellow-100">
-                <div class="h-1.5 rounded-full bg-yellow-500" style="width: 8%"></div>
-              </div>
-            </div>
-            <div class="px-4 py-3 text-right text-slate-800 col-span-1">0.08%</div>
-          </div>
-
-          <div class="grid grid-cols-3 items-center">
-            <div class="px-4 py-3 text-slate-800 col-span-1">Guaiol</div>
-            <div class="px-4 py-3 col-span-1">
-              <div class="h-1.5 w-full rounded-full bg-rose-100">
-                <div class="h-1.5 rounded-full bg-rose-400" style="width: 6%"></div>
-              </div>
-            </div>
-            <div class="px-4 py-3 text-right text-slate-800 col-span-1">0.06%</div>
-          </div>
-
-          <div class="grid grid-cols-3 items-center">
-            <div class="px-4 py-3 text-slate-800 col-span-1">Alpha bisabolol</div>
-            <div class="px-4 py-3 col-span-1">
-              <div class="h-1.5 w-full rounded-full bg-indigo-100">
-                <div class="h-1.5 rounded-full bg-indigo-400" style="width: 5%"></div>
-              </div>
-            </div>
-            <div class="px-4 py-3 text-right text-slate-800 col-span-1">0.05%</div>
-          </div>
-
-          <div class="grid grid-cols-3 items-center">
-            <div class="px-4 py-3 text-slate-800 col-span-1">Terpinene</div>
-            <div class="px-4 py-3 col-span-1">
-              <div class="h-1.5 w-full rounded-full bg-gray-100">
-                <div class="h-1.5 rounded-full bg-gray-400" style="width: 3%"></div>
-              </div>
-            </div>
-            <div class="px-4 py-3 text-right text-slate-800 col-span-1">0.03%</div>
-          </div>
-
-          <div class="grid grid-cols-3 items-center">
-            <div class="px-4 py-3 text-slate-800 col-span-1">Terpineol</div>
-            <div class="px-4 py-3 col-span-1">
-              <div class="h-1.5 w-full rounded-full bg-gray-100">
-                <div class="h-1.5 rounded-full bg-gray-400" style="width: 3%"></div>
-              </div>
-            </div>
-            <div class="px-4 py-3 text-right text-slate-800 col-span-1">0.03%</div>
-          </div>
-
-          <div class="grid grid-cols-3 items-center">
-            <div class="px-4 py-3 text-slate-800 col-span-1">Valencene</div>
-            <div class="px-4 py-3 col-span-1">
-              <div class="h-1.5 w-full rounded-full bg-gray-100">
-                <div class="h-1.5 rounded-full bg-gray-400" style="width: 3%"></div>
-              </div>
-            </div>
-            <div class="px-4 py-3 text-right text-slate-800 col-span-1">0.03%</div>
-          </div>
-
-          <div class="grid grid-cols-3 items-center">
-            <div class="px-4 py-3 text-slate-800 col-span-1">Nerolidol</div>
-            <div class="px-4 py-3 col-span-1">
-              <div class="h-1.5 w-full rounded-full bg-gray-100">
-                <div class="h-1.5 rounded-full bg-gray-400" style="width: 2%"></div>
-              </div>
-            </div>
-            <div class="px-4 py-3 text-right text-slate-800 col-span-1">0.02%</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Disclaimer -->
-    <section class="mt-10">
-      <div class="rounded-2xl border border-slate-200 bg-slate-50 p-6">
-        <h3 class="text-sm font-semibold text-slate-800">Disclaimer: information provided for educational purposes only</h3>
-        <div class="mt-3 space-y-3 text-sm leading-6 text-slate-700">
-          <p>
-            The information on this website is presented for the purpose of disseminating educational health information relating to prescription-only medical cannabis treatment options available in Australia. This information is provided free of charge for the benefit of patients who have been prescribed such a treatment, and is deliberately presented in a neutral, balanced and informative manner without any endorsement or recommendation of any particular option.
-          </p>
-          <p>
-            While reasonable care is taken to ensure the accuracy of the material contained on this website, the information on the site is made available on the basis that it is not providing professional advice on a particular matter.
-          </p>
-          <p>
-            This website is not a substitute for independent professional advice from a registered health practitioner. Nothing contained in this site is intended to be used as medical advice and it is not intended to be used to diagnose, treat, cure or prevent any disease, nor should it be used for therapeutic purposes or as a substitute for your own health professional’s advice.
-          </p>
-          <p>
-            Importantly, the majority of medicinal cannabis treatment options available in Australia are unapproved medicines which means they are not registered on the Australian Register of Therapeutic Goods. Unapproved medicines have not been evaluated by the medicines regulator in Australia (the Therapeutic Goods Administration (TGA)), in relation to quality, safety and efficacy, and must be accessed via schemes administered by the TGA for accessing unapproved medicines. Notwithstanding the above, all medicinal cannabis medicines supplied in Australia by sponsors must comply with minimum quality and safety standards set out in Therapeutic Goods Order 93.
-          </p>
-          <p>
-            We do not accept any liability for any injury, loss or damage incurred by use of or reliance on the information provided on this website.
-          </p>
-        </div>
-      </div>
-    </section>
   </div>
+
+  <script>
+    // Raw values from merge fields
+    let THC_VALUE = "[Page//THC]";
+    let CBD_VALUE = "[Page//CBD]";
+
+    // Terpenes (raw values as integers divide by 100)
+    let terpeneValue = "[Page//Terpene %]";
+    let myrceneValue = "[Page//Myrcene]";
+    let limoneneValue = "[Page//Limonene]";
+    let betaCaryophylleneValue = "[Page//Beta-caryophyllene]";
+    let humuleneValue = "[Page//Humulene]";
+    let linaloolValue = "[Page//Linalool]";
+    let caryophylleneOxideValue = "[Page//Caryophyllene-oxide]";
+    let alphaBisabololValue = "[Page//Alpha-bisabolol]";
+    let alphaPineneValue = "[Page//Alpha-pinene]";
+    let terpinoleneValue = "[Page//Terpinolene]";
+    let betaPineneValue = "[Page//Beta-pinene]";
+    let transCaryophylleneValue = "[Page//Trans-caryophyllene]";
+    let ocimeneValue = "[Page//Ocimene]";
+    let farneseneValue = "[Page//Farnesene]";
+    let delta3CareneValue = "[Page//Delta-3-carene]";
+    let nerolidolValue = "[Page//Nerolidol]";
+    let terpineolValue = "[Page//Terpineol]";
+    let guaiolValue = "[Page//Guaiol]";
+    let transNerolidolValue = "[Page//Trans-Nerolidol]";
+    let campheneValue = "[Page//Camphene]";
+    let fenchylValue = "[Page//Fenchyl]";
+    let borneolValue = "[Page//Borneol]";
+    let phytolValue = "[Page//Phytol]";
+    let othersValue = "[Page//Others]";
+
+    function n(v) { v = parseFloat(v); return isFinite(v) ? v : 0; }
+    function asPct(num) { return `${num.toFixed(2)}%`; }
+    function scaledBy100(v) { return n(v) / 100; }
+
+    function setMetricBlock(block, rawValue) {
+      const valueEl = block.querySelector('.metric-value');
+      const barEl = block.querySelector('.metric-bar');
+      const pct = Math.max(0, Math.min(100, scaledBy100(rawValue)));
+      if (valueEl) valueEl.textContent = asPct(pct);
+      if (barEl) barEl.style.width = `${pct}%`;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Hero metrics (THC/CBD)
+      const heroTHC = document.querySelector('[data-hero-metric="THC"]');
+      const heroCBD = document.querySelector('[data-hero-metric="CBD"]');
+      if (heroTHC) setMetricBlock(heroTHC, THC_VALUE);
+      if (heroCBD) setMetricBlock(heroCBD, CBD_VALUE);
+
+      // Cannabinoid rows + totals
+      const cannaTHC = document.querySelector('[data-cannabinoid="THC"]');
+      const cannaCBD = document.querySelector('[data-cannabinoid="CBD"]');
+      if (cannaTHC) setMetricBlock(cannaTHC, THC_VALUE);
+      if (cannaCBD) setMetricBlock(cannaCBD, CBD_VALUE);
+      const totalTHC = document.getElementById('total-thc');
+      const totalCBD = document.getElementById('total-cbd');
+      if (totalTHC) totalTHC.textContent = asPct(Math.max(0, Math.min(100, scaledBy100(THC_VALUE))));
+      if (totalCBD) totalCBD.textContent = asPct(Math.max(0, Math.min(100, scaledBy100(CBD_VALUE))));
+
+      // Terpenes map
+      const terpMap = {
+        'Terpene': terpeneValue,
+        'Myrcene': myrceneValue,
+        'Limonene': limoneneValue,
+        'Beta-caryophyllene': betaCaryophylleneValue,
+        'Humulene': humuleneValue,
+        'Linalool': linaloolValue,
+        'Caryophyllene-oxide': caryophylleneOxideValue,
+        'Alpha-bisabolol': alphaBisabololValue,
+        'Alpha-pinene': alphaPineneValue,
+        'Terpinolene': terpinoleneValue,
+        'Beta-pinene': betaPineneValue,
+        'Trans-caryophyllene': transCaryophylleneValue,
+        'Ocimene': ocimeneValue,
+        'Farnesene': farneseneValue,
+        'Delta-3-carene': delta3CareneValue,
+        'Nerolidol': nerolidolValue,
+        'Terpineol': terpineolValue,
+        'Guaiol': guaiolValue,
+        'Trans-Nerolidol': transNerolidolValue,
+        'Camphene': campheneValue,
+        'Fenchyl': fenchylValue,
+        'Borneol': borneolValue,
+        'Phytol': phytolValue,
+        'Others': othersValue
+      };
+
+      document.querySelectorAll('[data-terpene]').forEach((row) => {
+        const key = row.getAttribute('data-terpene');
+        const raw = terpMap[key];
+        setMetricBlock(row, raw);
+      });
+    });
+  </script>
 </body>
+
 </html>
