@@ -3398,11 +3398,14 @@ tailwind.config = {
 
         section.addEventListener("click", e => {
             const el = e.target.closest("button") // only toggle on buttons
+            const textSpan = el.querySelector("span.font-medium");
             if (!el || !section.contains(el)) return
 
             if (el.style.backgroundColor === "rgb(79, 70, 229)") {
+                textSpan.style.color="black"
                 el.style.removeProperty("background-color");
             } else {
+                textSpan.style.color = "white"
                 el.style.backgroundColor = "rgb(79, 70, 229)";
             }
 
