@@ -3424,3 +3424,44 @@ tailwind.config = {
     });
 })();
 
+const min = document.getElementById('min');
+const max = document.getElementById('max');
+const progress = document.getElementById('progress');
+const bubble = document.getElementById('activeBubble');
+
+const minAttr = +min.min;
+const maxAttr = +max.max;
+const range = maxAttr - minAttr;
+
+function update() {
+    const minVal = +min.value;
+    const maxVal = +max.value;
+    const minPct = ((minVal - minAttr) / range) * 100;
+    const maxPct = ((maxVal - minAttr) / range) * 100;
+
+    progress.style.left = minPct + '%';
+    progress.style.right = (100 - maxPct) + '%';
+}
+
+function showBubble(input) {
+    const val = +input.value;
+    const pct = ((val - minAttr) / range) * 100;
+    bubble.style.left = pct + '%';
+    bubble.textContent = `$${val}`;
+    bubble.classList.remove('hidden');
+}
+
+function hideBubble() {
+    bubble.classList.add('hidden');
+}
+
+[min, max].forEach(input => {
+    input.addEventListener('input', update);
+    input.addEventListener('mousedown', () => showBubble(input));
+    input.addEventListener('touchstart', () => showBubble(input));
+    input.addEventListener('mousemove', () => showBubble(input));
+    input.addEventListener('mouseup', hideBubble);
+    input.addEventListener('touchend', hideBubble);
+});
+
+update();
