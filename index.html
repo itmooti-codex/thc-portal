@@ -92,8 +92,8 @@
 </head>
 
 <body>
-    <div class="flex gap-4">
-        <div class="bg-white text-slate-900 antialiased">
+    <div class="flex flex-col lg:flex-row items-start gap-6">
+        <div class="bg-white text-slate-900 antialiased w-full lg:w-80 xl:w-96 lg:flex-none">
             <div class="flex flex-col flex-auto p-6">
                 <!-- search-section -->
                 <div class="font-Balto text-bg-indigo-950">
@@ -966,7 +966,7 @@
             </div>
         </div>
 
-        <div class="flex flex-col flex-wrap">
+        <div class="flex-1 min-w-0">
             <!-- Sorting/pages menu -->
             <div class="flex items-center justify-between w-full mt-4">
                 <!-- Left side: buttons -->
@@ -1101,7 +1101,7 @@
                 </div>
             </div>
             <!-- Grid -->
-            <div class="grid-root !grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4"
+            <div class="grid-root !grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4 p-4"
                 data-dynamic-list="7M75T2nXdllEV2Iq3m2Zw" data-entity="thc" data-entity-key="awWH16PsRms2px8-93-Uw"
                 data-limit="500">
                 <!-- Card -->
