@@ -87,6 +87,68 @@
         .heart-btn.active {
             color: #ef4444;
         }
+
+        .range-input {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            height: 0;
+            pointer-events: none;
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .range-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            pointer-events: auto;
+            cursor: pointer;
+            height: 18px;
+            width: 18px;
+            border-radius: 9999px;
+            background: #fff;
+            border: 2px solid rgb(99 102 241);
+            /* indigo-500 */
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, .25);
+        }
+
+        .range-input::-moz-range-thumb {
+            pointer-events: auto;
+            cursor: pointer;
+            height: 18px;
+            width: 18px;
+            border-radius: 9999px;
+            background: #fff;
+            border: 2px solid rgb(99 102 241);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, .25);
+        }
+
+        .range-input::-webkit-slider-runnable-track {
+            background: transparent;
+        }
+
+        .range-input::-moz-range-track {
+            background: transparent;
+            height: 12px;
+        }
+
+        /* Bubble caret */
+        .bubble::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            top: 100%;
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 8px solid rgb(79 70 229);
+            /* indigo-700 */
+        }
     </style>
 
 </head>
@@ -184,89 +246,86 @@
                             <div id="more-product-type" class="hidden flex flex-wrap gap-2">
                                 <button type="button"
                                     class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                                    <img alt="Capsule"
+                                        src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjIiIGhlaWdodD0iMjIiIHZpZXdCb3g9IjAgMCAyMiAyMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEzLjk5OTUgMTEuMTMwOUw3IDExLjEzMDlNOC4xMTIzOSA1LjY1NTA1QzguMTEyMzkgMi44OTY0MyA5LjcwMzE5IDIuMDM0MzYgMTAuNjU3NyAyLjAzNDM2TTcuMDAwNDkgNC43OTMxTDcuMDAwNDkgMTcuMjA2OUM3LjAwMDQ5IDE5LjMwMTggOC41NjczOCAyMSAxMC41MDAyIDIxQzEyLjQzMzEgMjEgMTQgMTkuMzAxOCAxNCAxNy4yMDY5TDE0IDQuNzkzMUMxNCAyLjY5ODIzIDEyLjQzMzEgMSAxMC41MDAyIDFDOC41NjczOSAxIDcuMDAwNDkgMi42OTgyMyA3LjAwMDQ5IDQuNzkzMVoiIHN0cm9rZT0iIzEyMjE0NSIgc3Ryb2tlLXdpZHRoPSIwLjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K" />
+                                    <span class="font-medium">Capsule</span>
                                     <span
-                                        class="inline-block text-2xl leading-none bg-[rgb(255,231,159)] rounded-2xl px-1 py-1">
-                                        🍃
-                                    </span>
+                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">11</span>
+                                </button>
 
-                                    <span class="font-medium">Flower</span>
+                                <button type="button"
+                                    class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                                    <img alt="Capsule"
+                                        src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjIiIGhlaWdodD0iMjIiIHZpZXdCb3g9IjAgMCAyMiAyMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEzLjk5OTUgMTEuMTMwOUw3IDExLjEzMDlNOC4xMTIzOSA1LjY1NTA1QzguMTEyMzkgMi44OTY0MyA5LjcwMzE5IDIuMDM0MzYgMTAuNjU3NyAyLjAzNDM2TTcuMDAwNDkgNC43OTMxTDcuMDAwNDkgMTcuMjA2OUM3LjAwMDQ5IDE5LjMwMTggOC41NjczOCAyMSAxMC41MDAyIDIxQzEyLjQzMzEgMjEgMTQgMTkuMzAxOCAxNCAxNy4yMDY5TDE0IDQuNzkzMUMxNCAyLjY5ODIzIDEyLjQzMzEgMSAxMC41MDAyIDFDOC41NjczOSAxIDcuMDAwNDkgMi42OTgyMyA3LjAwMDQ5IDQuNzkzMVoiIHN0cm9rZT0iIzEyMjE0NSIgc3Ryb2tlLXdpZHRoPSIwLjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K" />
+                                    <span class="font-medium">Other</span>
+                                    <span
+                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">11</span>
+                                </button>
+
+                                <button type="button"
+                                    class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                                    <img alt="Concentrate"
+                                        src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjIiIGhlaWdodD0iMjIiIHZpZXdCb3g9IjAgMCAyMiAyMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGVsbGlwc2UgY3g9IjkuOTk5NzYiIGN5PSIyLjk5OTkzIiByeD0iNi45OTk3NiIgcnk9IjEuOTk5OTMiIHN0cm9rZT0iIzEyMjE0NSIgc3Ryb2tlLXdpZHRoPSIwLjMxNTIiLz4KPHBhdGggZD0iTTE0LjYwMDggMy40ODA5OEMxMy4zNjM1IDMuNzc5OTkgMTEuNzU2OSAzLjk2MDU2IDEwLjAwMSAzLjk2MDU2QzguMjQ1MDQgMy45NjA1NiA2LjYzODQyIDMuNzc5OTkgNS40MDExMiAzLjQ4MDk4IiBzdHJva2U9IiMxMjIxNDUiIHN0cm9rZS13aWR0aD0iMC4zMTUyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPHBhdGggZD0iTTE2Ljk5OTUgMy4wMDAyNVY2LjkyMDEyQzE2Ljk5OTUgOC4wMjQ2NSAxMy44NjU2IDguOTIwMDUgOS45OTk3NiA4LjkyMDA1QzYuMTMzOSA4LjkyMDA1IDMgOC4wMjQ2NSAzIDYuOTIwMTJMMyAzLjAwMDI1IiBzdHJva2U9IiMxMjIxNDUiIHN0cm9rZS13aWR0aD0iMC4zMTUyIi8+CjxwYXRoIGQ9Ik0xMi4zNzI1IDEyLjA0OUwxNC42MzczIDEwTDE2LjI1NDkgMTEuMTg2M0wxNy4xMTc2IDE3LjQ0MTJMMTQuODUyOSAyMUwxMCAxOC4xOTYxTDEyLjM3MjUgMTIuMDQ5WiIgc3Ryb2tlPSIjMTIyMTQ1IiBzdHJva2Utd2lkdGg9IjAuMyIvPgo8cGF0aCBkPSJNMTQuODUyOSAyMC45OTk5VjE5LjA1ODdMMTIuMTU2OSAxOC4wODgxTDEwIDE4LjE5NTkiIHN0cm9rZT0iIzEyMjE0NSIgc3Ryb2tlLXdpZHRoPSIwLjMiLz4KPHBhdGggZD0iTTEyLjA0OTMgMTguMDg4NEwxNC42Mzc2IDEwLjEwOCIgc3Ryb2tlPSIjMTIyMTQ1IiBzdHJva2Utd2lkdGg9IjAuMyIvPgo8cGF0aCBkPSJNMTcuMTE4MyAxNy4zMzM1TDE1LjQ1MjQgMTIuNDgwNk0xNC42Mzc5IDEwLjEwOEwxNS40NTI0IDEyLjQ4MDZNMTYuMjU1NiAxMS4xODY1TDE1LjQ1MjQgMTIuNDgwNiIgc3Ryb2tlPSIjMTIyMTQ1IiBzdHJva2Utd2lkdGg9IjAuMyIvPgo8cGF0aCBkPSJNMTQuODUzMyAxOS4wNTg4TDE3LjExOCAxNy40NDExIiBzdHJva2U9IiMxMjIxNDUiIHN0cm9rZS13aWR0aD0iMC4zIi8+CjxwYXRoIGQ9Ik0xNS41IDEyLjQ4MDdMMTMuNzc0NSAxMi45MTIxTDEyLjM3MjYgMTIuMDQ5MyIgc3Ryb2tlPSIjMTIyMTQ1IiBzdHJva2Utd2lkdGg9IjAuMyIvPgo8L3N2Zz4K"
+                                        class="MuiAvatar-img-467">
+                                    <span class="font-medium">Concentrate</span>
+                                    <span
+                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">8</span>
+                                </button>
+
+                                <button type="button"
+                                    class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                                    <img alt="Bubble hash"
+                                        src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjIiIGhlaWdodD0iMjIiIHZpZXdCb3g9IjAgMCAyMiAyMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGVsbGlwc2UgY3g9IjkuOTk5NzYiIGN5PSIyLjk5OTkzIiByeD0iNi45OTk3NiIgcnk9IjEuOTk5OTMiIHN0cm9rZT0iIzEyMjE0NSIgc3Ryb2tlLXdpZHRoPSIwLjMxNTIiLz4KPHBhdGggZD0iTTE0LjYwMDggMy40ODA5OEMxMy4zNjM1IDMuNzc5OTkgMTEuNzU2OSAzLjk2MDU2IDEwLjAwMSAzLjk2MDU2QzguMjQ1MDQgMy45NjA1NiA2LjYzODQyIDMuNzc5OTkgNS40MDExMiAzLjQ4MDk4IiBzdHJva2U9IiMxMjIxNDUiIHN0cm9rZS13aWR0aD0iMC4zMTUyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPHBhdGggZD0iTTE2Ljk5OTUgMy4wMDAyNVY2LjkyMDEyQzE2Ljk5OTUgOC4wMjQ2NSAxMy44NjU2IDguOTIwMDUgOS45OTk3NiA4LjkyMDA1QzYuMTMzOSA4LjkyMDA1IDMgOC4wMjQ2NSAzIDYuOTIwMTJMMyAzLjAwMDI1IiBzdHJva2U9IiMxMjIxNDUiIHN0cm9rZS13aWR0aD0iMC4zMTUyIi8+CjxwYXRoIGQ9Ik0xMi4zNzI1IDEyLjA0OUwxNC42MzczIDEwTDE2LjI1NDkgMTEuMTg2M0wxNy4xMTc2IDE3LjQ0MTJMMTQuODUyOSAyMUwxMCAxOC4xOTYxTDEyLjM3MjUgMTIuMDQ5WiIgc3Ryb2tlPSIjMTIyMTQ1IiBzdHJva2Utd2lkdGg9IjAuMyIvPgo8cGF0aCBkPSJNMTQuODUyOSAyMC45OTk5VjE5LjA1ODdMMTIuMTU2OSAxOC4wODgxTDEwIDE4LjE5NTkiIHN0cm9rZT0iIzEyMjE0NSIgc3Ryb2tlLXdpZHRoPSIwLjMiLz4KPHBhdGggZD0iTTEyLjA0OTMgMTguMDg4NEwxNC42Mzc2IDEwLjEwOCIgc3Ryb2tlPSIjMTIyMTQ1IiBzdHJva2Utd2lkdGg9IjAuMyIvPgo8cGF0aCBkPSJNMTcuMTE4MyAxNy4zMzM1TDE1LjQ1MjQgMTIuNDgwNk0xNC42Mzc5IDEwLjEwOEwxNS40NTI0IDEyLjQ4MDZNMTYuMjU1NiAxMS4xODY1TDE1LjQ1MjQgMTIuNDgwNiIgc3Ryb2tlPSIjMTIyMTQ1IiBzdHJva2Utd2lkdGg9IjAuMyIvPgo8cGF0aCBkPSJNMTQuODUzMyAxOS4wNTg4TDE3LjExOCAxNy40NDExIiBzdHJva2U9IiMxMjIxNDUiIHN0cm9rZS13aWR0aD0iMC4zIi8+CjxwYXRoIGQ9Ik0xNS41IDEyLjQ4MDdMMTMuNzc0NSAxMi45MTIxTDEyLjM3MjYgMTIuMDQ5MyIgc3Ryb2tlPSIjMTIyMTQ1IiBzdHJva2Utd2lkdGg9IjAuMyIvPgo8L3N2Zz4K" />
+                                    <span class="font-medium">Bubble hash</span>
+                                    <span
+                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">5</span>
+                                </button>
+
+                                <button type="button"
+                                    class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                                    <img alt="Metered dose cartridge"
+                                        src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjIiIGhlaWdodD0iMjIiIHZpZXdCb3g9IjAgMCAyMiAyMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGVsbGlwc2UgY3g9IjkuOTk5NzYiIGN5PSIyLjk5OTkzIiByeD0iNi45OTk3NiIgcnk9IjEuOTk5OTMiIHN0cm9rZT0iIzEyMjE0NSIgc3Ryb2tlLXdpZHRoPSIwLjMxNTIiLz4KPHBhdGggZD0iTTE0LjYwMDggMy40ODA5OEMxMy4zNjM1IDMuNzc5OTkgMTEuNzU2OSAzLjk2MDU2IDEwLjAwMSAzLjk2MDU2QzguMjQ1MDQgMy45NjA1NiA2LjYzODQyIDMuNzc5OTkgNS40MDExMiAzLjQ4MDk4IiBzdHJva2U9IiMxMjIxNDUiIHN0cm9rZS13aWR0aD0iMC4zMTUyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPHBhdGggZD0iTTE2Ljk5OTUgMy4wMDAyNVY2LjkyMDEyQzE2Ljk5OTUgOC4wMjQ2NSAxMy44NjU2IDguOTIwMDUgOS45OTk3NiA4LjkyMDA1QzYuMTMzOSA4LjkyMDA1IDMgOC4wMjQ2NSAzIDYuOTIwMTJMMyAzLjAwMDI1IiBzdHJva2U9IiMxMjIxNDUiIHN0cm9rZS13aWR0aD0iMC4zMTUyIi8+CjxwYXRoIGQ9Ik0xMi4zNzI1IDEyLjA0OUwxNC42MzczIDEwTDE2LjI1NDkgMTEuMTg2M0wxNy4xMTc2IDE3LjQ0MTJMMTQuODUyOSAyMUwxMCAxOC4xOTYxTDEyLjM3MjUgMTIuMDQ5WiIgc3Ryb2tlPSIjMTIyMTQ1IiBzdHJva2Utd2lkdGg9IjAuMyIvPgo8cGF0aCBkPSJNMTQuODUyOSAyMC45OTk5VjE5LjA1ODdMMTIuMTU2OSAxOC4wODgxTDEwIDE4LjE5NTkiIHN0cm9rZT0iIzEyMjE0NSIgc3Ryb2tlLXdpZHRoPSIwLjMiLz4KPHBhdGggZD0iTTEyLjA0OTMgMTguMDg4NEwxNC42Mzc2IDEwLjEwOCIgc3Ryb2tlPSIjMTIyMTQ1IiBzdHJva2Utd2lkdGg9IjAuMyIvPgo8cGF0aCBkPSJNMTcuMTE4MyAxNy4zMzM1TDE1LjQ1MjQgMTIuNDgwNk0xNC42Mzc5IDEwLjEwOEwxNS40NTI0IDEyLjQ4MDZNMTYuMjU1NiAxMS4xODY1TDE1LjQ1MjQgMTIuNDgwNiIgc3Ryb2tlPSIjMTIyMTQ1IiBzdHJva2Utd2lkdGg9IjAuMyIvPgo8cGF0aCBkPSJNMTQuODUzMyAxOS4wNTg4TDE3LjExOCAxNy40NDExIiBzdHJva2U9IiMxMjIxNDUiIHN0cm9rZS13aWR0aD0iMC4zIi8+CjxwYXRoIGQ9Ik0xNS41IDEyLjQ4MDdMMTMuNzc0NSAxMi45MTIxTDEyLjM3MjYgMTIuMDQ5MyIgc3Ryb2tlPSIjMTIyMTQ1IiBzdHJva2Utd2lkdGg9IjAuMyIvPgo8L3N2Zz4K" />
+                                    <span class="font-medium">Metered dose cartridge</span>
+                                    <span
+                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">67</span>
+                                </button>
+                                <button type="button"
+                                    class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                                    <img alt="Topical"
+                                        src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjIiIGhlaWdodD0iMjIiIHZpZXdCb3g9IjAgMCAyMiAyMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTkuMTUzNjEgMi42MzU3MlYxLjU5NDgxQzkuMTUzNjEgMS4yNjYzIDkuMzk0NjkgMSA5LjY5MjA3IDFIMTMuMDQwNkMxMy4xOCAxIDEzLjI5MyAxLjEyNDgzIDEzLjI5MyAxLjI3ODgyQzEzLjI5MyAxLjQzMjggMTMuMTggMS41NTc2MyAxMy4wNDA2IDEuNTU3NjNIMTIuNDUxN0MxMi4xNTQzIDEuNTU3NjMgMTEuOTEzMiAxLjgyMzk0IDExLjkxMzIgMi4xNTI0NFYyLjYzNTcyTTguMDc2NzEgNS41MzUzNFYzLjMwNDgxQzguMDc2NzEgMi45MzUyNSA4LjM0NzkyIDIuNjM1NjUgOC42ODI0OCAyLjYzNTY1SDEyLjI0OThDMTIuNTg0MyAyLjYzNTY1IDEyLjg1NTYgMi45MzUyNSAxMi44NTU2IDMuMzA0ODFWNS41MzUzNE04LjEyMjY1IDcuMzE5ODlMOC4xMjI2NSAxOS4wNjczTTcuNjA1NzcgMjFIMTMuMzk0MkMxMy43Mjg4IDIxIDE0IDIwLjcwMDQgMTQgMjAuMzMwOFY2LjI3ODUyQzE0IDUuOTA4OTUgMTMuNzI4OCA1LjYwOTM2IDEzLjM5NDIgNS42MDkzNkg3LjYwNTc3QzcuMjcxMjEgNS42MDkzNiA3IDUuOTA4OTUgNyA2LjI3ODUyVjIwLjMzMDhDNyAyMC43MDA0IDcuMjcxMjEgMjEgNy42MDU3NyAyMVoiIHN0cm9rZT0iIzEyMjE0NSIgc3Ryb2tlLXdpZHRoPSIwLjMiLz4KPC9zdmc+Cg==" />
+
+                                    <span class="font-medium">topical</span>
                                     <span
                                         class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">99+</span>
                                 </button>
 
                                 <button type="button"
                                     class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                                    <span class="text-2xl leading-none">🛢️</span>
-                                    <span class="font-medium">Oil</span>
+                                    <img alt="Wafer"
+                                        src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjIiIGhlaWdodD0iMjIiIHZpZXdCb3g9IjAgMCAyMiAyMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE2Ljk0OTUgMTAuNTY1NUMxNy4wMyAxMC41NDYxIDE3LjA3OTUgMTAuNDY1IDE3LjA2IDEwLjM4NDVDMTcuMDQwNiAxMC4zMDQgMTYuOTU5NSAxMC4yNTQ1IDE2Ljg3OSAxMC4yNzM5TDE2Ljk0OTUgMTAuNTY1NVpNNS4xMjA4OSAxMC4yNzM5QzUuMDQwMzYgMTAuMjU0NSA0Ljk1OTMxIDEwLjMwNCA0LjkzOTg1IDEwLjM4NDVDNC45MjAzOSAxMC40NjUgNC45Njk5IDEwLjU0NjEgNS4wNTA0MiAxMC41NjU1TDUuMTIwODkgMTAuMjczOVpNMTkuODUgOS44MDE2NUMxOS44NSAxMC4wODA2IDE5LjY1MDkgMTAuMzc5NiAxOS4yMDg4IDEwLjY3ODNDMTguNzcxOCAxMC45NzM0IDE4LjEyOTcgMTEuMjQ1MSAxNy4zMjI4IDExLjQ3NTdDMTUuNzEwOSAxMS45MzYyIDEzLjQ3NTQgMTIuMjIzMSAxMSAxMi4yMjMxVjEyLjUyMzFDMTMuNDk1MSAxMi41MjMxIDE1Ljc1OTcgMTIuMjM0MyAxNy40MDUyIDExLjc2NDJDMTguMjI2OSAxMS41Mjk0IDE4LjkwMjggMTEuMjQ3IDE5LjM3NjcgMTAuOTI2OUMxOS44NDU0IDEwLjYxMDMgMjAuMTUgMTAuMjMyOCAyMC4xNSA5LjgwMTY1SDE5Ljg1Wk0xMSAxMi4yMjMxQzguNTI0NTkgMTIuMjIzMSA2LjI4OTExIDExLjkzNjIgNC42NzcyNSAxMS40NzU3QzMuODcwMyAxMS4yNDUxIDMuMjI4MTcgMTAuOTczNCAyLjc5MTIzIDEwLjY3ODNDMi4zNDkwNSAxMC4zNzk2IDIuMTUgMTAuMDgwNiAyLjE1IDkuODAxNjVIMS44NUMxLjg1IDEwLjIzMjggMi4xNTQ2MyAxMC42MTAzIDIuNjIzMyAxMC45MjY5QzMuMDk3MjEgMTEuMjQ3IDMuNzczMSAxMS41Mjk0IDQuNTk0ODMgMTEuNzY0MkM2LjI0MDMzIDEyLjIzNDMgOC41MDQ4NSAxMi41MjMxIDExIDEyLjUyMzFWMTIuMjIzMVpNMi4xNSA5LjgwMTY1QzIuMTUgOS41MjI3NCAyLjM0OTA1IDkuMjIzNzMgMi43OTEyMyA4LjkyNTA0QzMuMjI4MTcgOC42Mjk4OCAzLjg3MDMgOC4zNTgxNiA0LjY3NzI1IDguMTI3NjFDNi4yODkxMSA3LjY2NzA4IDguNTI0NTkgNy4zODAyMiAxMSA3LjM4MDIyVjcuMDgwMjJDOC41MDQ4NSA3LjA4MDIyIDYuMjQwMzMgNy4zNjkwMSA0LjU5NDgzIDcuODM5MTVDMy43NzMxIDguMDczOTMgMy4wOTcyMSA4LjM1NjMxIDIuNjIzMyA4LjY3NjQ0QzIuMTU0NjMgOC45OTMwMyAxLjg1IDkuMzcwNDkgMS44NSA5LjgwMTY1SDIuMTVaTTExIDcuMzgwMjJDMTMuNDc1NCA3LjM4MDIyIDE1LjcxMDkgNy42NjcwOCAxNy4zMjI4IDguMTI3NjFDMTguMTI5NyA4LjM1ODE2IDE4Ljc3MTggOC42Mjk4OCAxOS4yMDg4IDguOTI1MDRDMTkuNjUwOSA5LjIyMzczIDE5Ljg1IDkuNTIyNzQgMTkuODUgOS44MDE2NUgyMC4xNUMyMC4xNSA5LjM3MDQ5IDE5Ljg0NTQgOC45OTMwMyAxOS4zNzY3IDguNjc2NDRDMTguOTAyOCA4LjM1NjMxIDE4LjIyNjkgOC4wNzM5MyAxNy40MDUyIDcuODM5MTVDMTUuNzU5NyA3LjM2OTAxIDEzLjQ5NTEgNy4wODAyMiAxMSA3LjA4MDIyVjcuMzgwMjJaTTE2Ljg3OSAxMC4yNzM5QzE1LjMwMiAxMC42NTUgMTMuMjQ4NCAxMC44ODY0IDEwLjk5OTkgMTAuODg2NFYxMS4xODY0QzEzLjI2NjggMTEuMTg2NCAxNS4zNDQ3IDEwLjk1MzMgMTYuOTQ5NSAxMC41NjU1TDE2Ljg3OSAxMC4yNzM5Wk0xMC45OTk5IDEwLjg4NjRDOC43NTE0NCAxMC44ODY0IDYuNjk3ODggMTAuNjU1IDUuMTIwODkgMTAuMjczOUw1LjA1MDQyIDEwLjU2NTVDNi42NTUxNSAxMC45NTMzIDguNzMzMDQgMTEuMTg2NCAxMC45OTk5IDExLjE4NjRWMTAuODg2NFpNMTkuODUgMTIuOTQ2OUMxOS44NSAxMy4yMjU4IDE5LjY1MDkgMTMuNTI0OCAxOS4yMDg4IDEzLjgyMzVDMTguNzcxOCAxNC4xMTg2IDE4LjEyOTcgMTQuMzkwNCAxNy4zMjI4IDE0LjYyMDlDMTUuNzEwOSAxNS4wODE0IDEzLjQ3NTQgMTUuMzY4MyAxMSAxNS4zNjgzVjE1LjY2ODNDMTMuNDk1MSAxNS42NjgzIDE1Ljc1OTcgMTUuMzc5NSAxNy40MDUyIDE0LjkwOTRDMTguMjI2OSAxNC42NzQ2IDE4LjkwMjggMTQuMzkyMiAxOS4zNzY3IDE0LjA3MjFDMTkuODQ1NCAxMy43NTU1IDIwLjE1IDEzLjM3OCAyMC4xNSAxMi45NDY5SDE5Ljg1Wk0xMSAxNS4zNjgzQzguNTI0NTkgMTUuMzY4MyA2LjI4OTExIDE1LjA4MTQgNC42NzcyNSAxNC42MjA5QzMuODcwMyAxNC4zOTA0IDMuMjI4MTcgMTQuMTE4NiAyLjc5MTIzIDEzLjgyMzVDMi4zNDkwNSAxMy41MjQ4IDIuMTUgMTMuMjI1OCAyLjE1IDEyLjk0NjlIMS44NUMxLjg1IDEzLjM3OCAyLjE1NDYzIDEzLjc1NTUgMi42MjMzIDE0LjA3MjFDMy4wOTcyMSAxNC4zOTIyIDMuNzczMSAxNC42NzQ2IDQuNTk0ODMgMTQuOTA5NEM2LjI0MDMzIDE1LjM3OTUgOC41MDQ4NSAxNS42NjgzIDExIDE1LjY2ODNWMTUuMzY4M1pNMTkuODUgOS44MDE2NVYxMi45NDY5SDIwLjE1VjkuODAxNjVIMTkuODVaTTEuODUgOS44MDE2NVYxMi45NDY5SDIuMTVWOS44MDE2NUgxLjg1WiIgZmlsbD0iIzEyMjE0NSIvPgo8L3N2Zz4K" />
+                                    <span class="font-medium">Wafer</span>
                                     <span
                                         class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">99+</span>
                                 </button>
 
                                 <button type="button"
                                     class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                                    <span class="text-2xl leading-none">💨</span>
-                                    <span class="font-medium">Liquid vape cartridge</span>
+                                    <img alt="Patches"
+                                        src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjIiIGhlaWdodD0iMjIiIHZpZXdCb3g9IjAgMCAyMiAyMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTQuMzM5MTcgMTUuNjg2NUM0LjMzOTE3IDE1LjU5ODEgNC4yNjc1MyAxNS41MjY1IDQuMTc5MTcgMTUuNTI2NUM0LjA5MDggMTUuNTI2NSA0LjAxOTE3IDE1LjU5ODEgNC4wMTkxNyAxNS42ODY1QzQuMDE5MTcgMTYuNTQxNSA0LjEyIDE3LjEzODUgNC40OTAyOSAxNy41MDg3QzQuODYwNTUgMTcuODc4OCA1LjQ1NzcgMTcuOTc5NiA2LjMxMjQ2IDE3Ljk3OThDNi40MDA4MyAxNy45Nzk4IDYuNDcyNDggMTcuOTA4MiA2LjQ3MjUgMTcuODE5OEM2LjQ3MjUyIDE3LjczMTUgNi40MDA5IDE3LjY1OTggNi4zMTI1NCAxNy42NTk4QzUuNDU0MTYgMTcuNjU5NiA0Ljk4NDY1IDE3LjU1MDQgNC43MTY1MyAxNy4yODI0QzQuNDQ4NDMgMTcuMDE0NCA0LjMzOTE3IDE2LjU0NSA0LjMzOTE3IDE1LjY4NjVaIiBmaWxsPSJibGFjayIvPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTMgNS4xMzMzM0MzIDMuOTU1MTMgMy45NTUxMyAzIDUuMTMzMzMgM0gxNi44NjY3QzE4LjA0NDkgMyAxOSAzLjk1NTEzIDE5IDUuMTMzMzNWMTYuODY2N0MxOSAxOC4wNDQ5IDE4LjA0NDkgMTkgMTYuODY2NyAxOUg1LjEzMzMzQzMuOTU1MTMgMTkgMyAxOC4wNDQ5IDMgMTYuODY2N1Y1LjEzMzMzWk01LjEzMzMzIDMuMzJIMTYuODY2N0MxNy44NjgxIDMuMzIgMTguNjggNC4xMzE4NiAxOC42OCA1LjEzMzMzVjE2Ljg2NjdDMTguNjggMTcuODY4MSAxNy44NjgxIDE4LjY4IDE2Ljg2NjcgMTguNjhINS4xMzMzM0M0LjEzMTg2IDE4LjY4IDMuMzIgMTcuODY4MSAzLjMyIDE2Ljg2NjdWNS4xMzMzM0MzLjMyIDQuMTMxODYgNC4xMzE4NiAzLjMyIDUuMTMzMzMgMy4zMloiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo=" />
+                                    <span class="font-medium">Patches</span>
                                     <span
                                         class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">99+</span>
                                 </button>
 
                                 <button type="button"
                                     class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                                    <span class="text-2xl leading-none">🍬</span>
-                                    <span class="font-medium">Gummy</span>
+                                    <img alt="Spray"
+                                        src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjIiIGhlaWdodD0iMjIiIHZpZXdCb3g9IjAgMCAyMiAyMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyLjM0MTggMy44NDg2OVYxLjkzODUxQzEyLjM0MTggMS41NzY2MyAxMS45OTg3IDEuMjgzMjcgMTEuNTc1NSAxLjI4MzI3SDkuNTA3OTZDOS4wODQ3NyAxLjI4MzI3IDguNzQxNzEgMS41NzY2MyA4Ljc0MTcxIDEuOTM4NTJWMy44NDg2OU03LjM3MDg1IDUuOTA2OTFWNC41ODU1NEM3LjM3MDg1IDQuMTc4NDMgNy43NTY4IDMuODQ4NCA4LjIzMjg5IDMuODQ4NEgxMi41OTQ2QzEzLjA3MDcgMy44NDg0IDEzLjQ1NjYgNC4xNzg0MyAxMy40NTY2IDQuNTg1NTRWNS45MDY5MU0xMi44NDg5IDEuODkyOUwxMy44OTMxIDFNMTMuNjI3MyAyLjE1OTIyTDE1IDIuMTU5MjJNMTIuODYzMiAyLjQ5ODc4TDEzLjkwNzMgMy4zOTE2OE03LjQ1NzU2IDcuNTEzODZMNy40NTc1NiAxOS4wOTQ5TTEyLjI1ODEgMi42MDI1OEMxMi4wNjg3IDIuNjAyNTggMTEuOTE1MiAyLjQ3MTMxIDExLjkxNTIgMi4zMDkzOUMxMS45MTUyIDIuMTQ3NDYgMTIuMDY4NyAyLjAxNjIgMTIuMjU4MSAyLjAxNjJDMTIuMjU4MSAyLjE4Mzc0IDEyLjI1ODEgMi4zMDkzOSAxMi4yNTgxIDIuNjAyNThaTTcuODE5ODUgMjFIMTMuMDk0NkMxNC4wOTk2IDIxIDE0LjkxNDQgMjAuMzAzMyAxNC45MTQ0IDE5LjQ0MzhWNy4zODM1OUMxNC45MTQ0IDYuNTI0MTMgMTQuMDk5NiA1LjgyNzM5IDEzLjA5NDYgNS44MjczOUg3LjgxOTg1QzYuODE0NzcgNS44MjczOSA2IDYuNTI0MTMgNiA3LjM4MzU5VjE5LjQ0MzhDNiAyMC4zMDMzIDYuODE0NzcgMjEgNy44MTk4NSAyMVoiIHN0cm9rZT0iIzEyMjE0NSIgc3Ryb2tlLXdpZHRoPSIwLjMiLz4KPC9zdmc+Cg==" />
+                                    <span class="font-medium">Spray</span>
                                     <span
                                         class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">72</span>
                                 </button>
 
-                                <button type="button"
-                                    class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                                    <span class="text-2xl leading-none">🍪</span>
-                                    <span class="font-medium">Edible</span>
-                                    <span
-                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">67</span>
-                                </button><button type="button"
-                                    class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                                    <span
-                                        class="inline-block text-2xl leading-none bg-[rgb(255,231,159)] rounded-2xl px-1 py-1">
-                                        🍃
-                                    </span>
-
-                                    <span class="font-medium">Flower</span>
-                                    <span
-                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">99+</span>
-                                </button>
-
-                                <button type="button"
-                                    class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                                    <span class="text-2xl leading-none">🛢️</span>
-                                    <span class="font-medium">Oil</span>
-                                    <span
-                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">99+</span>
-                                </button>
-
-                                <button type="button"
-                                    class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                                    <span class="text-2xl leading-none">💨</span>
-                                    <span class="font-medium">Liquid vape cartridge</span>
-                                    <span
-                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">99+</span>
-                                </button>
-
-                                <button type="button"
-                                    class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                                    <span class="text-2xl leading-none">🍬</span>
-                                    <span class="font-medium">Gummy</span>
-                                    <span
-                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">72</span>
-                                </button>
-
-                                <button type="button"
-                                    class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                                    <span class="text-2xl leading-none">🍪</span>
-                                    <span class="font-medium">Edible</span>
-                                    <span
-                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">67</span>
-                                </button>
                             </div>
                         </div>
 
@@ -275,17 +334,34 @@
                             more</button>
 
                         <!-- Price -->
+                        
+                        <div class="max-w-lg">
                         <h3 class="mt-6 text-2xl font-semibold tracking-tight font-bold">Price</h3>
-                        <div class="mt-3">
-                            <div class="relative h-5 flex items-center">
-                                <!-- visual extra handle to mimic two-thumbs -->
-                                <span
-                                    class="pointer-events-none absolute left-1/3 top-1/2 -translate-y-1/2 w-[18px] h-[18px] rounded-full bg-indigo-500 ring-2 ring-white shadow"></span>
-                                <input class="range" type="range" min="0" max="650" value="220" />
-                            </div>
-                            <div class="mt-2 flex justify-between text-sm text-slate-600">
-                                <span>$0</span>
-                                <span>$650</span>
+
+                            <div class="relative pt-12 pb-6">
+                                <!-- bubble for active thumb -->
+                                <output id="activeBubble"
+                                    class="bubble hidden absolute -top-[1px] -translate-x-1/2 rounded-full bg-indigo-700 px-4 py-3 text-xs font-semibold text-white shadow">
+                                </output>
+
+                                <!-- base track -->
+                                <div
+                                    class="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-indigo-200">
+                                </div>
+                                <div id="progress"
+                                    class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-indigo-500"></div>
+
+                                <!-- two ranges -->
+                                <input id="min" type="range" min="0" max="650" step="10" value="172"
+                                    class="range-input z-20" />
+                                <input id="max" type="range" min="0" max="650" step="10" value="332"
+                                    class="range-input z-30" />
+
+                                <!-- labels -->
+                                <div class="mt-6 flex justify-between text-sm text-gray-500">
+                                    <span>$0</span>
+                                    <span>$650</span>
+                                </div>
                             </div>
                         </div>
 
@@ -294,7 +370,7 @@
                         <div id="stock-status" class="mt-6 flex flex-row flex-wrap gap-2">
                             <!-- In stock -->
                             <button type="button"
-                                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                                class="relative flex items-center gap-2 rounded-2xl border  bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none">
                                 <span class="inline-flex h-6 w-6 items-center justify-center rounded-2xl bg-green-100">
                                     <svg viewBox="0 0 24 24" aria-hidden="true" class="h-5 w-5" fill="rgb(147,170,82)">
                                         <path
@@ -309,7 +385,7 @@
 
                             <!-- Limited stock -->
                             <button type="button"
-                                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                                class="relative flex items-center gap-2 rounded-2xl border  bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none">
                                 <span class="inline-flex h-6 w-6 items-center justify-center rounded-2xl bg-amber-100">
                                     <svg viewBox="0 0 24 24" aria-hidden="true" class="h-5 w-5" fill="rgb(245,191,106)">
                                         <path
@@ -324,7 +400,7 @@
 
                             <!-- Out of stock -->
                             <button type="button"
-                                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                                class="relative flex items-center gap-2 rounded-2xl border  bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none ">
                                 <span class="inline-flex h-6 w-6 items-center justify-center rounded-2xl bg-rose-100">
                                     <svg viewBox="0 0 24 24" aria-hidden="true" class="h-5 w-5" fill="rgb(242,109,106)">
                                         <path
@@ -339,7 +415,7 @@
 
                             <!-- Unknown -->
                             <button type="button"
-                                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                                class="relative flex items-center gap-2 rounded-2xl border  bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none">
                                 <span class="inline-flex h-6 w-6 items-center justify-center rounded-2xl bg-gray-200">
                                     <svg viewBox="0 0 24 24" aria-hidden="true" class="h-5 w-5" fill="black">
                                         <path
@@ -621,25 +697,25 @@
                         <div id="day-night-section" class="mt-3 flex flex-wrap gap-3">
                             <button type="button"
                                 class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
-                                Both/Either
+                                <span class="font-medium">Both/Either</span>
                                 <span
                                     class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold shadow-sm">99+</span>
                             </button>
                             <button type="button"
                                 class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
-                                Night
+                                <span class="font-medium">Night</span>
                                 <span
                                     class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold shadow-sm">99+</span>
                             </button>
                             <button type="button"
                                 class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
-                                Unknown
+                                <span class="font-medium">Unknown</span>
                                 <span
                                     class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold shadow-sm">99+</span>
                             </button>
                             <button type="button"
                                 class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
-                                Day
+                                <span class="font-medium">Day</span>
                                 <span
                                     class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold shadow-sm">99+</span>
                             </button>
@@ -906,15 +982,15 @@
                         <div id="cured-section" class="mt-3 flex flex-wrap gap-3">
                             <button type="button"
                                 class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
-                                Not cured
+                                <span class="font-medium">Not cured</span>
                                 <span
-                                    class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 shadow-sm">99+</span>
+                                    class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold shadow-sm">99+</span>
                             </button>
                             <button type="button"
                                 class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
-                                Cured
+                                <span class="font-medium">Cured</span>
                                 <span
-                                    class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 shadow-sm">99+</span>
+                                    class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold shadow-sm">99+</span>
                             </button>
                         </div>
 
