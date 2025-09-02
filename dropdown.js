@@ -3402,10 +3402,10 @@ tailwind.config = {
             if (!el || !section.contains(el)) return
 
             if (el.style.backgroundColor === "rgb(79, 70, 229)") {
-                textSpan.style.color="black"
+                if(textSpan)textSpan.style.color="black"
                 el.style.removeProperty("background-color");
             } else {
-                textSpan.style.color = "white"
+                if (textSpan) textSpan.style.color = "white"
                 el.style.backgroundColor = "rgb(79, 70, 229)";
             }
 
