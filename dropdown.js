@@ -1403,7 +1403,7 @@
                 "value": "No Appetite",
                 "count": 9
             }
-        ], 
+        ],
         conditions: [
             {
                 "value": "Anxiety",
@@ -3328,3 +3328,96 @@ tailwind.config = {
         },
     },
 }
+
+    ;(function () {
+        function closeAllExcept(except) {
+            document.querySelectorAll('[data-dd-menu]').forEach(m => {
+                const root = m.closest('[data-dd]');
+                if (!except || root !== except) {
+                    m.classList.add('hidden');
+                    root.querySelector('[data-dd-trigger]').setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+
+        // Toggle menus
+        document.querySelectorAll('[data-dd]').forEach(root => {
+            const trigger = root.querySelector('[data-dd-trigger]');
+            const menu = root.querySelector('[data-dd-menu]');
+            const label = root.querySelector('[data-dd-label]');
+
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isHidden = menu.classList.contains('hidden');
+                closeAllExcept(root);
+                menu.classList.toggle('hidden', !isHidden ? true : false);
+                trigger.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+            });
+
+            // Select an item
+            menu.addEventListener('click', (e) => {
+                const li = e.target.closest('li[role="option"]');
+                if (!li) return;
+                const value = li.getAttribute('data-value');
+                label.textContent = li.querySelector('span').textContent;
+
+                // Update checkmarks
+                menu.querySelectorAll('[data-check]').forEach(icon => icon.classList.add('opacity-0'));
+                const check = li.querySelector('[data-check]');
+                if (check) check.classList.remove('opacity-0');
+
+                // Example: reflect page size in "Showing X of Y"
+                if (root.getAttribute('data-dd') === 'pagesize') {
+                    const showing = document.getElementById('pageShowing');
+                    if (showing) showing.textContent = value;
+                }
+                menu.classList.add('hidden');
+                trigger.setAttribute('aria-expanded', 'false');
+
+                // TODO: hook your actual sort/pagination logic here
+                // console.log(root.getAttribute('data-dd'), value);
+            });
+        });
+
+        // Click outside to close
+        document.addEventListener('click', () => closeAllExcept(null));
+    })();
+
+
+; (function () {
+    const sectionIds = [
+        "product-type",
+        "stock-status",
+        "day-night-section",
+        "cured-section"
+    ]
+
+    sectionIds.forEach(id => {
+        const section = document.getElementById(id)
+        if (!section) return
+
+        section.addEventListener("click", e => {
+            const el = e.target.closest("button") // only toggle on buttons
+            if (!el || !section.contains(el)) return
+
+            if (el.style.backgroundColor === "rgb(79, 70, 229)") {
+                el.style.removeProperty("background-color");
+            } else {
+                el.style.backgroundColor = "rgb(79, 70, 229)";
+            }
+
+        })
+    })
+})()
+
+;(function(){
+    const toggleBtn = document.getElementById("toggle-view-more");
+    const moreGroup = document.getElementById("more-product-type");
+
+    toggleBtn.addEventListener("click", () => {
+        const isHidden = moreGroup.classList.contains("hidden");
+        moreGroup.classList.toggle("hidden");
+        toggleBtn.textContent = isHidden ? "view less" : "view more";
+    });
+})();
+
