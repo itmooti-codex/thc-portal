@@ -3384,35 +3384,6 @@ tailwind.config = {
     })();
 
 
-; (function () {
-    const sectionIds = [
-        "product-type",
-        "stock-status",
-        "day-night-section",
-        "cured-section"
-    ]
-
-    sectionIds.forEach(id => {
-        const section = document.getElementById(id)
-        if (!section) return
-
-        section.addEventListener("click", e => {
-            const el = e.target.closest("button") // only toggle on buttons
-            const textSpan = el.querySelector("span.font-medium");
-            if (!el || !section.contains(el)) return
-
-            if (el.style.backgroundColor === "rgb(79, 70, 229)") {
-                if(textSpan)textSpan.style.color="black"
-                el.style.removeProperty("background-color");
-            } else {
-                if (textSpan) textSpan.style.color = "white"
-                el.style.backgroundColor = "rgb(79, 70, 229)";
-            }
-
-        })
-    })
-})()
-
 ;(function(){
     const toggleBtn = document.getElementById("toggle-view-more");
     const moreGroup = document.getElementById("more-product-type");
@@ -3428,6 +3399,10 @@ const min = document.getElementById('min');
 const max = document.getElementById('max');
 const progress = document.getElementById('progress');
 const bubble = document.getElementById('activeBubble');
+
+// Snapshot initial slider values from HTML attributes
+const initialMinValue = +min.getAttribute('value');
+const initialMaxValue = +max.getAttribute('value');
 
 const minAttr = +min.min;
 const maxAttr = +max.max;
@@ -3465,3 +3440,86 @@ function hideBubble() {
 });
 
 update();
+(function () {
+  var ids = [
+    'product-type',
+    'stock-status',
+    'day-night-section',
+    'cured-section'
+  ];
+
+  function attach(section) {
+    section.addEventListener('click', function (e) {
+      var el = e.target.closest('button');
+      if (!el || !section.contains(el)) return;
+      var isActive = el.getAttribute('data-active') === 'true';
+      el.setAttribute('data-active', isActive ? 'false' : 'true');
+    });
+  }
+
+  function init() {
+    for (var i = 0; i < ids.length; i++) {
+      var s = document.getElementById(ids[i]);
+      if (s) attach(s);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+
+// Reset filters: deactivate all, clear search, reset sliders
+function resetFilters() {
+  // Deactivate all buttons in these sections
+  var filterButtons = document.querySelectorAll(
+    '#product-type button, #stock-status button, #day-night-section button, #cured-section button'
+  );
+  for (var i = 0; i < filterButtons.length; i++) {
+    filterButtons[i].setAttribute('data-active', 'false');
+  }
+
+  // Clear search input
+  var search = document.querySelector('input[placeholder="Search products"]');
+  if (search) search.value = '';
+
+  // Reset sliders to initial values and refresh visuals
+  if (!isNaN(initialMinValue)) min.value = initialMinValue;
+  if (!isNaN(initialMaxValue)) max.value = initialMaxValue;
+  if (typeof update === 'function') update();
+  if (typeof hideBubble === 'function') hideBubble();
+
+  // 4) Uncheck all non-compare checkboxes (reset toggles)
+  var checkboxes = document.querySelectorAll('input[type="checkbox"]:not(.js-compare)');
+  for (var i = 0; i < checkboxes.length; i++) {
+    var cb = checkboxes[i];
+    if (cb.checked) {
+      cb.checked = false;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
+}
+
+function setupResetFilters() {
+  var resetBtn = document.getElementById('reset-button');
+  if (!resetBtn) return;
+  resetBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+    resetFilters();
+  });
+}
+
+// Expose for manual invocation if needed
+if (typeof window !== 'undefined') {
+  window.resetFilters = resetFilters;
+  window.setupResetFilters = setupResetFilters;
+}
+
+// Auto-initialize on DOM ready to keep behavior
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupResetFilters);
+} else {
+  setupResetFilters();
+}

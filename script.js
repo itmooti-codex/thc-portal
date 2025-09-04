@@ -181,6 +181,8 @@
     });
 })();
 
+// (migrated) Button data-active toggle moved to dropdown.js
+
 // Heart/save button logic with localStorage persistence
 (function () {
     var KEY = 'hearted_items_v1';
@@ -220,3 +222,5 @@
         mo.observe(host, { childList: true, subtree: true });
     });
 })();
+
+// (removed) Previously added JS to set data-active on buttons; now handled in HTML.
