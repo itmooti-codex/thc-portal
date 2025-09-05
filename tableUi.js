@@ -18,7 +18,7 @@ window.vsInit = function (dynamicList) {
             bar = document.createElement('div');
             bar.id = 'tableActions';
             bar.className = 'table-actions hidden';
-            bar.innerHTML = "\n                <button id=\"tableDeleteSelected\" type=\"button\" class=\"dl-btn-delete\">Delete Selected Script</button>\n                <button id=\"tableCreateScriptTop\" type=\"button\" class=\"dl-btn-create\">Duplicate Script(s)</button>\n            ";
+            bar.innerHTML = "\n                <button id=\"tableDeleteSelected\" type=\"button\" class=\"dl-btn-delete\">Delete Selected Script(s)</button>\n                <button id=\"tableCreateScriptTop\" type=\"button\" class=\"dl-btn-create\">Duplicate Script(s)</button>\n            ";
             wrap.insertBefore(bar, wrap.firstChild);
             // Hook up bulk delete
             var delBtn = document.getElementById('tableDeleteSelected');
