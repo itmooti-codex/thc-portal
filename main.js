@@ -375,7 +375,7 @@
             alert('API endpoint or key not configured.');
             return { ok: false, id: scriptId, error: 'Missing config' };
         }
-        try { console.debug('Cancelling script ID', scriptId); } catch (_) {}
+        try { console.debug('Cancelling script ID', scriptId); } catch (_) { }
         var query = `mutation updateScripts(\n  $id: ThcScriptID\n  $payload: ScriptUpdateInput = null\n) {\n  updateScripts(\n    query: [{ where: { id: $id } }]\n    payload: $payload\n  ) {\n    script_status\n  }\n}`;
         var variables = { id: scriptId, payload: { script_status: 'Cancelled' } };
         try {
@@ -437,7 +437,7 @@
             console.error(e);
         }
     };
-    
+
     // Duplicate selected scripts via createScripts mutation
     window.vsDuplicateScripts = async function (ids) {
         if (!Array.isArray(ids) || ids.length === 0) return;

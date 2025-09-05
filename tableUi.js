@@ -48,7 +48,7 @@ window.vsInit = function (dynamicList) {
                     await window.vsCancelScripts(ids);
                 } finally {
                     delBtn.disabled = false;
-                    delBtn.textContent = 'Delete Selected Script';
+                    delBtn.textContent = 'Delete Selected Script(s)';
                 }
             });
             // Top duplicate script(s) button
