@@ -351,6 +351,73 @@
     }
 })();
 
+// Table: row delete and bulk cancel via GraphQL
+(function () {
+    function getApiConfig() {
+        var defaults = window.THCPortalDefaults || {};
+        return {
+            endpoint: defaults.apiEndpoint,
+            apiKey: defaults.apiKey
+        };
+    }
+
+    async function cancelOne(id) {
+        var cfg = getApiConfig();
+        if (!cfg.endpoint || !cfg.apiKey) {
+            alert('API endpoint or key not configured.');
+            return { ok: false, id: id, error: 'Missing config' };
+        }
+        var query = `mutation updateScripts(\n  $id: ThcScriptID\n  $payload: ScriptUpdateInput = null\n) {\n  updateScripts(\n    query: [{ where: { id: $id } }]\n    payload: $payload\n  ) {\n    script_status\n  }\n}`;
+        var variables = { id: id, payload: { script_status: 'Cancelled' } };
+        try {
+            var res = await fetch(cfg.endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Api-Key': cfg.apiKey
+                },
+                body: JSON.stringify({ query: query, variables: variables })
+            });
+            var json = await res.json();
+            if (json.errors) {
+                console.error('GraphQL error:', json.errors);
+                return { ok: false, id: id, error: json.errors[0]?.message || 'GraphQL error' };
+            }
+            return { ok: true, id: id };
+        } catch (e) {
+            console.error('Network error:', e);
+            return { ok: false, id: id, error: String(e) };
+        }
+    }
+
+    // Bulk cancel helper exposed for tableUi.js
+    window.vsCancelScripts = async function (ids) {
+        if (!Array.isArray(ids) || ids.length === 0) return;
+        var results = await Promise.all(ids.map(cancelOne));
+        var okCount = results.filter(r => r.ok).length;
+        var fail = results.find(r => !r.ok);
+        if (okCount > 0) {
+            alert('Cancelled ' + okCount + ' script' + (okCount === 1 ? '' : 's'));
+        }
+        if (fail) {
+            alert('Some updates failed: ' + (fail.error || 'Unknown error'));
+        }
+    };
+
+    // Called by tableUi row action
+    window.vsDeleteRow = async function (detail) {
+        try {
+            var status = detail?.row?.script_status;
+            if (String(status) !== 'Draft') {
+                return; // do nothing if not Draft
+            }
+            await window.vsCancelScripts([detail.id]);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+})();
+
 // Heart/save button logic with localStorage persistence
 (function () {
     var KEY = 'hearted_items_v1';

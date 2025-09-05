@@ -213,10 +213,31 @@
      cursor: pointer;
  }
 
- .dl-btn-delete:hover {
-     background: #d32f2f;
- }
+.dl-btn-delete:hover {
+    background: #d32f2f;
+}
 
- .css-vubbuv {
-     display: none !important;
- }
+.css-vubbuv {
+    display: none !important;
+}
+
+/* Bulk actions bar above the table */
+.table-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 0;
+}
+.table-actions.hidden { display: none; }
+
+.dl-btn-create {
+    padding: 4px 10px;
+    font-size: 12px;
+    line-height: 18px;
+    border: 1px solid #1e40af;
+    background: #2563eb;
+    color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.dl-btn-create:hover { background: #1e40af; }
