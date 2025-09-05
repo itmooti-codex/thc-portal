@@ -5,6 +5,7 @@
     var list = document.getElementById('compareList');
     var fab = document.getElementById('compareFab');
     var fabCount = document.getElementById('compareCountFab');
+    var createBtn = document.getElementById('compareCreate');
     var collapsed = false;
 
     function renderSidebar() {
@@ -89,14 +90,56 @@
                 parent.appendChild(wrap);
             }
 
+            function addRouteSelect(parent, labelText, key) {
+                var wrap = document.createElement('div');
+                wrap.className = 'mt-3';
+                var lbl = document.createElement('label');
+                lbl.className = 'block text-xs text-slate-500';
+                lbl.textContent = labelText;
+                var sel = document.createElement('select');
+                sel.className = '!block mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-white';
+
+                var options = [
+                    { title: 'Select none', code: '' },
+                    { title: 'Transdermal', code: '602' },
+                    { title: 'Rectal', code: '601' },
+                    { title: 'Mucosal', code: '600' },
+                    { title: 'Topical', code: '599' },
+                    { title: 'Sublingual', code: '598' },
+                    { title: 'inhalation route', code: '597' },
+                    { title: 'Intrapulmonary', code: '596' },
+                    { title: 'Respiratory tract', code: '595' },
+                    { title: 'Nasal/intranasal', code: '594' },
+                    { title: 'Oral route', code: '593' },
+                ];
+
+                options.forEach(function (opt) {
+                    var o = document.createElement('option');
+                    o.value = opt.title;
+                    o.textContent = opt.title;
+                    o.setAttribute('data-code', opt.code);
+                    if ((entry[key] || '').toLowerCase() === opt.title.toLowerCase()) {
+                        o.selected = true;
+                    }
+                    sel.appendChild(o);
+                });
+
+                sel.addEventListener('click', function (e) { e.stopPropagation(); });
+                sel.addEventListener('change', function () { entry[key] = this.value; });
+
+                wrap.appendChild(lbl);
+                wrap.appendChild(sel);
+                parent.appendChild(wrap);
+            }
+
             // Fields
             addTextInput(panel, 'Quantity', 'qty', 'number');
             addTextarea(panel, 'Dosage Instructions', 'dosage');
-            addTextarea(panel, 'Additional Instructions', 'additional');
-            addTextInput(panel, 'Route of administration', 'route', 'text');
-            addTextInput(panel, 'Repeats', 'repeats', 'text');
-            addTextInput(panel, 'Interval Days', 'intervalDays', 'text');
-            addTextInput(panel, 'Dispense Quantity', 'dispenseQty', 'text');
+            // Removed Additional Instructions as per requirements
+            addRouteSelect(panel, 'Route of administration', 'route');
+            addTextInput(panel, 'Repeats', 'repeats', 'number');
+            addTextInput(panel, 'Interval Days', 'intervalDays', 'number');
+            addTextInput(panel, 'Dispense Quantity', 'dispenseQty', 'number');
             addTextInput(panel, 'Valid Until', 'validUntil', 'date');
             addTextarea(panel, 'Doctor Notes To Pharmacy', 'notesToPharmacy');
 
@@ -118,6 +161,12 @@
             sidebar.classList.remove('hidden');
             fab.classList.remove('hidden');
             fabCount.textContent = String(selected.size);
+            if (createBtn) {
+                var count = selected.size;
+                var label = 'Create ' + count + ' script' + (count === 1 ? '' : 's');
+                createBtn.textContent = label;
+                createBtn.setAttribute('aria-label', label);
+            }
             if (!collapsed) {
                 document.documentElement.classList.add('compare-open');
             } else {
@@ -128,6 +177,10 @@
             fab.classList.add('hidden');
             document.documentElement.classList.remove('compare-open');
             collapsed = false;
+            if (createBtn) {
+                createBtn.textContent = 'Create Script';
+                createBtn.setAttribute('aria-label', 'Create Script');
+            }
         }
     }
 
@@ -137,7 +190,37 @@
         var id = cb.getAttribute('data-item-id');
         var name = cb.getAttribute('data-item-name');
         if (cb.checked) {
-            selected.set(id, { name: name, checkbox: cb });
+            var defaults = (window.THCPortalDefaults || {});
+            var dosage = cb.getAttribute('data-item-dosage-instructions') || defaults.dosage || '';
+            var route = cb.getAttribute('data-item-route') || (defaults.route || '');
+            var rawDrugId = cb.getAttribute('data-item-drug-id');
+            var drugId = (rawDrugId && /^\d+$/.test(String(rawDrugId))) ? Number(rawDrugId) : rawDrugId;
+
+            function sixMonthsFromToday() {
+                var d = new Date();
+                d.setMonth(d.getMonth() + (defaults.validUntilMonths || 6));
+                var yyyy = d.getFullYear();
+                var mm = String(d.getMonth() + 1).padStart(2, '0');
+                var dd = String(d.getDate()).padStart(2, '0');
+                return yyyy + '-' + mm + '-' + dd;
+            }
+
+            var entry = {
+                name: name,
+                checkbox: cb,
+                qty: (defaults.qty != null ? defaults.qty : 1),
+                dosage: dosage,
+                route: route,
+                repeats: (defaults.repeats != null ? defaults.repeats : 3),
+                intervalDays: (defaults.intervalDays != null ? defaults.intervalDays : 1),
+                dispenseQty: (defaults.dispenseQty != null ? defaults.dispenseQty : 1),
+                validUntil: sixMonthsFromToday(),
+                drugId: drugId
+            };
+
+            // Ensure only one opens if none currently open
+            if (selected.size === 0) entry.open = true;
+            selected.set(id, entry);
             // Auto-open when first adding
             if (selected.size === 1) collapsed = false;
         } else {
@@ -179,9 +262,94 @@
             renderSidebar();
         }
     });
-})();
 
-// (migrated) Button data-active toggle moved to dropdown.js
+    // Create scripts via GraphQL
+    if (createBtn) {
+        createBtn.addEventListener('click', async function () {
+            if (selected.size === 0) return;
+            var defaults = window.THCPortalDefaults || {};
+            var endpoint = defaults.apiEndpoint;
+            var apiKey = defaults.apiKey;
+            if (!endpoint || !apiKey) {
+                alert('API endpoint or key not configured.');
+                return;
+            }
+            function toEpochSeconds(val) {
+                if (!val) return null;
+                if (typeof val === 'number') return Math.floor(val);
+                if (typeof val === 'string') {
+                    // If the string is numeric, treat as seconds
+                    if (/^\d+$/.test(val)) return parseInt(val, 10);
+                    // Expecting YYYY-MM-DD from date input; convert to UTC midnight
+                    var d = new Date(val + 'T00:00:00Z');
+                    if (!isNaN(d.getTime())) return Math.floor(d.getTime() / 1000);
+                }
+                return null;
+            }
+            // Build payload
+            var payload = [];
+            selected.forEach(function (entry, id) {
+                // Prefer the explicit numeric drugId from the DOM, fallback to map key
+                var raw = (entry && entry.drugId != null) ? entry.drugId : id;
+                // Coerce numeric IDs when possible for GraphQL Int types
+                var drugId = (typeof raw === 'string' && /^\d+$/.test(raw)) ? Number(raw) : raw;
+                payload.push({
+                    dosage_instructions: entry.dosage || '',
+                    route_of_administration: entry.route || '',
+                    repeats: Number(entry.repeats || 0),
+                    interval_days: Number(entry.intervalDays || 0),
+                    dispense_quantity: Number(entry.dispenseQty || 0),
+                    valid_until: toEpochSeconds(entry.validUntil),
+                    doctor_notes_to_pharmacy: entry.notesToPharmacy || '',
+                    doctor_id: defaults.doctorId,
+                    patient_id: defaults.patientId,
+                    drug_id: drugId,
+                    script_status: 'Draft',
+                    appointment_id: defaults.appointmentId
+                });
+            });
+
+            var query = `mutation createScripts($payload: [ScriptCreateInput] = null) {\n  createScripts(payload: $payload) {\n    dosage_instructions\n    route_of_administration\n    repeats\n    interval_days\n    dispense_quantity\n    valid_until @dateFormat(value: \"DD-MM-YYYY\")\n    doctor_notes_to_pharmacy\n    doctor_id\n    patient_id\n    drug_id\n    script_status\n   appointment_id\n}\n}`;
+
+            var origText = createBtn.textContent;
+            createBtn.disabled = true;
+            createBtn.textContent = 'Creating…';
+
+            try {
+                var res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Api-Key': apiKey
+                    },
+                    body: JSON.stringify({ query: query, variables: { payload: payload } })
+                });
+                var json = await res.json();
+                if (json.errors) {
+                    console.error('GraphQL errors', json.errors);
+                    alert('Failed to create scripts: ' + (json.errors[0]?.message || 'Unknown error'));
+                } else {
+                    // Success: clear selection and show result count
+                    var created = json.data && json.data.createScripts ? json.data.createScripts.length : 0;
+                    alert('Created ' + created + ' script' + (created === 1 ? '' : 's'));
+                    // Uncheck all associated checkboxes via existing remove behavior
+                    selected.forEach(function (entry) {
+                        if (entry.checkbox) {
+                            entry.checkbox.checked = false;
+                            entry.checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Network or server error while creating scripts.');
+            } finally {
+                createBtn.disabled = false;
+                createBtn.textContent = origText;
+            }
+        });
+    }
+})();
 
 // Heart/save button logic with localStorage persistence
 (function () {
@@ -222,5 +390,3 @@
         mo.observe(host, { childList: true, subtree: true });
     });
 })();
-
-// (removed) Previously added JS to set data-active on buttons; now handled in HTML.
