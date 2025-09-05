@@ -469,32 +469,59 @@
         // Build payload from selected rows (copy same values where present)
         var payload = [];
         var missingDrug = [];
+        var usedDefaultsCount = 0;
         ids.forEach(function (gridId) {
             var row = (window.vsRowMap && window.vsRowMap[gridId]) || {};
+
+            // Copy fields from row with fallbacks to defaults
             var dosage = row.dosage_instructions || row.Dosage_Instructions || defaults.dosage || '';
+            var condition = row.condition || row.Condition || defaults.condition || '';
             var route = row.route_of_administration || row.Route_of_administration || defaults.route || '';
-            var repeats = Number(row.repeats != null ? row.repeats : (row.Repeats != null ? row.Repeats : (defaults.repeats != null ? defaults.repeats : 0)));
-            var intervalDays = Number(row.interval_days != null ? row.interval_days : (row.Interval_Days != null ? row.Interval_Days : (defaults.intervalDays != null ? defaults.intervalDays : 0)));
-            var dispenseQty = Number(row.dispense_quantity != null ? row.dispense_quantity : (row.Dispense_Quantity != null ? row.Dispense_Quantity : (defaults.dispenseQty != null ? defaults.dispenseQty : 0)));
+            var repeats = (row.repeats != null ? row.repeats : (row.Repeats != null ? row.Repeats : defaults.repeats));
+            repeats = Number(repeats != null ? repeats : 0);
+            var remaining = (row.remaining != null ? row.remaining : (row.Remaining != null ? row.Remaining : defaults.remaining));
+            remaining = Number(remaining != null ? remaining : 0);
+            var intervalDays = (row.interval_days != null ? row.interval_days : (row.Interval_Days != null ? row.Interval_Days : defaults.intervalDays));
+            intervalDays = Number(intervalDays != null ? intervalDays : 0);
+            var dispenseQty = (row.dispense_quantity != null ? row.dispense_quantity : (row.Dispense_Quantity != null ? row.Dispense_Quantity : defaults.dispenseQty));
+            dispenseQty = Number(dispenseQty != null ? dispenseQty : 0);
+            var eScriptLink = row.e_script_link || row.E_Script_Link || defaults.eScriptLink || null;
             var validUntilStr = row.valid_until || row.Valid_Until || sixMonthsFromToday();
             var validUntil = toEpochSeconds(validUntilStr);
             var notes = row.doctor_notes_to_pharmacy || row.Doctor_Notes_To_Pharmacy || defaults.notesToPharmacy || '';
+
+            // Required: drug_id
             var rawDrug = row.drug_id || row.Drug_ID || defaults.drugId;
             if (rawDrug == null || rawDrug === '') { missingDrug.push(gridId); return; }
             var drugId = (typeof rawDrug === 'string' && /^\d+$/.test(rawDrug)) ? Number(rawDrug) : rawDrug;
 
+            // Count defaults used for informational alert
+            if (!row.condition && !row.Condition && defaults.condition != null) usedDefaultsCount++;
+            if (!row.route_of_administration && !row.Route_of_administration && defaults.route != null) usedDefaultsCount++;
+            if ((row.repeats == null && row.Repeats == null) && defaults.repeats != null) usedDefaultsCount++;
+            if ((row.remaining == null && row.Remaining == null) && defaults.remaining != null) usedDefaultsCount++;
+            if ((row.interval_days == null && row.Interval_Days == null) && defaults.intervalDays != null) usedDefaultsCount++;
+            if ((row.dispense_quantity == null && row.Dispense_Quantity == null) && defaults.dispenseQty != null) usedDefaultsCount++;
+            if (!row.e_script_link && !row.E_Script_Link && defaults.eScriptLink != null) usedDefaultsCount++;
+
             payload.push({
-                dosage_instructions: dosage,
+                // Explicit fields to duplicate
+                script_status: 'Draft',
+                condition: condition,
                 route_of_administration: route,
                 repeats: repeats,
+                remaining: remaining,
                 interval_days: intervalDays,
+                e_script_link: eScriptLink,
+                drug_id: drugId,
+
+                // Other fields we already support
+                dosage_instructions: dosage,
                 dispense_quantity: dispenseQty,
                 valid_until: validUntil,
                 doctor_notes_to_pharmacy: notes,
                 doctor_id: defaults.doctorId,
                 patient_id: defaults.patientId,
-                drug_id: drugId,
-                script_status: 'Draft',
                 appointment_id: defaults.appointmentId
             });
         });
@@ -504,7 +531,7 @@
             return;
         }
 
-        var query = `mutation createScripts($payload: [ScriptCreateInput] = null) {\n  createScripts(payload: $payload) {\n    id\n    script_status\n  }\n}`;
+        var query = `mutation createScripts($payload: [ScriptCreateInput] = null) {\n  createScripts(payload: $payload) {\n    id\n    script_status\n    condition\n    route_of_administration\n    repeats\n    remaining\n    interval_days\n    e_script_link\n    drug_id\n  }\n}`;
 
         try {
             var res = await fetch(endpoint, {
@@ -519,9 +546,11 @@
                 return;
             }
             var created = json.data && json.data.createScripts ? json.data.createScripts.length : 0;
-            var note = created + ' script' + (created === 1 ? '' : 's') + ' duplicated as Draft';
-            if (missingDrug.length) note += '. Skipped ' + missingDrug.length + ' due to missing drug_id';
-            alert(note);
+            var msgs = [];
+            msgs.push(created + ' script' + (created === 1 ? '' : 's') + ' duplicated as Draft');
+            if (missingDrug.length) msgs.push('Skipped ' + missingDrug.length + ' due to missing drug_id');
+            if (usedDefaultsCount > 0) msgs.push('Applied defaults for some missing fields');
+            alert(msgs.join('. '));
         } catch (e) {
             console.error(e);
             alert('Network or server error while duplicating scripts.');
