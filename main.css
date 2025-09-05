@@ -167,13 +167,6 @@
      border-color: rgb(79, 70, 229);
  }
 
- #product-type button[data-active="true"] span,
- #stock-status button[data-active="true"] span,
- #day-night-section button[data-active="true"] span,
- #cured-section button[data-active="true"] span {
-     color: black;
- }
-
  /* Explicitly revert visuals when not active */
  #product-type button[data-active="false"],
  #stock-status button[data-active="false"],
