@@ -361,14 +361,23 @@
         };
     }
 
+    function extractScriptId(raw) {
+        if (raw == null) return raw;
+        // If numeric string, coerce to number; else keep as-is
+        if (typeof raw === 'string' && /^\d+$/.test(raw)) return Number(raw);
+        return raw;
+    }
+
     async function cancelOne(id) {
+        var scriptId = extractScriptId(id);
         var cfg = getApiConfig();
         if (!cfg.endpoint || !cfg.apiKey) {
             alert('API endpoint or key not configured.');
-            return { ok: false, id: id, error: 'Missing config' };
+            return { ok: false, id: scriptId, error: 'Missing config' };
         }
+        try { console.debug('Cancelling script ID', scriptId); } catch (_) {}
         var query = `mutation updateScripts(\n  $id: ThcScriptID\n  $payload: ScriptUpdateInput = null\n) {\n  updateScripts(\n    query: [{ where: { id: $id } }]\n    payload: $payload\n  ) {\n    script_status\n  }\n}`;
-        var variables = { id: id, payload: { script_status: 'Cancelled' } };
+        var variables = { id: scriptId, payload: { script_status: 'Cancelled' } };
         try {
             var res = await fetch(cfg.endpoint, {
                 method: 'POST',
@@ -381,19 +390,29 @@
             var json = await res.json();
             if (json.errors) {
                 console.error('GraphQL error:', json.errors);
-                return { ok: false, id: id, error: json.errors[0]?.message || 'GraphQL error' };
+                return { ok: false, id: scriptId, error: json.errors[0]?.message || 'GraphQL error' };
             }
-            return { ok: true, id: id };
+            if (!json.data || !json.data.updateScripts) {
+                console.warn('updateScripts returned null for id', scriptId);
+                return { ok: false, id: scriptId, error: 'No matching script for ID' };
+            }
+            return { ok: true, id: scriptId };
         } catch (e) {
             console.error('Network error:', e);
-            return { ok: false, id: id, error: String(e) };
+            return { ok: false, id: scriptId, error: String(e) };
         }
     }
 
     // Bulk cancel helper exposed for tableUi.js
     window.vsCancelScripts = async function (ids) {
         if (!Array.isArray(ids) || ids.length === 0) return;
-        var results = await Promise.all(ids.map(cancelOne));
+        // Map DataGrid ids to actual script IDs if necessary using vsRowMap
+        var scriptIds = ids.map(function (gridId) {
+            var row = (window.vsRowMap && window.vsRowMap[gridId]) || null;
+            var raw = row ? (row.ID ?? row.id ?? row.Id) : gridId;
+            return extractScriptId(raw);
+        });
+        var results = await Promise.all(scriptIds.map(cancelOne));
         var okCount = results.filter(r => r.ok).length;
         var fail = results.find(r => !r.ok);
         if (okCount > 0) {

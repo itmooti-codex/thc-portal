@@ -119,6 +119,7 @@ window.vsInit = function (dynamicList) {
                 disableColumnMenu: true,
                 checkboxSelection: true,
                 rowSelection: true,
+                getRowId: (row) => row?.ID ?? row?.id ?? row?.Id ?? row?.uid ?? row?._id,
                 onRowSelectionModelChange: (selectionModel) => {
                     try {
                         window.vsSelectedRowIds = Array.isArray(selectionModel) ? selectionModel : [];
