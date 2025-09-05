@@ -2,180 +2,37 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dynamic Table Example</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="index.css" rel="stylesheet"/>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script async src="https://static-au03.vitalstats.app/static/dynamic-list/v1/latest.js"
         crossorigin="anonymous"></script>
-    <style>
-        [type=checkbox]:checked,
-        [type=checkbox]:not(:checked) {
-            opacity: 100% !important;
-            pointer-events: all !important;
-            position: relative !important;
-        }
-
-        /* Sidebar width: never exceeds 500px or viewport width */
-        :root {
-            --compare-w: 300px;
-        }
-
-        .grid-root {
-            transition: margin-right 200ms ease;
-        }
-
-        .compare-sidebar {
-            position: fixed;
-            top: 0;
-            right: 0;
-            height: 100vh;
-            width: 100%;
-            max-width: 500px;
-            transform: translateX(100%);
-            transition: transform 200ms ease;
-            z-index: 40;
-        }
-
-        .compare-open .compare-sidebar {
-            transform: translateX(0);
-        }
-
-        /* Overlap mode: do not push grid */
-        .compare-open .grid-root {
-            margin-right: 0;
-        }
-
-        /* Optional auto grid helper (unused currently) */
-        .grid-auto {
-            display: grid !important;
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-        }
-
-        /* Floating toggle (FAB) with counter */
-        .compare-fab {
-            position: fixed;
-            right: 16px;
-            bottom: 16px;
-            height: 52px;
-            width: 52px;
-            border-radius: 9999px;
-            z-index: 50;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, .1), 0 4px 6px -4px rgba(0, 0, 0, .1);
-        }
-
-        .compare-fab .badge {
-            position: absolute;
-            top: -6px;
-            right: -6px;
-            height: 22px;
-            min-width: 22px;
-            padding: 0 6px;
-            border-radius: 9999px;
-            background: #ef4444;
-            color: #fff;
-            font-size: 12px;
-            line-height: 22px;
-            text-align: center;
-        }
-
-        /* Heart button styling: color only, no circle */
-        .heart-btn svg {
-            fill: currentColor;
-        }
-
-        .heart-btn.active {
-            color: #ef4444;
-        }
-
-        .range-input {
-            -webkit-appearance: none;
-            appearance: none;
-            background: transparent;
-            height: 0;
-            pointer-events: none;
-            position: absolute;
-            left: 0;
-            right: 0;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        .range-input::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            pointer-events: auto;
-            cursor: pointer;
-            height: 18px;
-            width: 18px;
-            border-radius: 9999px;
-            background: #fff;
-            border: 2px solid rgb(99 102 241);
-            /* indigo-500 */
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, .25);
-        }
-
-        .range-input::-moz-range-thumb {
-            pointer-events: auto;
-            cursor: pointer;
-            height: 18px;
-            width: 18px;
-            border-radius: 9999px;
-            background: #fff;
-            border: 2px solid rgb(99 102 241);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, .25);
-        }
-
-        .range-input::-webkit-slider-runnable-track {
-            background: transparent;
-        }
-
-        .range-input::-moz-range-track {
-            background: transparent;
-            height: 12px;
-        }
-
-        /* Bubble caret */
-        .bubble::after {
-            content: "";
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            top: 100%;
-            width: 0;
-            height: 0;
-            border-left: 6px solid transparent;
-            border-right: 6px solid transparent;
-            border-top: 8px solid rgb(79 70 229);
-            /* indigo-700 */
-        }
-
-        /* Active state for filter buttons */
-        #product-type button[data-active="true"],
-        #stock-status button[data-active="true"],
-        #day-night-section button[data-active="true"],
-        #cured-section button[data-active="true"] {
-            background-color: rgb(79, 70, 229);
-            color: white;
-            border-color: rgb(79, 70, 229);
-        }
-
-
-        /* Explicitly revert visuals when not active */
-        #product-type button[data-active="false"],
-        #stock-status button[data-active="false"],
-        #day-night-section button[data-active="false"],
-        #cured-section button[data-active="false"] {
-            background-color: white;
-            color: inherit;
-            /* Border color falls back to classes; no override here */
-        }
-
-    </style>
-
+    <script>
+        window.THCPortalDefaults = {
+            qty: 1,
+            repeats: 3,
+            intervalDays: 1,
+            dispenseQty: 1,
+            validUntilMonths: 6,
+            dosage: 'Use as directed by your physician.',
+            doctorId: '[Page//Doctor//Contact ID]',
+            patientId: '[Page//Patient//Contact ID]',
+            apiEndpoint: 'https://thc.vitalstats.app/api/v1/graphql',
+            apiKey: 'awWH16PsRms2px8-93-Uw',
+            appointmentId: "[Page//ID]"
+        };
+    </script>
+    <script src="index.js"></script>
 </head>
 
 <body>
+
     <div class="flex flex-col lg:flex-row items-start gap-6">
         <div class="bg-white text-slate-900 antialiased w-full lg:w-80 xl:w-96 lg:flex-none">
             <div class="flex flex-col flex-auto p-6">
@@ -183,13 +40,13 @@
                 <div class="font-Balto text-bg-indigo-950">
                     <!-- breadcrumb -->
                     <div class="flex flex-row flex-wrap ">
-                        <nav class="text-md text-slate-500">
+                        <div class="text-md text-slate-500">
                             <ol class="flex items-center gap-2">
                                 <li><a href="#" class=" text-slate-900">Search</a></li>
                                 <li class="text-slate-400">/</li>
                                 <li class="text-slate-900">Medicines Database</li>
                             </ol>
-                        </nav>
+                        </div>
                     </div>
 
                     <!-- Page header -->
@@ -209,7 +66,7 @@
 
                         <!-- Search button -->
                         <button data-active="false" type="button"
-                            class="px-4 py-2 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition">
+                            class="px-4 py-2 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition text-nowrap">
                             Search
                         </button>
                     </div>
@@ -356,9 +213,9 @@
                             more</button>
 
                         <!-- Price -->
-                        
+
                         <div class="max-w-lg">
-                        <h3 class="mt-6 text-2xl font-semibold tracking-tight font-bold">Price</h3>
+                            <h3 class="mt-6 text-2xl font-semibold tracking-tight font-bold">Price</h3>
 
                             <div class="relative pt-12 pb-6">
                                 <!-- bubble for active thumb -->
@@ -367,8 +224,12 @@
                                 </output>
 
                                 <!-- base track -->
-                                <div class="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-indigo-200"></div>
-                                <div id="progress" class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-indigo-500"></div>
+                                <div
+                                    class="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-indigo-200">
+                                </div>
+                                <div id="progress"
+                                    class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-indigo-500">
+                                </div>
 
                                 <!-- two ranges -->
                                 <input id="min" type="range" min="0" max="650" step="10" value="172"
@@ -454,11 +315,11 @@
 
                             <div
                                 class="w-11 h-3 bg-gray-200 peer-focus:outline-none rounded-full peer-checked:bg-[#5653F9]
-                                relative
-                                after:content-[''] after:absolute after:top-[-5px] after:left-[0px] 
-                                after:bg-white after:border after:border-gray-300 after:rounded-full 
-                                after:h-6 after:w-6 after:transition-all
-                                peer-checked:after:translate-x-5 peer-checked:after:border-white peer-checked:after:bg-[rgb(67,56,202)]">
+                                                relative
+                                                after:content-[''] after:absolute after:top-[-5px] after:left-[0px] 
+                                                after:bg-white after:border after:border-gray-300 after:rounded-full 
+                                                after:h-6 after:w-6 after:transition-all
+                                                peer-checked:after:translate-x-5 peer-checked:after:border-white peer-checked:after:bg-[rgb(67,56,202)]">
                             </div>
 
                             <span class="ml-3 text-sm font-medium text-gray-700">Has concession price</span>
@@ -927,11 +788,11 @@
 
                                 <div
                                     class="w-11 h-3 bg-gray-200 peer-focus:outline-none rounded-full peer-checked:bg-[#5653F9]
-                                                    relative
-                                                    after:content-[''] after:absolute after:top-[-5px] after:left-[0px] 
-                                                    after:bg-white after:border after:border-gray-300 after:rounded-full 
-                                                    after:h-6 after:w-6 after:transition-all
-                                                    peer-checked:after:translate-x-5 peer-checked:after:border-white peer-checked:after:bg-[rgb(67,56,202)]">
+                                                                    relative
+                                                                    after:content-[''] after:absolute after:top-[-5px] after:left-[0px] 
+                                                                    after:bg-white after:border after:border-gray-300 after:rounded-full 
+                                                                    after:h-6 after:w-6 after:transition-all
+                                                                    peer-checked:after:translate-x-5 peer-checked:after:border-white peer-checked:after:bg-[rgb(67,56,202)]">
                                 </div>
 
                                 <span class="ml-3 text-sm font-medium text-gray-700">Hide products coming soon</span>
@@ -942,11 +803,11 @@
 
                                 <div
                                     class="w-11 h-3 bg-gray-200 peer-focus:outline-none rounded-full peer-checked:bg-[#5653F9]
-                                                    relative
-                                                    after:content-[''] after:absolute after:top-[-5px] after:left-[0px] 
-                                                    after:bg-white after:border after:border-gray-300 after:rounded-full 
-                                                    after:h-6 after:w-6 after:transition-all
-                                                    peer-checked:after:translate-x-5 peer-checked:after:border-white peer-checked:after:bg-[rgb(67,56,202)]">
+                                                                    relative
+                                                                    after:content-[''] after:absolute after:top-[-5px] after:left-[0px] 
+                                                                    after:bg-white after:border after:border-gray-300 after:rounded-full 
+                                                                    after:h-6 after:w-6 after:transition-all
+                                                                    peer-checked:after:translate-x-5 peer-checked:after:border-white peer-checked:after:bg-[rgb(67,56,202)]">
                                 </div>
 
                                 <span class="ml-3 text-sm font-medium text-gray-700">Hide discontinued products</span>
@@ -975,7 +836,7 @@
                 <div class="flex space-x-2">
                     <!-- Page size dropdown -->
                     <div class="relative" data-dd="pagesize">
-                        <button data-active="false" type="button"
+                        <button type="button"
                             class="flex items-center gap-1 rounded-full border border-gray-400 px-3 py-1 text-sm font-semibold text-gray-900 hover:bg-gray-100"
                             data-dd-trigger aria-haspopup="listbox" aria-expanded="false">
                             <!-- icon -->
@@ -1038,7 +899,7 @@
 
                     <!-- Sort dropdown -->
                     <div class="relative" data-dd="sort">
-                        <button data-active="false" type="button"
+                        <button type="button"
                             class="flex items-center gap-1 rounded-full border border-gray-400 px-3 py-1 text-sm font-semibold  hover:bg-gray-100"
                             data-dd-trigger aria-haspopup="listbox" aria-expanded="false">
                             <!-- icon -->
@@ -1099,7 +960,8 @@
                 <!-- Right side: results text -->
                 <div class="text-sm text-indigo-900">
                     Showing <span class="font-semibold" id="pageShowing">20</span> of <span
-                        class="font-semibold">477</span> results
+                        class="font-semibold">477</span>
+                    results
                 </div>
             </div>
             <!-- Grid -->
@@ -1117,9 +979,11 @@
                                 <p class="mt-1 text-sm text-slate-600">[Brand]</p>
                             </div>
                             <div class="shrink-0">
-                        <p class="hidden origin-country">[Origin_Country]</p>
-                        <img class="country-flag h-5 w-7 rounded-sm ring-1 ring-slate-200 object-cover" src="" alt="Country flag">
+                                <p class="hidden origin-country">[Origin_Country]</p>
+                                <img class="country-flag h-5 w-7 rounded-sm ring-1 ring-slate-200 object-cover" src=""
+                                    alt="Country flag">
                             </div>
+
                         </div>
                         <!-- Badges row (THC / CBD) -->
                         <div class="mt-4 flex flex-wrap items-center gap-2">
@@ -1163,7 +1027,7 @@
                         </a>
                         <!-- Heart button: toggles filled red vs. outlined black -->
                         <div class="flex items-center gap-3">
-                            <button data-active="false" type="button"
+                            <button type="button"
                                 class="heart-btn js-heart inline-flex items-center justify-center p-1 text-slate-600 hover:text-red-600"
                                 aria-pressed="false" title="Save" data-item-id="[Unique_ID]"
                                 data-item-name="[Item_Name]">
@@ -1176,7 +1040,9 @@
                                 <span class="text-sm font-medium text-slate-700">Create Script</span>
                                 <input type="checkbox"
                                     class="cursor-pointer js-compare !block h-5 w-5 rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                    data-item-id="[Unique_ID]" data-item-name="[Item_Name]">
+                                    data-item-id="[Unique_ID]" data-item-name="[Item_Name]"
+                                    data-item-dosage-instructions="[Dosage_Instructions]" data-item-route="[Route]"
+                                    data-item-drug-id="[ID]">
                             </div>
                         </div>
                     </div>
@@ -1184,48 +1050,51 @@
                 <!-- /Card -->
             </div>
         </div>
-
-
-        <!-- Compare Sidebar -->
-        <aside id="compareSidebar" class="compare-sidebar bg-white border-l border-slate-200 shadow-xl hidden">
-            <div class="h-full flex flex-col">
-                <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-                    <div>
-                        <h2 class="text-lg font-semibold text-slate-900">Selected items</h2>
-                        <p class="text-sm text-slate-500">Uncheck or remove to close</p>
-                    </div>
-                    <button data-active="false" id="compareClose"
-                        class="inline-flex items-center justify-center h-8 w-8 rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50"
-                        aria-label="Collapse">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M10 8.586l4.243-4.243 1.414 1.414L11.414 10l4.243 4.243-1.414 1.414L10 11.414l-4.243 4.243-1.414-1.414L8.586 10 4.343 5.757l1.414-1.414L10 8.586z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </button>
-                </div>
-                <div id="compareList" class="flex-1 overflow-y-auto divide-y divide-slate-100"></div>
-                <div class="sticky bottom-0 border-t border-slate-200 p-4 bg-white">
-                    <button data-active="false"
-                        class="w-full inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                        Create Script
-                    </button>
-                </div>
-            </div>
-        </aside>
-
-        <!-- Floating toggle for collapsed state -->
-        <button data-active="false" id="compareFab" class="compare-fab hidden bg-indigo-600 text-white flex items-center justify-center"
-            aria-label="Open compare">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
-                <path
-                    d="M3 6.75A.75.75 0 013.75 6h16.5a.75.75 0 010 1.5H3.75A.75.75 0 013 6.75zm0 5.25a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75a.75.75 0 01-.75-.75zm0 5.25a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H3.75a.75.75 0 01-.75-.75z" />
-            </svg>
-            <span id="compareCountFab" class="badge">0</span>
-        </button>
     </div>
-    <script src="script.js"> </script>
-    <script src="dropdown.js"></script>
+
+    <!-- This is your HTML-encoded JSON. Paste the encoded string here exactly as Ontraport outputs it -->
+    <div id="jsonContainer" style="display:none;">
+        [Page//Formulary JSON] <!-- YOUR FULL ENCODED JSON HERE -->
+    </div>
+    <!-- Compare Sidebar -->
+    <aside id="compareSidebar" class="compare-sidebar bg-white border-l border-slate-200 shadow-xl hidden">
+        <div class="h-full flex flex-col">
+            <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-900">Selected items</h2>
+                    <p class="text-sm text-slate-500">Uncheck or remove to close</p>
+                </div>
+                <button id="compareClose"
+                    class="inline-flex items-center justify-center h-8 w-8 rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50"
+                    aria-label="Collapse">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M10 8.586l4.243-4.243 1.414 1.414L11.414 10l4.243 4.243-1.414 1.414L10 11.414l-4.243 4.243-1.414-1.414L8.586 10 4.343 5.757l1.414-1.414L10 8.586z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+            <div id="compareList" class="flex-1 overflow-y-auto divide-y divide-slate-100"></div>
+            <div class="sticky bottom-0 border-t border-slate-200 p-4 bg-white">
+                <button id="compareCreate"
+                    class="w-full inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                    Create Script
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Floating toggle for collapsed state -->
+    <button id="compareFab" class="compare-fab hidden bg-indigo-600 text-white flex items-center justify-center"
+        aria-label="Open compare">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+            <path
+                d="M3 6.75A.75.75 0 013.75 6h16.5a.75.75 0 010 1.5H3.75A.75.75 0 013 6.75zm0 5.25a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75a.75.75 0 01-.75-.75zm0 5.25a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H3.75a.75.75 0 01-.75-.75z" />
+        </svg>
+        <span id="compareCountFab" class="badge">0</span>
+    </button>
 </body>
+
+
 
 </html>

@@ -3329,7 +3329,7 @@ tailwind.config = {
     },
 }
 
-    ;(function () {
+    ; (function () {
         function closeAllExcept(except) {
             document.querySelectorAll('[data-dd-menu]').forEach(m => {
                 const root = m.closest('[data-dd]');
@@ -3384,7 +3384,10 @@ tailwind.config = {
     })();
 
 
-;(function(){
+
+
+
+; (function () {
     const toggleBtn = document.getElementById("toggle-view-more");
     const moreGroup = document.getElementById("more-product-type");
 
@@ -3441,85 +3444,147 @@ function hideBubble() {
 
 update();
 (function () {
-  var ids = [
-    'product-type',
-    'stock-status',
-    'day-night-section',
-    'cured-section'
-  ];
+    var ids = [
+        'product-type',
+        'stock-status',
+        'day-night-section',
+        'cured-section'
+    ];
 
-  function attach(section) {
-    section.addEventListener('click', function (e) {
-      var el = e.target.closest('button');
-      if (!el || !section.contains(el)) return;
-      var isActive = el.getAttribute('data-active') === 'true';
-      el.setAttribute('data-active', isActive ? 'false' : 'true');
-    });
-  }
-
-  function init() {
-    for (var i = 0; i < ids.length; i++) {
-      var s = document.getElementById(ids[i]);
-      if (s) attach(s);
+    function attach(section) {
+        section.addEventListener('click', function (e) {
+            var el = e.target.closest('button');
+            if (!el || !section.contains(el)) return;
+            var isActive = el.getAttribute('data-active') === 'true';
+            el.setAttribute('data-active', isActive ? 'false' : 'true');
+        });
     }
-  }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+    function init() {
+        for (var i = 0; i < ids.length; i++) {
+            var s = document.getElementById(ids[i]);
+            if (s) attach(s);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();
 
 // Reset filters: deactivate all, clear search, reset sliders
 function resetFilters() {
-  // Deactivate all buttons in these sections
-  var filterButtons = document.querySelectorAll(
-    '#product-type button, #stock-status button, #day-night-section button, #cured-section button'
-  );
-  for (var i = 0; i < filterButtons.length; i++) {
-    filterButtons[i].setAttribute('data-active', 'false');
-  }
-
-  // Clear search input
-  var search = document.querySelector('input[placeholder="Search products"]');
-  if (search) search.value = '';
-
-  // Reset sliders to initial values and refresh visuals
-  if (!isNaN(initialMinValue)) min.value = initialMinValue;
-  if (!isNaN(initialMaxValue)) max.value = initialMaxValue;
-  if (typeof update === 'function') update();
-  if (typeof hideBubble === 'function') hideBubble();
-
-  // 4) Uncheck all non-compare checkboxes (reset toggles)
-  var checkboxes = document.querySelectorAll('input[type="checkbox"]:not(.js-compare)');
-  for (var i = 0; i < checkboxes.length; i++) {
-    var cb = checkboxes[i];
-    if (cb.checked) {
-      cb.checked = false;
-      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    // Deactivate all buttons in these sections
+    var filterButtons = document.querySelectorAll(
+        '#product-type button, #stock-status button, #day-night-section button, #cured-section button'
+    );
+    for (var i = 0; i < filterButtons.length; i++) {
+        filterButtons[i].setAttribute('data-active', 'false');
     }
-  }
+
+    // Clear search input
+    var search = document.querySelector('input[placeholder="Search products"]');
+    if (search) search.value = '';
+
+    // Reset sliders to initial values and refresh visuals
+    if (!isNaN(initialMinValue)) min.value = initialMinValue;
+    if (!isNaN(initialMaxValue)) max.value = initialMaxValue;
+    if (typeof update === 'function') update();
+    if (typeof hideBubble === 'function') hideBubble();
+
+    // 4) Uncheck all non-compare checkboxes (reset toggles)
+    var checkboxes = document.querySelectorAll('input[type="checkbox"]:not(.js-compare)');
+    for (var i = 0; i < checkboxes.length; i++) {
+        var cb = checkboxes[i];
+        if (cb.checked) {
+            cb.checked = false;
+            cb.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
 }
 
 function setupResetFilters() {
-  var resetBtn = document.getElementById('reset-button');
-  if (!resetBtn) return;
-  resetBtn.addEventListener('click', function (e) {
-    e.preventDefault();
-    resetFilters();
-  });
+    var resetBtn = document.getElementById('reset-button');
+    if (!resetBtn) return;
+    resetBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        resetFilters();
+    });
 }
 
 // Expose for manual invocation if needed
 if (typeof window !== 'undefined') {
-  window.resetFilters = resetFilters;
-  window.setupResetFilters = setupResetFilters;
+    window.resetFilters = resetFilters;
+    window.setupResetFilters = setupResetFilters;
 }
 
 // Auto-initialize on DOM ready to keep behavior
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', setupResetFilters);
+    document.addEventListener('DOMContentLoaded', setupResetFilters);
 } else {
-  setupResetFilters();
+    setupResetFilters();
 }
+
+
+(function () {
+    const PLACEHOLDER_SRC = "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='20' viewBox='0 0 28 20'%3E%3Crect width='28' height='20' fill='%23e5e7eb'/%3E%3Ctext x='14' y='14' text-anchor='middle' font-size='12' fill='%239ca3af'%3E%3F%3C/text%3E%3C/svg%3E";
+
+    function isValidCode(code) {
+        // Flags API expects a 2-letter ISO country code
+        return /^[A-Z]{2}$/.test(code);
+    }
+
+    function resolveFlagSrc(countryCode) {
+        if (!countryCode || countryCode === "[Origin_Country]" || !isValidCode(countryCode)) {
+            return PLACEHOLDER_SRC;
+        }
+        return `https://flagsapi.com/${countryCode}/flat/24.png`;
+    }
+
+    function updateFlags() {
+        const origins = document.querySelectorAll(".origin-country");
+        origins.forEach((p) => {
+            const originCountry = (p.textContent || "").trim().toUpperCase();
+            const flagImg = p.nextElementSibling instanceof HTMLImageElement
+                ? p.nextElementSibling
+                : null;
+            if (!flagImg) return;
+            const nextSrc = resolveFlagSrc(originCountry);
+            if (flagImg.src !== nextSrc) {
+                flagImg.src = nextSrc;
+            }
+        });
+    }
+
+    // Initial run (in case content is already present)
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', updateFlags, { once: true });
+    } else {
+        updateFlags();
+    }
+
+    // Observe DOM changes and batch updates
+    let scheduled = false;
+    const scheduleUpdate = () => {
+        if (scheduled) return;
+        scheduled = true;
+        queueMicrotask(() => {
+            scheduled = false;
+            updateFlags();
+        });
+    };
+
+    const observer = new MutationObserver(() => {
+        scheduleUpdate();
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        characterData: true
+    });
+})();
+
+
