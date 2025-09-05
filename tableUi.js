@@ -18,7 +18,7 @@ window.vsInit = function (dynamicList) {
             bar = document.createElement('div');
             bar.id = 'tableActions';
             bar.className = 'table-actions hidden';
-            bar.innerHTML = "\n                <button id=\"tableDeleteSelected\" type=\"button\" class=\"dl-btn-delete\">Delete Selected Script</button>\n                <button id=\"tableCreateScriptTop\" type=\"button\" class=\"dl-btn-create\">Create Script</button>\n            ";
+            bar.innerHTML = "\n                <button id=\"tableDeleteSelected\" type=\"button\" class=\"dl-btn-delete\">Delete Selected Script</button>\n                <button id=\"tableCreateScriptTop\" type=\"button\" class=\"dl-btn-create\">Duplicate Script(s)</button>\n            ";
             wrap.insertBefore(bar, wrap.firstChild);
             // Hook up bulk delete
             var delBtn = document.getElementById('tableDeleteSelected');
@@ -51,12 +51,25 @@ window.vsInit = function (dynamicList) {
                     delBtn.textContent = 'Delete Selected Script';
                 }
             });
-            // Top create script button (functionality to be implemented later)
+            // Top duplicate script(s) button
             var createBtnTop = document.getElementById('tableCreateScriptTop');
             if (createBtnTop) {
-                createBtnTop.addEventListener('click', function () {
-                    // Placeholder for future implementation
-                    console.log('Create Script (top) clicked for', window.vsSelectedRowIds);
+                createBtnTop.addEventListener('click', async function () {
+                    try {
+                        var ids = Array.isArray(window.vsSelectedRowIds) ? window.vsSelectedRowIds.slice() : [];
+                        if (!ids.length) return;
+                        if (!window.vsDuplicateScripts) {
+                            console.warn('vsDuplicateScripts not defined');
+                            return;
+                        }
+                        createBtnTop.disabled = true;
+                        var orig = createBtnTop.textContent;
+                        createBtnTop.textContent = 'Duplicating…';
+                        await window.vsDuplicateScripts(ids);
+                    } finally {
+                        createBtnTop.disabled = false;
+                        createBtnTop.textContent = 'Duplicate Script(s)';
+                    }
                 });
             }
         }

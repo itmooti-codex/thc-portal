@@ -437,6 +437,96 @@
             console.error(e);
         }
     };
+    
+    // Duplicate selected scripts via createScripts mutation
+    window.vsDuplicateScripts = async function (ids) {
+        if (!Array.isArray(ids) || ids.length === 0) return;
+        var defaults = window.THCPortalDefaults || {};
+        var endpoint = defaults.apiEndpoint;
+        var apiKey = defaults.apiKey;
+        if (!endpoint || !apiKey) { alert('API endpoint or key not configured.'); return; }
+
+        function toEpochSeconds(val) {
+            if (!val) return null;
+            if (typeof val === 'number') return Math.floor(val);
+            if (typeof val === 'string') {
+                if (/^\d+$/.test(val)) return parseInt(val, 10);
+                var d = new Date(val + 'T00:00:00Z');
+                if (!isNaN(d.getTime())) return Math.floor(d.getTime() / 1000);
+            }
+            return null;
+        }
+
+        function sixMonthsFromToday(months) {
+            var d = new Date();
+            d.setMonth(d.getMonth() + (months || defaults.validUntilMonths || 6));
+            var yyyy = d.getFullYear();
+            var mm = String(d.getMonth() + 1).padStart(2, '0');
+            var dd = String(d.getDate()).padStart(2, '0');
+            return yyyy + '-' + mm + '-' + dd;
+        }
+
+        // Build payload from selected rows (copy same values where present)
+        var payload = [];
+        var missingDrug = [];
+        ids.forEach(function (gridId) {
+            var row = (window.vsRowMap && window.vsRowMap[gridId]) || {};
+            var dosage = row.dosage_instructions || row.Dosage_Instructions || defaults.dosage || '';
+            var route = row.route_of_administration || row.Route_of_administration || defaults.route || '';
+            var repeats = Number(row.repeats != null ? row.repeats : (row.Repeats != null ? row.Repeats : (defaults.repeats != null ? defaults.repeats : 0)));
+            var intervalDays = Number(row.interval_days != null ? row.interval_days : (row.Interval_Days != null ? row.Interval_Days : (defaults.intervalDays != null ? defaults.intervalDays : 0)));
+            var dispenseQty = Number(row.dispense_quantity != null ? row.dispense_quantity : (row.Dispense_Quantity != null ? row.Dispense_Quantity : (defaults.dispenseQty != null ? defaults.dispenseQty : 0)));
+            var validUntilStr = row.valid_until || row.Valid_Until || sixMonthsFromToday();
+            var validUntil = toEpochSeconds(validUntilStr);
+            var notes = row.doctor_notes_to_pharmacy || row.Doctor_Notes_To_Pharmacy || defaults.notesToPharmacy || '';
+            var rawDrug = row.drug_id || row.Drug_ID || defaults.drugId;
+            if (rawDrug == null || rawDrug === '') { missingDrug.push(gridId); return; }
+            var drugId = (typeof rawDrug === 'string' && /^\d+$/.test(rawDrug)) ? Number(rawDrug) : rawDrug;
+
+            payload.push({
+                dosage_instructions: dosage,
+                route_of_administration: route,
+                repeats: repeats,
+                interval_days: intervalDays,
+                dispense_quantity: dispenseQty,
+                valid_until: validUntil,
+                doctor_notes_to_pharmacy: notes,
+                doctor_id: defaults.doctorId,
+                patient_id: defaults.patientId,
+                drug_id: drugId,
+                script_status: 'Draft',
+                appointment_id: defaults.appointmentId
+            });
+        });
+
+        if (missingDrug.length && payload.length === 0) {
+            alert('Unable to duplicate: missing drug_id and no default provided.');
+            return;
+        }
+
+        var query = `mutation createScripts($payload: [ScriptCreateInput] = null) {\n  createScripts(payload: $payload) {\n    id\n    script_status\n  }\n}`;
+
+        try {
+            var res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Api-Key': apiKey },
+                body: JSON.stringify({ query: query, variables: { payload: payload } })
+            });
+            var json = await res.json();
+            if (json.errors) {
+                console.error('GraphQL errors', json.errors);
+                alert('Failed to duplicate scripts: ' + (json.errors[0]?.message || 'Unknown error'));
+                return;
+            }
+            var created = json.data && json.data.createScripts ? json.data.createScripts.length : 0;
+            var note = created + ' script' + (created === 1 ? '' : 's') + ' duplicated as Draft';
+            if (missingDrug.length) note += '. Skipped ' + missingDrug.length + ' due to missing drug_id';
+            alert(note);
+        } catch (e) {
+            console.error(e);
+            alert('Network or server error while duplicating scripts.');
+        }
+    };
 })();
 
 // Heart/save button logic with localStorage persistence
