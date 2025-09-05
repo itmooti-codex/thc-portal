@@ -3,6 +3,12 @@ window.vsInit = function (dynamicList) {
     const ctx = dynamicList.tableCtx;
     // Keep selection in a global so other scripts can access
     window.vsSelectedRowIds = window.vsSelectedRowIds || [];
+    window.vsRowMap = window.vsRowMap || Object.create(null);
+
+    function getStatus(row) {
+        if (!row) return undefined;
+        return row.script_status ?? row.Script_Status ?? row.status ?? row.Status;
+    }
 
     function ensureBulkActionsBar() {
         var wrap = document.querySelector('.thc-datalist-wrap');
@@ -12,7 +18,7 @@ window.vsInit = function (dynamicList) {
             bar = document.createElement('div');
             bar.id = 'tableActions';
             bar.className = 'table-actions hidden';
-            bar.innerHTML = "\n                <button id=\"tableDeleteSelected\" type=\"button\" class=\"dl-btn-delete\">Delete Selected</button>\n                <button id=\"tableCreateScriptTop\" type=\"button\" class=\"dl-btn-create\">Create Script</button>\n            ";
+            bar.innerHTML = "\n                <button id=\"tableDeleteSelected\" type=\"button\" class=\"dl-btn-delete\">Delete Selected Script</button>\n                <button id=\"tableCreateScriptTop\" type=\"button\" class=\"dl-btn-create\">Create Script</button>\n            ";
             wrap.insertBefore(bar, wrap.firstChild);
             // Hook up bulk delete
             var delBtn = document.getElementById('tableDeleteSelected');
@@ -20,16 +26,29 @@ window.vsInit = function (dynamicList) {
                 try {
                     var ids = Array.isArray(window.vsSelectedRowIds) ? window.vsSelectedRowIds.slice() : [];
                     if (!ids.length) return;
+                    // Validate all selected are Draft
+                    var nonDraft = ids.filter(function (id) {
+                        var row = window.vsRowMap && window.vsRowMap[id];
+                        var st = getStatus(row);
+                        return String(st) !== 'Draft';
+                    });
+                    if (nonDraft.length > 0) {
+                        alert('You have selected script(s) that cannot be deleted. Please deselect those script(s) and try again.');
+                        return;
+                    }
                     if (!window.vsCancelScripts) {
                         console.warn('vsCancelScripts not defined');
                         return;
                     }
+                    // Confirm bulk delete
+                    var ok = confirm('Are you sure you want to delete the selected script(s)?');
+                    if (!ok) return;
                     delBtn.disabled = true;
                     delBtn.textContent = 'Cancelling…';
                     await window.vsCancelScripts(ids);
                 } finally {
                     delBtn.disabled = false;
-                    delBtn.textContent = 'Delete Selected';
+                    delBtn.textContent = 'Delete Selected Script';
                 }
             });
             // Top create script button (functionality to be implemented later)
@@ -81,7 +100,9 @@ window.vsInit = function (dynamicList) {
                                 }
                             } catch (_) { }
                         };
-                        const status = params?.row?.script_status;
+                        // Keep a reference to the full row for selection validation later
+                        try { window.vsRowMap[params.id] = params.row; } catch (_) {}
+                        const status = getStatus(params?.row);
                         const isDraft = String(status) === 'Draft';
                         if (!isDraft) return null;
                         return R.createElement('button', { type: 'button', className: 'dl-btn-delete', onClick }, 'Delete');

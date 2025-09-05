@@ -407,10 +407,12 @@
     // Called by tableUi row action
     window.vsDeleteRow = async function (detail) {
         try {
-            var status = detail?.row?.script_status;
+            var status = (detail && detail.row) ? (detail.row.script_status ?? detail.row.Script_Status ?? detail.row.status ?? detail.row.Status) : undefined;
             if (String(status) !== 'Draft') {
                 return; // do nothing if not Draft
             }
+            var ok = confirm('Are you sure you want to delete this script?');
+            if (!ok) return;
             await window.vsCancelScripts([detail.id]);
         } catch (e) {
             console.error(e);
