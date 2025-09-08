@@ -573,7 +573,9 @@
         return {
             endpoint: d.apiEndpoint,
             apiKey: d.apiKey,
-            doctorId: d.doctorId
+            doctorId: d.doctorId,
+            // Use only for creating favorites per requirement
+            loggednInUserId: d.loggednInUserId
         };
     }
 
@@ -633,7 +635,8 @@
         var query = "mutation createOPatientInterestedPatientInterestedItem($payload: OPatientInterestedPatientInterestedItemCreateInput = null) {\n  createOPatientInterestedPatientInterestedItem(payload: $payload) {\n    patient_interested_id\n    patient_interested_item_id\n  }\n}";
         var variables = {
             payload: {
-                patient_interested_id: toIdMaybeNum(cfg.doctorId),
+                // For creation only, prefer loggednInUserId if present; otherwise doctorId
+                patient_interested_id: toIdMaybeNum((cfg.loggednInUserId != null && cfg.loggednInUserId !== '') ? cfg.loggednInUserId : cfg.doctorId),
                 patient_interested_item_id: toIdMaybeNum(itemId)
             }
         };
