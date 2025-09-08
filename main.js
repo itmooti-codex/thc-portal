@@ -590,7 +590,6 @@
         if (!cfg.endpoint || !cfg.apiKey || !cfg.doctorId) {
             favState.loaded = true;
             applyHearts();
-            updateFavoritesUI();
             return;
         }
         var query = "query calcOPatientInterestedPatientInterestedItems {\n  calcOPatientInterestedPatientInterestedItems {\n    ID: field(arg: [\"id\"])\n    Patient_Interested_ID: field(arg: [\"patient_interested_id\"])\n    Patient_Interested_Item_ID: field(arg: [\"patient_interested_item_id\"])\n  }\n}";
@@ -622,12 +621,10 @@
             favState.map = map;
             favState.loaded = true;
             applyHearts();
-            updateFavoritesUI();
         } catch (e) {
             console.error('Favorites fetch failed', e);
             favState.loaded = true;
             applyHearts();
-            updateFavoritesUI();
         }
     }
 
@@ -709,7 +706,6 @@
             btn.disabled = false;
             try { btn.removeAttribute('aria-busy'); } catch (_) { }
             applyHearts();
-            updateFavoritesUI();
         }
     }
 
@@ -729,88 +725,12 @@
         mo.observe(host, { childList: true, subtree: true });
     });
 
-    // Favorites panel UI
-    function updateFavoritesUI() {
-        try {
-            var countEl = document.getElementById('favoritesCount');
-            if (countEl) countEl.textContent = String(favState.map.size || 0);
-            var listEl = document.getElementById('favoritesList');
-            if (!listEl) return;
-            listEl.innerHTML = '';
-            if (favState.map.size === 0) {
-                var empty = document.createElement('div');
-                empty.className = 'px-5 py-6 text-sm text-slate-500';
-                empty.textContent = 'No favorites yet.';
-                listEl.appendChild(empty);
-                return;
-            }
-            favState.map.forEach(function (favIds, itemId) {
-                var row = document.createElement('div');
-                row.className = 'px-5 py-3 flex items-center justify-between';
-                // Find item name from current DOM if available
-                var btn = document.querySelector('.js-heart[data-item-id="' + String(itemId) + '"]');
-                var name = (btn && btn.getAttribute('data-item-name')) || ('Item #' + itemId);
-                var left = document.createElement('div');
-                left.className = 'flex items-center gap-2';
-                left.innerHTML = '<span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-red-50 ring-1 ring-red-200">❤️</span>' +
-                    '<span class="text-sm font-medium text-slate-800">' + name + '</span>';
-                var del = document.createElement('button');
-                del.type = 'button';
-                del.className = 'fav-remove-btn inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50';
-                del.textContent = 'Remove';
-                del.setAttribute('data-fav-item-id', String(itemId));
-                row.appendChild(left);
-                row.appendChild(del);
-                listEl.appendChild(row);
-            });
-        } catch (e) {
-            console.warn('Failed to update favorites UI', e);
-        }
-    }
-
-    function openFavoritesModal() {
-        var modal = document.getElementById('favoritesModal');
-        if (!modal) return;
-        updateFavoritesUI();
-        modal.classList.remove('hidden');
-    }
-
-    function closeFavoritesModal() {
-        var modal = document.getElementById('favoritesModal');
-        if (!modal) return;
-        modal.classList.add('hidden');
-    }
-
+    // Favorites section buttons: toggle active styling (no popup)
     document.addEventListener('click', function (e) {
-        var openBtn = e.target && e.target.closest && e.target.closest('#favoritesBtn');
-        if (openBtn) { e.preventDefault(); openFavoritesModal(); return; }
-        var closeBtn = e.target && e.target.closest && (e.target.closest('#favoritesModalClose') || e.target.closest('#favoritesModalCloseBottom'));
-        if (closeBtn) { e.preventDefault(); closeFavoritesModal(); return; }
-        var backdrop = e.target && e.target.id === 'favoritesModalBackdrop';
-        if (backdrop) { e.preventDefault(); closeFavoritesModal(); return; }
-        var delBtn = e.target && e.target.closest && e.target.closest('button[data-fav-item-id]');
-        if (delBtn) {
-            e.preventDefault();
-            var itemId = delBtn.getAttribute('data-fav-item-id');
-            var existing = favState.map.get(String(itemId)) || [];
-            if (existing.length === 0) return;
-            delBtn.disabled = true;
-            try { delBtn.setAttribute('aria-busy', 'true'); } catch (_) { }
-            var orig = delBtn.textContent;
-            delBtn.textContent = 'Removing…';
-            (async function () {
-                try {
-                    await Promise.all(existing.map(deleteFavoriteById));
-                    await fetchFavorites();
-                } catch (err) {
-                    console.error(err);
-                    alert('Failed to remove favorite.');
-                } finally {
-                    delBtn.disabled = false;
-                    try { delBtn.removeAttribute('aria-busy'); } catch (_) { }
-                    delBtn.textContent = orig;
-                }
-            })();
-        }
+        var favBtn = e.target && e.target.closest && e.target.closest('#favorites-section button');
+        if (!favBtn) return;
+        e.preventDefault();
+        var isActive = favBtn.getAttribute('data-active') === 'true';
+        favBtn.setAttribute('data-active', isActive ? 'false' : 'true');
     });
 })();

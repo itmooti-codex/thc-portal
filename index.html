@@ -96,17 +96,7 @@
                         </p>
                     </header>
 
-                    <!-- Favorites button -->
-                    <div class="my-4">
-                        <button id="favoritesBtn" type="button"
-                            class="favorites-btn relative inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-600" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12.001 4.529c2.349-2.532 6.351-2.532 8.7 0 2.3 2.48 2.3 6.5 0 8.98l-7.1 7.65a1 1 0 0 1-1.4 0l-7.2-7.65c-2.3-2.48-2.3-6.5 0-8.98 2.349-2.532 6.351-2.532 8.7 0z" />
-                            </svg>
-                            Favorites
-                            <span id="favoritesCount" class="badge">0</span>
-                        </button>
-                    </div>
+                    <!-- Favorites section below search -->
 
                     <div class="flex items-center space-x-2 my-6">
                         <!-- Input with black bottom border -->
@@ -118,6 +108,22 @@
                             class="px-4 py-2 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition text-nowrap">
                             Search
                         </button>
+                    </div>
+
+                    <div id="favorites-section" class="mt-4">
+                        <h3 class="text-lg font-semibold tracking-tight">Favorites</h3>
+                        <div class="mt-3 flex flex-wrap gap-3">
+                            <button id="favoritesMyBtn" data-active="false" type="button"
+                                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                                <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-red-50 ring-1 ring-red-200">❤️</span>
+                                <span>My Favorites</span>
+                            </button>
+                            <button id="favoritesPatientBtn" data-active="false" type="button"
+                                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                                <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-50 ring-1 ring-blue-200">👤</span>
+                                <span>Patient Favorites</span>
+                            </button>
+                        </div>
                     </div>
 
 
@@ -1015,7 +1021,7 @@
             <!-- Grid -->
             <div class="grid-root !grid grid-cols-[repeat(auto-fit,minmax(350px,1fr))] gap-4 p-4"
                 data-dynamic-list="7M75T2nXdllEV2Iq3m2Zw" data-entity="thc" data-entity-key="awWH16PsRms2px8-93-Uw"
-                data-limit="10">
+                data-limit="10" data-op = "subscribe">
                 <!-- Card -->
                 <div
                     class="group relative rounded-2xl border border-[rgb(210,202,227)] bg-white shadow-sm hover:shadow-md transition-all">
@@ -1100,33 +1106,7 @@
         </div> 
     </div>
 
-    <!-- Favorites modal -->
-    <div id="favoritesModal" class="fixed inset-0 z-50 hidden">
-        <div id="favoritesModalBackdrop" class="absolute inset-0 bg-black/40"></div>
-        <div class="relative min-h-screen flex items-center justify-center p-4">
-        <div class="w-[90%] max-w-xl rounded-2xl bg-white shadow-xl border border-slate-200">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200">
-                <h3 class="text-lg font-semibold text-slate-900">Favorites</h3>
-                <button id="favoritesModalClose" type="button"
-                    class="inline-flex items-center justify-center h-8 w-8 rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50"
-                    aria-label="Close">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 8.586l4.243-4.243 1.414 1.414L11.414 10l4.243 4.243-1.414 1.414L10 11.414l-4.243 4.243-1.414-1.414L8.586 10 4.343 5.757l1.414-1.414L10 8.586z" clip-rule="evenodd"/>
-                    </svg>
-                </button>
-            </div>
-            <div id="favoritesList" class="max-h-[60vh] overflow-y-auto divide-y divide-slate-100">
-                <!-- rows injected by JS -->
-            </div>
-            <div class="px-5 py-3 border-t border-slate-200 text-right">
-                <button id="favoritesModalCloseBottom" type="button"
-                    class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                    Close
-                </button>
-            </div>
-        </div>
-        </div>
-    </div>
+    
 
     <script src="main.js"></script>
     <script src="dropdown.js"></script>
