@@ -90,9 +90,33 @@
      fill: currentColor;
  }
 
- .heart-btn.active {
-     color: #ef4444;
- }
+.heart-btn.active {
+    color: #ef4444;
+}
+
+/* Disable/processing visuals for favorite actions */
+.heart-btn[disabled],
+.fav-remove-btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Favorites button counter positioning */
+.favorites-btn { position: relative; }
+.favorites-btn .badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    height: 20px;
+    min-width: 20px;
+    padding: 0 6px;
+    border-radius: 9999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 12px;
+    line-height: 20px;
+    text-align: center;
+}
 
  .range-input {
      -webkit-appearance: none !important;
