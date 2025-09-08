@@ -558,39 +558,165 @@
     };
 })();
 
-// Heart/save button logic with localStorage persistence
+// Heart/save button logic with GraphQL favorites (prevents duplicates)
 (function () {
-    var KEY = 'hearted_items_v1';
-    function loadSet() {
-        try { var arr = JSON.parse(localStorage.getItem(KEY) || '[]'); return new Set(arr); } catch { return new Set(); }
+    // Internal state: favorites keyed by item id -> array of favorite record ids
+    var favState = {
+        loaded: false,
+        map: new Map()
+    };
+    // Simple lock per item to prevent rapid double-clicks
+    var locks = new Set();
+
+    function getCfg() {
+        var d = window.THCPortalDefaults || {};
+        return {
+            endpoint: d.apiEndpoint,
+            apiKey: d.apiKey,
+            doctorId: d.doctorId
+        };
     }
-    function saveSet(set) {
-        localStorage.setItem(KEY, JSON.stringify(Array.from(set)));
+
+    function toIdMaybeNum(v) {
+        if (v == null) return v;
+        if (typeof v === 'number') return v;
+        if (typeof v === 'string' && /^\d+$/.test(v)) return Number(v);
+        return v;
     }
-    var loved = loadSet();
+
+    async function fetchFavorites() {
+        var cfg = getCfg();
+        // If config missing, mark loaded and leave map empty (no server sync)
+        if (!cfg.endpoint || !cfg.apiKey || !cfg.doctorId) {
+            favState.loaded = true;
+            applyHearts();
+            return;
+        }
+        var query = "query calcOPatientInterestedPatientInterestedItems {\n  calcOPatientInterestedPatientInterestedItems {\n    ID: field(arg: [\"id\"])\n    Patient_Interested_ID: field(arg: [\"patient_interested_id\"])\n    Patient_Interested_Item_ID: field(arg: [\"patient_interested_item_id\"])\n  }\n}";
+        try {
+            var res = await fetch(cfg.endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Api-Key': cfg.apiKey },
+                body: JSON.stringify({ query: query })
+            });
+            var json = await res.json();
+            if (json.errors) {
+                console.error('GraphQL favorites query error', json.errors);
+                favState.loaded = true;
+                applyHearts();
+                return;
+            }
+            var rows = (json && json.data && json.data.calcOPatientInterestedPatientInterestedItems) || [];
+            var docIdStr = String(cfg.doctorId);
+            var map = new Map();
+            for (var i = 0; i < rows.length; i++) {
+                var r = rows[i] || {};
+                // Only keep records for this logged-in doctor
+                if (String(r.Patient_Interested_ID) !== docIdStr) continue;
+                var itemId = String(r.Patient_Interested_Item_ID);
+                var favId = r.ID;
+                if (!map.has(itemId)) map.set(itemId, []);
+                map.get(itemId).push(favId);
+            }
+            favState.map = map;
+            favState.loaded = true;
+            applyHearts();
+        } catch (e) {
+            console.error('Favorites fetch failed', e);
+            favState.loaded = true;
+            applyHearts();
+        }
+    }
+
+    async function createFavorite(itemId) {
+        var cfg = getCfg();
+        var query = "mutation createOPatientInterestedPatientInterestedItem($payload: OPatientInterestedPatientInterestedItemCreateInput = null) {\n  createOPatientInterestedPatientInterestedItem(payload: $payload) {\n    patient_interested_id\n    patient_interested_item_id\n  }\n}";
+        var variables = {
+            payload: {
+                patient_interested_id: toIdMaybeNum(cfg.doctorId),
+                patient_interested_item_id: toIdMaybeNum(itemId)
+            }
+        };
+        var res = await fetch(cfg.endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Api-Key': cfg.apiKey },
+            body: JSON.stringify({ query: query, variables: variables })
+        });
+        var json = await res.json();
+        if (json.errors) throw new Error(json.errors[0]?.message || 'GraphQL error');
+        // We don't get the new ID back; refresh to pick it up
+    }
+
+    async function deleteFavoriteById(favId) {
+        var cfg = getCfg();
+        var query = "mutation deleteOPatientInterestedPatientInterestedItem($id: ThcOPatientInterestedPatientInterestedItemID) {\n  deleteOPatientInterestedPatientInterestedItem(query: [{ where: { id: $id } }]) {\n    id\n  }\n}";
+        var variables = { id: toIdMaybeNum(String(favId)) };
+        var res = await fetch(cfg.endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Api-Key': cfg.apiKey },
+            body: JSON.stringify({ query: query, variables: variables })
+        });
+        var json = await res.json();
+        if (json.errors) throw new Error(json.errors[0]?.message || 'GraphQL error');
+    }
 
     function applyHearts() {
         var nodes = document.querySelectorAll('.js-heart');
         for (var i = 0; i < nodes.length; i++) {
             var b = nodes[i];
             var id = b.getAttribute('data-item-id');
-            var on = loved.has(id);
-            b.classList.toggle('active', on);
-            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+            var has = favState.map.has(String(id));
+            b.classList.toggle('active', !!has);
+            b.setAttribute('aria-pressed', has ? 'true' : 'false');
+        }
+    }
+
+    async function toggleFavorite(btn) {
+        var cfg = getCfg();
+        var itemId = btn.getAttribute('data-item-id');
+        if (!itemId) return;
+        // Guard against misconfiguration: fall back to local toggle if no API
+        if (!cfg.endpoint || !cfg.apiKey || !cfg.doctorId) {
+            // Local fallback (no persistence server-side)
+            var on = !btn.classList.contains('active');
+            btn.classList.toggle('active', on);
+            btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+            return;
+        }
+        var key = String(itemId);
+        if (locks.has(key)) return;
+        locks.add(key);
+        btn.disabled = true;
+        try {
+            var existing = favState.map.get(key) || [];
+            if (existing.length > 0) {
+                // Delete all duplicates for this item for true toggle-off
+                await Promise.all(existing.map(deleteFavoriteById));
+            } else {
+                await createFavorite(key);
+            }
+            // Refresh state from server to stay canonical and get IDs
+            await fetchFavorites();
+        } catch (e) {
+            console.error('Favorite toggle failed', e);
+            alert('Failed to update favorite: ' + (e && e.message ? e.message : 'Unknown error'));
+        } finally {
+            locks.delete(key);
+            btn.disabled = false;
+            applyHearts();
         }
     }
 
     document.addEventListener('click', function (e) {
-        var btn = e.target.closest('.js-heart');
+        var btn = e.target && e.target.closest && e.target.closest('.js-heart');
         if (!btn) return;
-        var id = btn.getAttribute('data-item-id');
-        if (loved.has(id)) loved.delete(id); else loved.add(id);
-        saveSet(loved);
-        applyHearts();
+        e.preventDefault();
+        toggleFavorite(btn);
     });
 
     document.addEventListener('DOMContentLoaded', function () {
-        applyHearts();
+        // Initial fetch of favorites and bind to dynamic list changes
+        fetchFavorites();
         var host = document.querySelector('[data-dynamic-list]');
         if (!host) return;
         var mo = new MutationObserver(function () { applyHearts(); });
