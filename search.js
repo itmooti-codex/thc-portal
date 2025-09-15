@@ -193,6 +193,15 @@
       SEARCH_BTN.addEventListener('click', () => doSearch(SEARCH_INPUT ? SEARCH_INPUT.value : ''));
     }
 
+    // Reset button: when clicked, also reset search results to default
+    const RESET_BTN = document.getElementById('reset-button');
+    if (RESET_BTN) {
+      RESET_BTN.addEventListener('click', () => {
+        // Ensure our search state and grid return to initial state
+        doSearch('');
+      });
+    }
+
     // Hook into results-per-page dropdown
     const psRoot = document.querySelector('[data-dd="pagesize"]');
     if (psRoot) {

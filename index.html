@@ -402,17 +402,18 @@
 
 
 
-                        <!-- Reset button -->
-                        <button id="reset-button" data-active="false" type="button"
-                            class="mt-6 inline-flex items-center gap-2 border-2 rounded-lg px-3 py-2 shadow-sm hover:shadow transition">
-                            <svg class="w-5 h-5" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
-                                <path
-                                    d="M7.11 8.53L5.7 7.11C4.8 8.27 4.24 9.61 4.07 11h2.02c.14-.87.49-1.72 1.02-2.47zM6.09 13H4.07c.17 1.39.72 2.73 1.62 3.89l1.41-1.42c-.52-.75-.87-1.59-1.01-2.47zm1.01 5.32c1.16.9 2.51 1.44 3.9 1.61V17.9c-.87-.15-1.71-.49-2.46-1.03L7.1 18.32zM13 4.07V1L8.45 5.55 13 10V6.09c2.84.48 5 2.94 5 5.91s-2.16 5.43-5 5.91v2.02c3.95-.49 7-3.85 7-7.93s-3.05-7.44-7-7.93z">
-                                </path>
-                            </svg>
-                            Reset
-                        </button>
+
                     </section>
+                    <!-- Reset button -->
+                    <button id="reset-button" data-active="false" type="button"
+                        class="mt-6 inline-flex items-center gap-2 border-2 rounded-lg px-3 py-2 shadow-sm hover:shadow transition">
+                        <svg class="w-5 h-5" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
+                            <path
+                                d="M7.11 8.53L5.7 7.11C4.8 8.27 4.24 9.61 4.07 11h2.02c.14-.87.49-1.72 1.02-2.47zM6.09 13H4.07c.17 1.39.72 2.73 1.62 3.89l1.41-1.42c-.52-.75-.87-1.59-1.01-2.47zm1.01 5.32c1.16.9 2.51 1.44 3.9 1.61V17.9c-.87-.15-1.71-.49-2.46-1.03L7.1 18.32zM13 4.07V1L8.45 5.55 13 10V6.09c2.84.48 5 2.94 5 5.91s-2.16 5.43-5 5.91v2.02c3.95-.49 7-3.85 7-7.93s-3.05-7.44-7-7.93z">
+                            </path>
+                        </svg>
+                        Reset
+                    </button>
                 </div>
             </div>
         </div>
@@ -548,8 +549,8 @@
 
                 <!-- Right side: results text -->
                 <div class="flex flex-wrap gap-1 text-sm text-indigo-900">
-                    Showing <span class="font-semibold" id="pageShowing">0</span> of <span
-                        class="font-semibold" id="totalResults">0</span>
+                    Showing <span class="font-semibold" id="pageShowing">0</span> of <span class="font-semibold"
+                        id="totalResults">0</span>
                     results
                 </div>
             </div>
@@ -584,25 +585,16 @@
                         </div>
                     </div>
                     <!-- Hidden data for search indexing -->
-                    <div class="search-index hidden"
-                         data-active_ingredient_1="[Active_Ingredient_1]"
-                         data-active_ingredient_2="[Active_Ingredient_2]"
-                         data-active_ingredient_3="[Active_Ingredient_3]"
-                         data-brand="[Brand]"
-                         data-client_preference_effect="[Client_Preference_Effect]"
-                         data-client_preference_lineage="[Client_Preference_Lineage]"
-                         data-client_preference_thc_cbd="[Client_Preference_THC_CBD]"
-                         data-cultivar="[Cultivar]"
-                         data-description="[Description]"
-                         data-dominance="[Dominance]"
-                         data-dosage_form="[Dosage_Form]"
-                         data-dosage_instructions="[Dosage_Instructions]"
-                         data-item_name="[Item_Name]"
-                         data-plant_species="[Plant_Species]"
-                         data-route="[Route]"
-                         data-status="[Status]"
-                         data-sub_type="[Sub_Type]"
-                         data-typical_use="[Typical_Use]">
+                    <div class="search-index hidden" data-active_ingredient_1="[Active_Ingredient_1]"
+                        data-active_ingredient_2="[Active_Ingredient_2]"
+                        data-active_ingredient_3="[Active_Ingredient_3]" data-brand="[Brand]"
+                        data-client_preference_effect="[Client_Preference_Effect]"
+                        data-client_preference_lineage="[Client_Preference_Lineage]"
+                        data-client_preference_thc_cbd="[Client_Preference_THC_CBD]" data-cultivar="[Cultivar]"
+                        data-description="[Description]" data-dominance="[Dominance]" data-dosage_form="[Dosage_Form]"
+                        data-dosage_instructions="[Dosage_Instructions]" data-item_name="[Item_Name]"
+                        data-plant_species="[Plant_Species]" data-route="[Route]" data-status="[Status]"
+                        data-sub_type="[Sub_Type]" data-typical_use="[Typical_Use]">
                     </div>
                     <!-- Meta row: type/price/status/count -->
                     <div class="px-5 pb-4">
