@@ -146,16 +146,19 @@
     // Page numbers (compact: show up to 7 buttons with ellipses)
     const maxButtons = 7;
     const pages = [];
+    const addPage = (p) => {
+      if (pages.length === 0 || pages[pages.length - 1] !== p) pages.push(p);
+    };
     if (totalPages <= maxButtons) {
-      for (let p = 1; p <= totalPages; p++) pages.push(p);
+      for (let p = 1; p <= totalPages; p++) addPage(p);
     } else {
       const left = Math.max(1, state.page - 2);
       const right = Math.min(totalPages, state.page + 2);
-      pages.push(1);
+      addPage(1);
       if (left > 2) pages.push('…');
-      for (let p = left; p <= right; p++) pages.push(p);
+      for (let p = Math.max(2, left); p <= Math.min(totalPages - 1, right); p++) addPage(p);
       if (right < totalPages - 1) pages.push('…');
-      pages.push(totalPages);
+      addPage(totalPages);
     }
     pages.forEach(p => {
       if (p === '…') {
@@ -185,13 +188,7 @@
   }
 
   function initEvents() {
-    if (SEARCH_INPUT) {
-      const onInput = debounce(() => doSearch(SEARCH_INPUT.value), 200);
-      SEARCH_INPUT.addEventListener('input', onInput);
-      SEARCH_INPUT.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') doSearch(SEARCH_INPUT.value);
-      });
-    }
+    // Only search when the Search button is clicked
     if (SEARCH_BTN) {
       SEARCH_BTN.addEventListener('click', () => doSearch(SEARCH_INPUT ? SEARCH_INPUT.value : ''));
     }
@@ -221,4 +218,3 @@
     initOnceDataReady();
   }
 })();
-
