@@ -71,9 +71,10 @@
             data-op="subscribe" data-init-cb-name="vsInit">
         </div>
     </div>
+
     <div class="flex flex-col lg:flex-row items-start gap-6">
         <div class="bg-white text-slate-900 antialiased w-full lg:w-80 xl:w-96 lg:flex-none">
-            <div class="flex flex-col flex-auto p-6">
+            <div class="flex flex-col flex-auto p-4">
                 <!-- search-section -->
                 <div class="font-Balto text-bg-indigo-950">
                     <!-- breadcrumb -->
@@ -97,8 +98,6 @@
                         </p>
                     </header>
 
-                    <!-- Favorites section below search -->
-
                     <div class="flex items-center space-x-2 my-6">
                         <!-- Input with black bottom border -->
                         <input type="text" placeholder="Search products"
@@ -111,29 +110,38 @@
                         </button>
                     </div>
 
-                    <div id="favorites-section" class="mt-4">
-                        <h3 class="text-lg font-semibold tracking-tight">Favorites</h3>
-                        <div class="mt-3 flex flex-wrap gap-3">
-                            <button id="favoritesMyBtn" data-active="false" type="button"
-                                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                                <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-red-50 ring-1 ring-red-200">❤️</span>
-                                <span>My Favorites</span>
-                            </button>
-                            <button id="favoritesPatientBtn" data-active="false" type="button"
-                                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                                <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-50 ring-1 ring-blue-200">👤</span>
-                                <span>Patient Favorites</span>
-                            </button>
-                        </div>
-                    </div>
-
-
 
                     <!-- Product details -->
                     <section class="mt-8">
                         <!-- Product type -->
-                        <h3 class="mt-6 text-2xl font-semibold tracking-tight font-bold">Product type</h3>
                         <div id="product-type" class="mt-3 flex flex-wrap gap-3">
+
+                            <button data-active="false" type="button"
+                                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                                <span
+                                    class="inline-block text-2xl leading-none bg-[rgb(255,231,159)] rounded-2xl px-1 py-1">
+                                    ❤️
+                                </span>
+
+                                <span class="font-medium">My Favourites</span>
+                                <span
+                                    class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">99+</span>
+                            </button>
+
+                            <button data-active="false" type="button"
+                                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                                <span
+                                    class="inline-block text-2xl leading-none bg-[rgb(255,231,159)] rounded-2xl px-1 py-1">
+                                    👤
+                                </span>
+
+                                <span class="font-medium">Patient Favourites</span>
+                                <span
+                                    class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">99+</span>
+                            </button>
+
+
+
                             <button data-active="false" type="button"
                                 class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
                                 <span
@@ -261,6 +269,130 @@
                                         class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">72</span>
                                 </button>
 
+                                <button data-active="false" type="button"
+                                    class="relative flex items-center gap-2 rounded-2xl border  bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none">
+                                    <span
+                                        class="inline-flex h-6 w-6 items-center justify-center rounded-2xl bg-green-100">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true" class="h-5 w-5"
+                                            fill="rgb(147,170,82)">
+                                            <path
+                                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z">
+                                            </path>
+                                        </svg>
+                                    </span>
+                                    <span class="font-medium">In stock</span>
+                                    <span
+                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">99+</span>
+                                </button>
+
+                                <!-- Limited stock -->
+                                <button data-active="false" type="button"
+                                    class="relative flex items-center gap-2 rounded-2xl border  bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none">
+                                    <span
+                                        class="inline-flex h-6 w-6 items-center justify-center rounded-2xl bg-amber-100">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true" class="h-5 w-5"
+                                            fill="rgb(245,191,106)">
+                                            <path
+                                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
+                                            </path>
+                                        </svg>
+                                    </span>
+                                    <span class="font-medium">Limited stock</span>
+                                    <span
+                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold shadow-sm">17</span>
+                                </button>
+
+                                <!-- Out of stock -->
+                                <button data-active="false" type="button"
+                                    class="relative flex items-center gap-2 rounded-2xl border  bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none ">
+                                    <span
+                                        class="inline-flex h-6 w-6 items-center justify-center rounded-2xl bg-rose-100">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true" class="h-5 w-5"
+                                            fill="rgb(242,109,106)">
+                                            <path
+                                                d="M14.59 8L12 10.59 9.41 8 8 9.41 10.59 12 8 14.59 9.41 16 12 13.41 14.59 16 16 14.59 13.41 12 16 9.41 14.59 8zM12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z">
+                                            </path>
+                                        </svg>
+                                    </span>
+                                    <span class="font-medium">Out of stock</span>
+                                    <span
+                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold shadow-sm">87</span>
+                                </button>
+
+                                <!-- Unknown -->
+                                <button data-active="false" type="button"
+                                    class="relative flex items-center gap-2 rounded-2xl border  bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none">
+                                    <span
+                                        class="inline-flex h-6 w-6 items-center justify-center rounded-2xl bg-gray-200">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true" class="h-5 w-5" fill="black">
+                                            <path
+                                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z">
+                                            </path>
+                                        </svg>
+                                    </span>
+                                    <span class="font-medium">Unknown</span>
+                                    <span
+                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold shadow-sm">55</span>
+                                </button>
+
+                                <button data-active="false" type="button"
+                                    class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
+                                    <span class="font-medium">Both/Either</span>
+                                    <span
+                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold shadow-sm">99+</span>
+                                </button>
+                                <button data-active="false" type="button"
+                                    class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
+                                    <span class="font-medium">Night</span>
+                                    <span
+                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold shadow-sm">99+</span>
+                                </button>
+                                <button data-active="false" type="button"
+                                    class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
+                                    <span class="font-medium">Unknown</span>
+                                    <span
+                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold shadow-sm">99+</span>
+                                </button>
+                                <button data-active="false" type="button"
+                                    class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
+                                    <span class="font-medium">Day</span>
+                                    <span
+                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold shadow-sm">99+</span>
+                                </button>
+
+                                <button data-active="false" type="button"
+                                    class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
+                                    <span class="font-medium">Not cured</span>
+                                    <span
+                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold shadow-sm">99+</span>
+                                </button>
+                                <button data-active="false" type="button"
+                                    class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
+                                    <span class="font-medium">Cured</span>
+                                    <span
+                                        class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold shadow-sm">99+</span>
+                                </button>
+
+                                <div class="w-full">
+                                    <div class="relative pb-6">
+                                        <output id="activeBubble"
+                                            class="bubble hidden absolute -top-[1px] -translate-x-1/2 rounded-full bg-indigo-700 px-4 py-3 text-xs font-semibold text-white shadow"></output>
+                                        <div
+                                            class="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-indigo-200">
+                                        </div>
+                                        <div id="progress"
+                                            class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-indigo-500">
+                                        </div>
+                                        <input id="min" type="range" min="0" max="650" step="10" value="172"
+                                            class="range-input z-30" />
+                                        <input id="max" type="range" min="0" max="650" step="10" value="332"
+                                            class="range-input z-30" />
+                                        <div class="mt-6 flex justify-between text-sm text-gray-500">
+                                            <span>$0</span>
+                                            <span>$650</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -268,606 +400,7 @@
                             class="self-center mt-2 inline-flex px-1 text-indigo-700 font-medium hover:underline bg-white text-black">view
                             more</button>
 
-                        <!-- Price -->
 
-                        <div class="max-w-lg">
-                            <h3 class="mt-6 text-2xl font-semibold tracking-tight font-bold">Price</h3>
-
-                            <div class="relative pt-12 pb-6">
-                                <!-- bubble for active thumb -->
-                                <output id="activeBubble"
-                                    class="bubble hidden absolute -top-[1px] -translate-x-1/2 rounded-full bg-indigo-700 px-4 py-3 text-xs font-semibold text-white shadow">
-                                </output>
-
-                                <!-- base track -->
-                                <div
-                                    class="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-indigo-200">
-                                </div>
-                                <div id="progress"
-                                    class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-indigo-500"></div>
-
-                                <!-- two ranges -->
-                                <input id="min" type="range" min="0" max="650" step="10" value="172"
-                                    class="range-input z-30" />
-                                <input id="max" type="range" min="0" max="650" step="10" value="332"
-                                    class="range-input z-30" />
-
-                                <!-- labels -->
-                                <div class="mt-6 flex justify-between text-sm text-gray-500">
-                                    <span>$0</span>
-                                    <span>$650</span>
-                                </div>
-                            </div>
-                        </div>
-
-
-                        <!-- Stock status -->
-                        <div id="stock-status" class="mt-6 flex flex-row flex-wrap gap-2">
-                            <!-- In stock -->
-                            <button data-active="false" type="button"
-                                class="relative flex items-center gap-2 rounded-2xl border  bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none">
-                                <span class="inline-flex h-6 w-6 items-center justify-center rounded-2xl bg-green-100">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true" class="h-5 w-5" fill="rgb(147,170,82)">
-                                        <path
-                                            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z">
-                                        </path>
-                                    </svg>
-                                </span>
-                                <span class="font-medium">In stock</span>
-                                <span
-                                    class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-black shadow-sm">99+</span>
-                            </button>
-
-                            <!-- Limited stock -->
-                            <button data-active="false" type="button"
-                                class="relative flex items-center gap-2 rounded-2xl border  bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none">
-                                <span class="inline-flex h-6 w-6 items-center justify-center rounded-2xl bg-amber-100">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true" class="h-5 w-5" fill="rgb(245,191,106)">
-                                        <path
-                                            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
-                                        </path>
-                                    </svg>
-                                </span>
-                                <span class="font-medium">Limited stock</span>
-                                <span
-                                    class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold shadow-sm text-black">17</span>
-                            </button>
-
-                            <!-- Out of stock -->
-                            <button data-active="false" type="button"
-                                class="relative flex items-center gap-2 rounded-2xl border  bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none ">
-                                <span class="inline-flex h-6 w-6 items-center justify-center rounded-2xl bg-rose-100">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true" class="h-5 w-5" fill="rgb(242,109,106)">
-                                        <path
-                                            d="M14.59 8L12 10.59 9.41 8 8 9.41 10.59 12 8 14.59 9.41 16 12 13.41 14.59 16 16 14.59 13.41 12 16 9.41 14.59 8zM12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z">
-                                        </path>
-                                    </svg>
-                                </span>
-                                <span class="font-medium">Out of stock</span>
-                                <span
-                                    class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold shadow-sm text-black">87</span>
-                            </button>
-
-                            <!-- Unknown -->
-                            <button data-active="false" type="button"
-                                class="relative flex items-center gap-2 rounded-2xl border  bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none">
-                                <span class="inline-flex h-6 w-6 items-center justify-center rounded-2xl bg-gray-200">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true" class="h-5 w-5" fill="black">
-                                        <path
-                                            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z">
-                                        </path>
-                                    </svg>
-                                </span>
-                                <span class="font-medium">Unknown</span>
-                                <span
-                                    class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold shadow-sm text-black">55</span>
-                            </button>
-                        </div>
-
-
-                        <label class="relative inline-flex items-center cursor-pointer my-4">
-                            <input type="checkbox" value="" class="sr-only peer">
-
-                            <div
-                                class="w-11 h-3 bg-gray-200 peer-focus:outline-none rounded-full peer-checked:bg-[#5653F9]
-                                            relative
-                                            after:content-[''] after:absolute after:top-[-5px] after:left-[0px] 
-                                            after:bg-white after:border after:border-gray-300 after:rounded-full 
-                                            after:h-6 after:w-6 after:transition-all
-                                            peer-checked:after:translate-x-5 peer-checked:after:border-white peer-checked:after:bg-[rgb(67,56,202)]">
-                            </div>
-
-                            <span class="ml-3 text-sm font-medium text-gray-700">Has concession price</span>
-                        </label>
-
-                        <!-- Dropdowns -->
-                        <div class="mt-4 space-y-3">
-                            <!-- Brands -->
-                            <div class="relative flex flex-wrap flex-row " data-multiselect data-source="companyname">
-                                <!-- Hidden multiple select (will be filled from data) -->
-                                <select name="brands" multiple class="hidden" data-ms-select></select>
-
-                                <!-- Trigger field -->
-                                <div data-ms-field role="button" tabindex="0"
-                                    class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-3 py-2 text-left shadow-sm hover:shadow transition">
-                                    <div data-ms-chips class="flex flex-wrap gap-2 items-center">
-                                        <span data-ms-placeholder class="text-slate-500 text-sm">Select Brands</span>
-                                    </div>
-                                    <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor"
-                                        aria-hidden="true">
-                                        <path d="M7 10l5 5 5-5z"></path>
-                                    </svg>
-                                </div>
-
-                                <!-- Clear-all (sibling, not nested) -->
-                                <button data-active="false" type="button" data-ms-clear
-                                    class="absolute right-8 top-2.5 p-1 rounded hover:bg-slate-100 text-slate-500 hidden"
-                                    title="Clear all" aria-label="Clear all">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                        <path
-                                            d="M6.225 4.811a1 1 0 0 1 1.414 0L12 9.172l4.361-4.361a1 1 0 1 1 1.414 1.415L13.414 10.586l4.361 4.361a1 1 0 0 1-1.414 1.415L12 12l-4.361 4.362a1 1 0 0 1-1.414-1.415l4.361-4.361-4.361-4.361a1 1 0 0 1 0-1.414Z" />
-                                    </svg>
-                                </button>
-
-                                <!-- Dropdown menu (will be filled from data) -->
-                                <ul data-ms-menu
-                                    class="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-slate-300 bg-white shadow-lg hidden">
-                                </ul>
-                            </div>
-
-
-                            <!-- Chemovar / Strain -->
-                            <div class="relative " data-multiselect data-source="chemovar">
-                                <select name="chemovar" multiple class="hidden" data-ms-select></select>
-
-                                <div data-ms-field role="button" tabindex="0"
-                                    class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-3 py-2 text-left shadow-sm hover:shadow transition">
-                                    <div data-ms-chips class="flex flex-wrap gap-2 items-center">
-                                        <span data-ms-placeholder class="text-slate-500 text-sm">Chemovar /
-                                            Strain</span>
-                                    </div>
-                                    <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M7 10l5 5 5-5z"></path>
-                                    </svg>
-                                </div>
-
-                                <button data-active="false" type="button" data-ms-clear
-                                    class="absolute right-8 top-2.5 p-1 rounded hover:bg-slate-100 text-slate-500 hidden"
-                                    title="Clear all" aria-label="Clear all">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                        <path
-                                            d="M6.225 4.811a1 1 0 0 1 1.414 0L12 9.172l4.361-4.361a1 1 0 1 1 1.414 1.415L13.414 10.586l4.361 4.361a1 1 0 0 1-1.414 1.415L12 12l-4.361 4.362a1 1 0 0 1-1.414-1.415l4.361-4.361-4.361-4.361a1 1 0 0 1 0-1.414Z" />
-                                    </svg>
-                                </button>
-
-                                <ul data-ms-menu
-                                    class="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-slate-300 bg-white shadow-lg hidden">
-                                </ul>
-                            </div>
-
-
-                            <!-- Species -->
-                            <div class="relative " data-multiselect data-source="species">
-                                <select name="species" multiple class="hidden" data-ms-select></select>
-
-                                <div data-ms-field role="button" tabindex="0"
-                                    class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-3 py-2 text-left shadow-sm hover:shadow transition">
-                                    <div data-ms-chips class="flex flex-wrap gap-2 items-center">
-                                        <span data-ms-placeholder class="text-slate-500 text-sm">Species</span>
-                                    </div>
-                                    <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M7 10l5 5 5-5z"></path>
-                                    </svg>
-                                </div>
-
-                                <button data-active="false" type="button" data-ms-clear
-                                    class="absolute right-8 top-2.5 p-1 rounded hover:bg-slate-100 text-slate-500 hidden"
-                                    title="Clear all" aria-label="Clear all">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                        <path
-                                            d="M6.225 4.811a1 1 0 0 1 1.414 0L12 9.172l4.361-4.361a1 1 0 1 1 1.414 1.415L13.414 10.586l4.361 4.361a1 1 0 0 1-1.414 1.415L12 12l-4.361 4.362a1 1 0 0 1-1.414-1.415l4.361-4.361-4.361-4.361a1 1 0 0 1 0-1.414Z" />
-                                    </svg>
-                                </button>
-
-                                <ul data-ms-menu
-                                    class="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-slate-300 bg-white shadow-lg hidden">
-                                </ul>
-                            </div>
-
-
-                            <!-- Ratio -->
-                            <div class="relative " data-multiselect data-source="ratio">
-                                <select name="ratio" multiple class="hidden" data-ms-select></select>
-
-                                <div data-ms-field role="button" tabindex="0"
-                                    class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-3 py-2 text-left shadow-sm hover:shadow transition">
-                                    <div data-ms-chips class="flex flex-wrap gap-2 items-center">
-                                        <span data-ms-placeholder class="text-slate-500 text-sm">Ratio</span>
-                                    </div>
-                                    <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M7 10l5 5 5-5z"></path>
-                                    </svg>
-                                </div>
-
-                                <button data-active="false" type="button" data-ms-clear
-                                    class="absolute right-8 top-2.5 p-1 rounded hover:bg-slate-100 text-slate-500 hidden"
-                                    title="Clear all" aria-label="Clear all">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                        <path
-                                            d="M6.225 4.811a1 1 0 0 1 1.414 0L12 9.172l4.361-4.361a1 1 0 1 1 1.414 1.415L13.414 10.586l4.361 4.361a1 1 0 0 1-1.414 1.415L12 12l-4.361 4.362a1 1 0 0 1-1.414-1.415l4.361-4.361-4.361-4.361a1 1 0 0 1 0-1.414Z" />
-                                    </svg>
-                                </button>
-
-                                <ul data-ms-menu
-                                    class="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-slate-300 bg-white shadow-lg hidden">
-                                </ul>
-                            </div>
-
-
-                            <!-- TGA Category -->
-                            <div class="relative " data-multiselect data-source="tga_category">
-                                <select name="tga_category" multiple class="hidden" data-ms-select></select>
-
-                                <div data-ms-field role="button" tabindex="0"
-                                    class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-3 py-2 text-left shadow-sm hover:shadow transition">
-                                    <div data-ms-chips class="flex flex-wrap gap-2 items-center">
-                                        <span data-ms-placeholder class="text-slate-500 text-sm">TGA Category</span>
-                                    </div>
-                                    <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M7 10l5 5 5-5z"></path>
-                                    </svg>
-                                </div>
-
-                                <button data-active="false" type="button" data-ms-clear
-                                    class="absolute right-8 top-2.5 p-1 rounded hover:bg-slate-100 text-slate-500 hidden"
-                                    title="Clear all" aria-label="Clear all">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                        <path
-                                            d="M6.225 4.811a1 1 0 0 1 1.414 0L12 9.172l4.361-4.361a1 1 0 1 1 1.414 1.415L13.414 10.586l4.361 4.361a1 1 0 0 1-1.414 1.415L12 12l-4.361 4.362a1 1 0 0 1-1.414-1.415l4.361-4.361-4.361-4.361a1 1 0 0 1 0-1.414Z" />
-                                    </svg>
-                                </button>
-
-                                <ul data-ms-menu
-                                    class="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-slate-300 bg-white shadow-lg hidden">
-                                </ul>
-                            </div>
-
-                        </div>
-
-                        <!-- Day/Night -->
-                        <h3 class="mt-6 text-2xl font-semibold tracking-tight font-bold">Day/Night</h3>
-                        <div id="day-night-section" class="mt-3 flex flex-wrap gap-3">
-                            <button data-active="false" type="button"
-                                class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
-                                <span class="font-medium">Both/Either</span>
-                                <span
-                                    class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold shadow-sm text-black">99+</span>
-                            </button>
-                            <button data-active="false" type="button"
-                                class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
-                                <span class="font-medium">Night</span>
-                                <span
-                                    class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold shadow-sm text-black">99+</span>
-                            </button>
-                            <button data-active="false" type="button"
-                                class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
-                                <span class="font-medium">Unknown</span>
-                                <span
-                                    class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold shadow-sm text-black">99+</span>
-                            </button>
-                            <button data-active="false" type="button"
-                                class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
-                                <span class="font-medium">Day</span>
-                                <span
-                                    class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold shadow-sm text-black">99+</span>
-                            </button>
-                        </div>
-
-                        <!-- Product content -->
-                        <h3 class="mt-6 text-2xl font-semibold tracking-tight font-bold">Product content</h3>
-                        <div class="mt-3 space-y-3">
-                            <div class="relative " data-multiselect data-source="minor_cannabinoids">
-                                <select name="minor_cannabinoids" multiple class="hidden" data-ms-select></select>
-
-                                <div data-ms-field role="button" tabindex="0"
-                                    class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-3 py-2 text-left shadow-sm hover:shadow transition">
-                                    <div data-ms-chips class="flex flex-wrap gap-2 items-center">
-                                        <span data-ms-placeholder class="text-slate-500 text-sm">Minor
-                                            Cannabinoids</span>
-                                    </div>
-                                    <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor"
-                                        aria-hidden="true">
-                                        <path d="M7 10l5 5 5-5z"></path>
-                                    </svg>
-                                </div>
-
-                                <button data-active="false" type="button" data-ms-clear
-                                    class="absolute right-8 top-2.5 p-1 rounded hover:bg-slate-100 text-slate-500 hidden"
-                                    title="Clear all" aria-label="Clear all">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                        <path
-                                            d="M6.225 4.811a1 1 0 0 1 1.414 0L12 9.172l4.361-4.361a1 1 0 1 1 1.414 1.415L13.414 10.586l4.361 4.361a1 1 0 0 1-1.414 1.415L12 12l-4.361 4.362a1 1 0 0 1-1.414-1.415l4.361-4.361-4.361-4.361a1 1 0 0 1 0-1.414Z" />
-                                    </svg>
-                                </button>
-
-                                <ul data-ms-menu
-                                    class="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-slate-300 bg-white shadow-lg hidden">
-                                </ul>
-                            </div>
-
-                            <div class="relative " data-multiselect data-source="terpenes">
-                                <select name="terpenes" multiple class="hidden" data-ms-select></select>
-
-                                <div data-ms-field role="button" tabindex="0"
-                                    class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-3 py-2 text-left shadow-sm hover:shadow transition">
-                                    <div data-ms-chips class="flex flex-wrap gap-2 items-center">
-                                        <span data-ms-placeholder class="text-slate-500 text-sm">Terpenes</span>
-                                    </div>
-                                    <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor"
-                                        aria-hidden="true">
-                                        <path d="M7 10l5 5 5-5z"></path>
-                                    </svg>
-                                </div>
-
-                                <button data-active="false" type="button" data-ms-clear
-                                    class="absolute right-8 top-2.5 p-1 rounded hover:bg-slate-100 text-slate-500 hidden"
-                                    title="Clear all" aria-label="Clear all">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                        <path
-                                            d="M6.225 4.811a1 1 0 0 1 1.414 0L12 9.172l4.361-4.361a1 1 0 1 1 1.414 1.415L13.414 10.586l4.361 4.361a1 1 0 0 1-1.414 1.415L12 12l-4.361 4.362a1 1 0 0 1-1.414-1.415l4.361-4.361-4.361-4.361a1 1 0 0 1 0-1.414Z" />
-                                    </svg>
-                                </button>
-
-                                <ul data-ms-menu
-                                    class="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-slate-300 bg-white shadow-lg hidden">
-                                </ul>
-                            </div>
-
-
-                        </div>
-
-                        <!-- Product cultivation -->
-                        <h3 class="mt-6 text-2xl font-semibold tracking-tight font-bold">Product cultivation</h3>
-                        <div class="mt-3 space-y-3">
-                            <div class="relative " data-multiselect data-source="origin">
-                                <select name="origin" multiple class="hidden" data-ms-select></select>
-
-                                <div data-ms-field role="button" tabindex="0"
-                                    class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-3 py-2 text-left shadow-sm hover:shadow transition">
-                                    <div data-ms-chips class="flex flex-wrap gap-2 items-center">
-                                        <span data-ms-placeholder class="text-slate-500 text-sm">Origin</span>
-                                    </div>
-                                    <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M7 10l5 5 5-5z"></path>
-                                    </svg>
-                                </div>
-
-                                <button data-active="false" type="button" data-ms-clear
-                                    class="absolute right-8 top-2.5 p-1 rounded hover:bg-slate-100 text-slate-500 hidden"
-                                    title="Clear all" aria-label="Clear all">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                        <path
-                                            d="M6.225 4.811a1 1 0 0 1 1.414 0L12 9.172l4.361-4.361a1 1 0 1 1 1.414 1.415L13.414 10.586l4.361 4.361a1 1 0 0 1-1.414 1.415L12 12l-4.361 4.362a1 1 0 0 1-1.414-1.415l4.361-4.361-4.361-4.361a1 1 0 0 1 0-1.414Z" />
-                                    </svg>
-                                </button>
-
-                                <ul data-ms-menu
-                                    class="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-slate-300 bg-white shadow-lg hidden">
-                                </ul>
-                            </div>
-
-                            <div class="relative " data-multiselect data-source="light_source">
-                                <select name="light_source" multiple class="hidden" data-ms-select></select>
-
-                                <div data-ms-field role="button" tabindex="0"
-                                    class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-3 py-2 text-left shadow-sm hover:shadow transition">
-                                    <div data-ms-chips class="flex flex-wrap gap-2 items-center">
-                                        <span data-ms-placeholder class="text-slate-500 text-sm">Light Source</span>
-                                    </div>
-                                    <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M7 10l5 5 5-5z"></path>
-                                    </svg>
-                                </div>
-
-                                <button data-active="false" type="button" data-ms-clear
-                                    class="absolute right-8 top-2.5 p-1 rounded hover:bg-slate-100 text-slate-500 hidden"
-                                    title="Clear all" aria-label="Clear all">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                        <path
-                                            d="M6.225 4.811a1 1 0 0 1 1.414 0L12 9.172l4.361-4.361a1 1 0 1 1 1.414 1.415L13.414 10.586l4.361 4.361a1 1 0 0 1-1.414 1.415L12 12l-4.361 4.362a1 1 0 0 1-1.414-1.415l4.361-4.361-4.361-4.361a1 1 0 0 1 0-1.414Z" />
-                                    </svg>
-                                </button>
-
-                                <ul data-ms-menu
-                                    class="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-slate-300 bg-white shadow-lg hidden">
-                                </ul>
-                            </div>
-
-                            <div class="relative " data-multiselect data-source="harvest_method">
-                                <select name="harvest_method" multiple class="hidden" data-ms-select></select>
-
-                                <div data-ms-field role="button" tabindex="0"
-                                    class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-3 py-2 text-left shadow-sm hover:shadow transition">
-                                    <div data-ms-chips class="flex flex-wrap gap-2 items-center">
-                                        <span data-ms-placeholder class="text-slate-500 text-sm">Harvest Method</span>
-                                    </div>
-                                    <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M7 10l5 5 5-5z"></path>
-                                    </svg>
-                                </div>
-
-                                <button data-active="false" type="button" data-ms-clear
-                                    class="absolute right-8 top-2.5 p-1 rounded hover:bg-slate-100 text-slate-500 hidden"
-                                    title="Clear all" aria-label="Clear all">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                        <path
-                                            d="M6.225 4.811a1 1 0 0 1 1.414 0L12 9.172l4.361-4.361a1 1 0 1 1 1.414 1.415L13.414 10.586l4.361 4.361a1 1 0 0 1-1.414 1.415L12 12l-4.361 4.362a1 1 0 0 1-1.414-1.415l4.361-4.361-4.361-4.361a1 1 0 0 1 0-1.414Z" />
-                                    </svg>
-                                </button>
-
-                                <ul data-ms-menu
-                                    class="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-slate-300 bg-white shadow-lg hidden">
-                                </ul>
-                            </div>
-
-                            <div class="relative " data-multiselect data-source="trim_method">
-                                <select name="trim_method" multiple class="hidden" data-ms-select></select>
-
-                                <div data-ms-field role="button" tabindex="0"
-                                    class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-3 py-2 text-left shadow-sm hover:shadow transition">
-                                    <div data-ms-chips class="flex flex-wrap gap-2 items-center">
-                                        <span data-ms-placeholder class="text-slate-500 text-sm">Trim Method</span>
-                                    </div>
-                                    <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M7 10l5 5 5-5z"></path>
-                                    </svg>
-                                </div>
-
-                                <button data-active="false" type="button" data-ms-clear
-                                    class="absolute right-8 top-2.5 p-1 rounded hover:bg-slate-100 text-slate-500 hidden"
-                                    title="Clear all" aria-label="Clear all">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                        <path
-                                            d="M6.225 4.811a1 1 0 0 1 1.414 0L12 9.172l4.361-4.361a1 1 0 1 1 1.414 1.415L13.414 10.586l4.361 4.361a1 1 0 0 1-1.414 1.415L12 12l-4.361 4.362a1 1 0 0 1-1.414-1.415l4.361-4.361-4.361-4.361a1 1 0 0 1 0-1.414Z" />
-                                    </svg>
-                                </button>
-
-                                <ul data-ms-menu
-                                    class="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-slate-300 bg-white shadow-lg hidden">
-                                </ul>
-                            </div>
-
-                            <div class="relative " data-multiselect data-source="growing_medium">
-                                <select name="growing_medium" multiple class="hidden" data-ms-select></select>
-
-                                <div data-ms-field role="button" tabindex="0"
-                                    class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-3 py-2 text-left shadow-sm hover:shadow transition">
-                                    <div data-ms-chips class="flex flex-wrap gap-2 items-center">
-                                        <span data-ms-placeholder class="text-slate-500 text-sm">Growing Medium</span>
-                                    </div>
-                                    <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M7 10l5 5 5-5z"></path>
-                                    </svg>
-                                </div>
-
-                                <button data-active="false" type="button" data-ms-clear
-                                    class="absolute right-8 top-2.5 p-1 rounded hover:bg-slate-100 text-slate-500 hidden"
-                                    title="Clear all" aria-label="Clear all">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                        <path
-                                            d="M6.225 4.811a1 1 0 0 1 1.414 0L12 9.172l4.361-4.361a1 1 0 1 1 1.414 1.415L13.414 10.586l4.361 4.361a1 1 0 0 1-1.414 1.415L12 12l-4.361 4.362a1 1 0 0 1-1.414-1.415l4.361-4.361-4.361-4.361a1 1 0 0 1 0-1.414Z" />
-                                    </svg>
-                                </button>
-
-                                <ul data-ms-menu
-                                    class="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-slate-300 bg-white shadow-lg hidden">
-                                </ul>
-                            </div>
-
-                            <div class="relative " data-multiselect data-source="sterilisation">
-                                <select name="sterilisation" multiple class="hidden" data-ms-select></select>
-
-                                <div data-ms-field role="button" tabindex="0"
-                                    class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-3 py-2 text-left shadow-sm hover:shadow transition">
-                                    <div data-ms-chips class="flex flex-wrap gap-2 items-center">
-                                        <span data-ms-placeholder class="text-slate-500 text-sm">Sterilisation</span>
-                                    </div>
-                                    <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M7 10l5 5 5-5z"></path>
-                                    </svg>
-                                </div>
-
-                                <button data-active="false" type="button" data-ms-clear
-                                    class="absolute right-8 top-2.5 p-1 rounded hover:bg-slate-100 text-slate-500 hidden"
-                                    title="Clear all" aria-label="Clear all">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                        <path
-                                            d="M6.225 4.811a1 1 0 0 1 1.414 0L12 9.172l4.361-4.361a1 1 0 1 1 1.414 1.415L13.414 10.586l4.361 4.361a1 1 0 0 1-1.414 1.415L12 12l-4.361 4.362a1 1 0 0 1-1.414-1.415l4.361-4.361-4.361-4.361a1 1 0 0 1 0-1.414Z" />
-                                    </svg>
-                                </button>
-
-                                <ul data-ms-menu
-                                    class="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-slate-300 bg-white shadow-lg hidden">
-                                </ul>
-                            </div>
-
-                            <div class="relative " data-multiselect data-source="packaging">
-                                <select name="packaging" multiple class="hidden" data-ms-select></select>
-
-                                <div data-ms-field role="button" tabindex="0"
-                                    class="w-full flex items-center justify-between rounded-md border border-slate-400 bg-white px-3 py-2 text-left shadow-sm hover:shadow transition">
-                                    <div data-ms-chips class="flex flex-wrap gap-2 items-center">
-                                        <span data-ms-placeholder class="text-slate-500 text-sm">Packaging</span>
-                                    </div>
-                                    <svg class="h-5 w-5 text-slate-700" viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M7 10l5 5 5-5z"></path>
-                                    </svg>
-                                </div>
-
-                                <button data-active="false" type="button" data-ms-clear
-                                    class="absolute right-8 top-2.5 p-1 rounded hover:bg-slate-100 text-slate-500 hidden"
-                                    title="Clear all" aria-label="Clear all">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                        <path
-                                            d="M6.225 4.811a1 1 0 0 1 1.414 0L12 9.172l4.361-4.361a1 1 0 1 1 1.414 1.415L13.414 10.586l4.361 4.361a1 1 0 0 1-1.414 1.415L12 12l-4.361 4.362a1 1 0 0 1-1.414-1.415l4.361-4.361-4.361-4.361a1 1 0 0 1 0-1.414Z" />
-                                    </svg>
-                                </button>
-
-                                <ul data-ms-menu
-                                    class="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-slate-300 bg-white shadow-lg hidden">
-                                </ul>
-                            </div>
-
-                        </div>
-
-                        <!-- Cured/Not cured pills -->
-                        <div id="cured-section" class="mt-3 flex flex-wrap gap-3">
-                            <button data-active="false" type="button"
-                                class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
-                                <span class="font-medium">Not cured</span>
-                                <span
-                                    class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold shadow-sm text-black">99+</span>
-                            </button>
-                            <button data-active="false" type="button"
-                                class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition">
-                                <span class="font-medium">Cured</span>
-                                <span
-                                    class="absolute -top-2 -right-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold shadow-sm text-black">99+</span>
-                            </button>
-                        </div>
-
-                        <!-- Bottom toggles -->
-                        <div class="mt-6 space-y-3 gap-2">
-                            <label class="relative inline-flex items-center cursor-pointer my-4">
-                                <input type="checkbox" value="" class="sr-only peer">
-
-                                <div
-                                    class="w-11 h-3 bg-gray-200 peer-focus:outline-none rounded-full peer-checked:bg-[#5653F9]
-                                                                relative
-                                                                after:content-[''] after:absolute after:top-[-5px] after:left-[0px] 
-                                                                after:bg-white after:border after:border-gray-300 after:rounded-full 
-                                                                after:h-6 after:w-6 after:transition-all
-                                                                peer-checked:after:translate-x-5 peer-checked:after:border-white peer-checked:after:bg-[rgb(67,56,202)]">
-                                </div>
-
-                                <span class="ml-3 text-sm font-medium text-gray-700">Hide products coming soon</span>
-                            </label>
-
-                            <label class="relative inline-flex items-center cursor-pointer my-4">
-                                <input type="checkbox" value="" class="sr-only peer">
-
-                                <div
-                                    class="w-11 h-3 bg-gray-200 peer-focus:outline-none rounded-full peer-checked:bg-[#5653F9]
-                                                                relative
-                                                                after:content-[''] after:absolute after:top-[-5px] after:left-[0px] 
-                                                                after:bg-white after:border after:border-gray-300 after:rounded-full 
-                                                                after:h-6 after:w-6 after:transition-all
-                                                                peer-checked:after:translate-x-5 peer-checked:after:border-white peer-checked:after:bg-[rgb(67,56,202)]">
-                                </div>
-
-                                <span class="ml-3 text-sm font-medium text-gray-700">Hide discontinued products</span>
-                            </label>
-                        </div>
 
                         <!-- Reset button -->
                         <button id="reset-button" data-active="false" type="button"
@@ -886,7 +419,8 @@
 
         <div class="flex-1 min-w-0">
             <!-- Sorting/pages menu -->
-            <div class="flex items-center justify-between w-full mt-4">
+            <div
+                class="flex items-start justify-start lg:items-center lg:justify-between w-full mt-4 flex-col lg:flex-row px-4 gap-2">
                 <!-- Left side: buttons -->
                 <div class="flex space-x-2">
                     <!-- Page size dropdown -->
@@ -1013,19 +547,18 @@
                 </div>
 
                 <!-- Right side: results text -->
-                <div class="text-sm text-indigo-900">
+                <div class="flex flex-wrap gap-1 text-sm text-indigo-900">
                     Showing <span class="font-semibold" id="pageShowing">20</span> of <span
                         class="font-semibold">477</span>
                     results
                 </div>
             </div>
             <!-- Grid -->
-            <div class="grid-root !grid grid-cols-[repeat(auto-fit,minmax(350px,1fr))] gap-4 p-4"
-                data-dynamic-list="7M75T2nXdllEV2Iq3m2Zw" data-entity="thc" data-entity-key="awWH16PsRms2px8-93-Uw"
-                data-limit="10" data-op = "subscribe">
+            <div class="grid-root !grid items-grid gap-4 p-4" data-dynamic-list="7M75T2nXdllEV2Iq3m2Zw"
+                data-entity="thc" data-entity-key="awWH16PsRms2px8-93-Uw" data-limit="8">
                 <!-- Card -->
                 <div
-                    class="group relative rounded-2xl border border-[rgb(210,202,227)] bg-white shadow-sm hover:shadow-md transition-all">
+                    class="flex flex-col flex-wrap group relative rounded-2xl border border-[rgb(210,202,227)] bg-white shadow-sm hover:shadow-md transition-all">
                     <!-- Header -->
                     <div class="p-5 pb-3">
                         <div class="flex items-start gap-3">
@@ -1075,24 +608,30 @@
                     <!-- Divider -->
                     <div class="border-t border-slate-200"></div>
                     <!-- Footer actions -->
-                    <div class="p-4 flex items-center justify-between">
+                    <div class="p-4 flex items-center justify-between ">
                         <a href="[Item_Detail_Page_URL]" rel="noopener" target="_blank"
-                            class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                            View
+                            class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                            aria-label="View">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
                         </a>
                         <!-- Heart button: toggles filled red vs. outlined black -->
                         <div class="flex items-center gap-3">
                             <button type="button"
                                 class="heart-btn js-heart inline-flex items-center justify-center p-1 text-slate-600 hover:text-red-600"
-                                aria-pressed="false" title="Save" data-item-id="[ID]"
-                                data-item-name="[Item_Name]">
+                                aria-pressed="false" title="Save" data-item-id="[ID]" data-item-name="[Item_Name]">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="h-5 w-5">
                                     <path
                                         d="M12.001 4.529c2.349-2.532 6.351-2.532 8.7 0 2.3 2.48 2.3 6.5 0 8.98l-7.1 7.65a1 1 0 0 1-1.4 0l-7.2-7.65c-2.3-2.48-2.3-6.5 0-8.98 2.349-2.532 6.351-2.532 8.7 0z" />
                                 </svg>
                             </button>
                             <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
-                                <span class="text-sm font-medium text-slate-700">Create Script</span>
+                                <span class="line-clamp-1 text-sm font-medium text-slate-700">Create Script</span>
                                 <input type="checkbox"
                                     class="cursor-pointer js-compare !block h-5 w-5 rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-500"
                                     data-item-id="[Unique_ID]" data-item-name="[Item_Name]"
@@ -1104,10 +643,8 @@
                 </div>
                 <!-- /Card -->
             </div>
-        </div> 
+        </div>
     </div>
-
-    
 
     <script src="main.js"></script>
     <script src="dropdown.js"></script>

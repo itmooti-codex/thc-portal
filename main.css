@@ -90,33 +90,36 @@
      fill: currentColor;
  }
 
-.heart-btn.active {
-    color: #ef4444;
-}
+ .heart-btn.active {
+     color: #ef4444;
+ }
 
-/* Disable/processing visuals for favorite actions */
-.heart-btn[disabled],
-.fav-remove-btn[disabled] {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
+ /* Disable/processing visuals for favorite actions */
+ .heart-btn[disabled],
+ .fav-remove-btn[disabled] {
+     opacity: 0.5;
+     cursor: not-allowed;
+ }
 
-/* Favorites button counter positioning */
-.favorites-btn { position: relative; }
-.favorites-btn .badge {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    height: 20px;
-    min-width: 20px;
-    padding: 0 6px;
-    border-radius: 9999px;
-    background: #ef4444;
-    color: #fff;
-    font-size: 12px;
-    line-height: 20px;
-    text-align: center;
-}
+ /* Favorites button counter positioning */
+ .favorites-btn {
+     position: relative;
+ }
+
+ .favorites-btn .badge {
+     position: absolute;
+     top: -6px;
+     right: -6px;
+     height: 20px;
+     min-width: 20px;
+     padding: 0 6px;
+     border-radius: 9999px;
+     background: #ef4444;
+     color: #fff;
+     font-size: 12px;
+     line-height: 20px;
+     text-align: center;
+ }
 
  .range-input {
      -webkit-appearance: none !important;
@@ -181,27 +184,27 @@
      /* indigo-700 */
  }
 
-/* Active state for filter buttons */
-#product-type button[data-active="true"],
-#stock-status button[data-active="true"],
-#day-night-section button[data-active="true"],
-#cured-section button[data-active="true"],
-#favorites-section button[data-active="true"] {
-    background-color: rgb(79, 70, 229);
-    color: white;
-    border-color: rgb(79, 70, 229);
-}
+ /* Active state for filter buttons */
+ #product-type button[data-active="true"],
+ #stock-status button[data-active="true"],
+ #day-night-section button[data-active="true"],
+ #cured-section button[data-active="true"],
+ #favorites-section button[data-active="true"] {
+     background-color: rgb(79, 70, 229);
+     color: white;
+     border-color: rgb(79, 70, 229);
+ }
 
  /* Explicitly revert visuals when not active */
-#product-type button[data-active="false"],
-#stock-status button[data-active="false"],
-#day-night-section button[data-active="false"],
-#cured-section button[data-active="false"],
-#favorites-section button[data-active="false"] {
-    background-color: white;
-    color: white;
-    color: black;
-}
+ #product-type button[data-active="false"],
+ #stock-status button[data-active="false"],
+ #day-night-section button[data-active="false"],
+ #cured-section button[data-active="false"],
+ #favorites-section button[data-active="false"] {
+     background-color: white;
+     color: white;
+     color: black;
+ }
 
  input[type=range] {
      border: none !important;
@@ -232,31 +235,59 @@
      cursor: pointer;
  }
 
-.dl-btn-delete:hover {
-    background: #d32f2f;
-}
+ .dl-btn-delete:hover {
+     background: #d32f2f;
+ }
 
-.css-vubbuv {
-    display: none !important;
-}
+ .css-vubbuv {
+     display: none !important;
+ }
 
-/* Bulk actions bar above the table */
-.table-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    padding: 8px 0;
-}
-.table-actions.hidden { display: none; }
+ /* Bulk actions bar above the table */
+ .table-actions {
+     display: flex;
+     gap: 8px;
+     align-items: center;
+     padding: 8px 0;
+ }
 
-.dl-btn-create {
-    padding: 4px 10px;
-    font-size: 12px;
-    line-height: 18px;
-    border: 1px solid #1e40af;
-    background: #2563eb;
-    color: #fff;
-    border-radius: 4px;
-    cursor: pointer;
-}
-.dl-btn-create:hover { background: #1e40af; }
+ .table-actions.hidden {
+     display: none;
+ }
+
+ .dl-btn-create {
+     padding: 4px 10px;
+     font-size: 12px;
+     line-height: 18px;
+     border: 1px solid #1e40af;
+     background: #2563eb;
+     color: #fff;
+     border-radius: 4px;
+     cursor: pointer;
+ }
+
+ .dl-btn-create:hover {
+     background: #1e40af;
+ }
+
+ .items-grid {
+     grid-template-columns: repeat(4, 1fr);
+ }
+
+ @media(max-width:1600px) {
+     .items-grid {
+         grid-template-columns: repeat(3, 1fr);
+     }
+ }
+
+ @media(max-width:1400px) {
+     .items-grid {
+         grid-template-columns: repeat(2, 1fr);
+     }
+ }
+
+ @media(max-width:1100px) {
+     .items-grid {
+         grid-template-columns: repeat(1, 1fr);
+     }
+ }
