@@ -1,12 +1,13 @@
 // Simple front-end search + pagination for the dynamic grid
 (function () {
   const GRID_SELECTOR = '.grid-root[data-dynamic-list]';
-  let PAGE_SIZE = 10;
+  let PAGE_SIZE = 50;
   const COUNT_SHOWING = document.getElementById('pageShowing');
   const COUNT_TOTAL = document.getElementById('totalResults');
   const PAGINATION = document.getElementById('gridPagination');
   const SEARCH_INPUT = document.querySelector('input[placeholder="Search products"]');
   const SEARCH_BTN = (SEARCH_INPUT && SEARCH_INPUT.parentElement) ? SEARCH_INPUT.parentElement.querySelector('button') : null;
+  let PRICE_FILTER_ACTIVE = false;
 
   // Fields to index and search
   const FIELD_ATTRS = [
@@ -33,6 +34,44 @@
     return (v == null ? '' : String(v)).toLowerCase();
   }
 
+  function textOf(el) { return (el && el.textContent ? el.textContent : '').trim(); }
+
+  function parseCardMeta(card) {
+    const si = card.querySelector('.search-index');
+    // Type: prefer visible label next to the icon
+    let typeText = '';
+    const typeLbl = card.querySelector('.items-type-icon + span');
+    if (typeLbl) typeText = textOf(typeLbl);
+    if (!typeText && si) {
+      typeText = textOf({ textContent: si.getAttribute('data-type') }) ||
+                 textOf({ textContent: si.getAttribute('data-sub_type') }) ||
+                 textOf({ textContent: si.getAttribute('data-dosage_form') });
+    }
+
+    // Status: prefer hidden data, fallback to visible last meta span
+    let statusText = si ? textOf({ textContent: si.getAttribute('data-status') }) : '';
+    if (!statusText) {
+      const statusSpan = card.querySelector('.px-5.pb-4 .flex.items-center.gap-2:last-child span:last-child');
+      if (statusSpan) statusText = textOf(statusSpan);
+    }
+
+    // Price: parse from meta row font-medium within price group
+    let price = null;
+    try {
+      const groups = card.querySelectorAll('.px-5.pb-4 .flex.items-center.gap-2');
+      const priceSpan = (groups && groups[1]) ? groups[1].querySelector('.font-medium') : null;
+      const fallbackSpan = card.querySelector('.px-5.pb-4 span.font-medium');
+      const raw = textOf(priceSpan || fallbackSpan).replace(/[^0-9.]/g, '');
+      if (raw) price = parseFloat(raw);
+    } catch (e) { /* ignore */ }
+
+    // Favorite: heart button active
+    const heart = card.querySelector('.js-heart');
+    const isFav = !!(heart && heart.classList.contains('active'));
+
+    return { typeText, statusText, price, isFav };
+  }
+
   function buildIndex() {
     const grid = document.querySelector(GRID_SELECTOR);
     if (!grid) return;
@@ -56,7 +95,8 @@
         const p = card.querySelector('h3 + p');
         textByField.brand = norm(p && p.textContent);
       }
-      items.push({ id, node: card, textByField, score: 0 });
+      const meta = parseCardMeta(card);
+      items.push({ id, node: card, textByField, score: 0, meta });
     }
     state.items = items;
     // Initial order as a tiebreaker
@@ -81,6 +121,128 @@
     return score;
   }
 
+  function getActiveFilters() {
+    // Button filters
+    const container = document.getElementById('product-type');
+    const activeBtns = container ? Array.from(container.querySelectorAll('button[data-active="true"]')) : [];
+    const activeLabels = activeBtns.map(b => {
+      const s = b.querySelector('.font-medium');
+      return (s ? s.textContent : b.textContent || '').trim();
+    }).filter(Boolean);
+    const types = new Set();
+    const statuses = new Set();
+    let myFav = false;
+    const isKnownTypeLabel = (l) => {
+      const s = l.toLowerCase();
+      return (
+        s.includes('flower') || s.includes('oil') || s.includes('vape') || s.includes('cartridge') ||
+        s.includes('gummy') || s.includes('edible') || s.includes('capsule') || s.includes('other') ||
+        s.includes('concentrate') || s.includes('bubble hash') || s.includes('hash')
+      );
+    };
+    for (const label of activeLabels) {
+      const l = label.toLowerCase();
+      if (l.includes('favourites') || l.includes('favorites')) {
+        // Treat any favourites as personal favorites filter for now
+        myFav = true;
+        continue;
+      }
+      if (/(in\s*stock|out\s*of\s*stock)/.test(l)) {
+        statuses.add(label);
+        continue;
+      }
+      // Only treat known product-type labels as a type filter
+      if (isKnownTypeLabel(label)) types.add(label);
+    }
+
+    // Price range
+    const minEl = document.getElementById('min');
+    const maxEl = document.getElementById('max');
+    const minVal = minEl ? parseFloat(minEl.value) : NaN;
+    const maxVal = maxEl ? parseFloat(maxEl.value) : NaN;
+
+    return {
+      types,
+      statuses,
+      myFav,
+      priceMin: PRICE_FILTER_ACTIVE ? (isNaN(minVal) ? null : minVal) : null,
+      priceMax: PRICE_FILTER_ACTIVE ? (isNaN(maxVal) ? null : maxVal) : null,
+    };
+  }
+
+  function readRuntimeMeta(card) {
+    // Type from visible label
+    let typeText = '';
+    const typeLbl = card.querySelector('.items-type-icon + span');
+    if (typeLbl) typeText = textOf(typeLbl);
+    if (!typeText) {
+      const si = card.querySelector('.search-index');
+      if (si) {
+        typeText = textOf({ textContent: si.getAttribute('data-type') })
+          || textOf({ textContent: si.getAttribute('data-sub_type') })
+          || textOf({ textContent: si.getAttribute('data-dosage_form') });
+      }
+    }
+    // Status from hidden or visible last meta row
+    let statusText = '';
+    const si2 = card.querySelector('.search-index');
+    if (si2) statusText = textOf({ textContent: si2.getAttribute('data-status') });
+    if (!statusText) {
+      const statusSpan = card.querySelector('.px-5.pb-4 .flex.items-center.gap-2:last-child span:last-child');
+      if (statusSpan) statusText = textOf(statusSpan);
+    }
+    // Price from price group
+    let price = null;
+    try {
+      const groups = card.querySelectorAll('.px-5.pb-4 .flex.items-center.gap-2');
+      const priceSpan = (groups && groups[1]) ? groups[1].querySelector('.font-medium') : null;
+      const raw = textOf(priceSpan).replace(/[^0-9.]/g, '');
+      if (raw) price = parseFloat(raw);
+    } catch (_) { }
+    // Favorite state
+    const heart = card.querySelector('.js-heart');
+    const isFav = !!(heart && heart.classList.contains('active'));
+    return { typeText, statusText, price, isFav };
+  }
+
+  function itemMatchesFilters(it, f) {
+    const metaNow = readRuntimeMeta(it.node);
+    // Type filter: if any active, require item type to include any label
+    if (f.types && f.types.size > 0) {
+      const t = (metaNow.typeText || '').toLowerCase();
+      if (!t) return false;
+      let ok = false;
+      for (const want of f.types) {
+        const w = String(want).toLowerCase();
+        if (t.includes(w) || w.includes(t)) { ok = true; break; }
+      }
+      if (!ok) return false;
+    }
+    // Status filter
+    if (f.statuses && f.statuses.size > 0) {
+      const s = (metaNow.statusText || '').toLowerCase();
+      let ok = false;
+      for (const want of f.statuses) {
+        const w = String(want).toLowerCase();
+        if (s.includes(w)) { ok = true; break; }
+      }
+      if (!ok) return false;
+    }
+    // Favorites
+    if (f.myFav) {
+      if (!metaNow.isFav) return false;
+    }
+    // Price range
+    if (f.priceMin != null || f.priceMax != null) {
+      const p = (typeof metaNow.price === 'number') ? metaNow.price : null;
+      if (p != null) {
+        if (f.priceMin != null && p < f.priceMin) return false;
+        if (f.priceMax != null && p > f.priceMax) return false;
+      }
+    }
+    return true;
+  }
+
   function applyQuery() {
     const q = norm(state.query || '');
     const tokens = q.split(/\s+/).filter(Boolean);
@@ -92,9 +254,12 @@
     const filtered = (tokens.length > 0)
       ? withScores.filter(it => it.score > 0)
       : withScores.slice();
+    // Apply button/price filters
+    const filters = getActiveFilters();
+    const filtered2 = filtered.filter(it => itemMatchesFilters(it, filters));
     // Sort by score desc, then stable by original order
-    filtered.sort((a, b) => (b.score - a.score) || (a._ord - b._ord));
-    state.filtered = filtered;
+    filtered2.sort((a, b) => (b.score - a.score) || (a._ord - b._ord));
+    state.filtered = filtered2;
     state.page = 1; // reset to first page on each search
   }
 
@@ -228,6 +393,7 @@
     if (RESET_BTN) {
       RESET_BTN.addEventListener('click', () => {
         // Ensure our search state and grid return to initial state
+        PRICE_FILTER_ACTIVE = false;
         doSearch('');
       });
     }
@@ -259,6 +425,49 @@
         });
       }
     }
+
+    // React to filter button clicks instantly
+    const filterContainer = document.getElementById('product-type');
+    const filterSection = document.querySelector('.filter-buttons');
+    const handleFilterClick = (root) => (e) => {
+      const btn = e.target && e.target.closest && e.target.closest('button');
+      if (!btn || !root.contains(btn)) return;
+      // Run after dropdown.js toggles data-active
+      setTimeout(() => { doSearch(state.query || ''); }, 0);
+    };
+    if (filterContainer) filterContainer.addEventListener('click', handleFilterClick(filterContainer));
+    if (filterSection) filterSection.addEventListener('click', handleFilterClick(filterSection));
+
+    // Observe attribute changes in filters to re-apply without clicks (programmatic toggles)
+    const observeFilters = (root) => {
+      if (!root) return;
+      const mo = new MutationObserver((mutations) => {
+        for (const m of mutations) {
+          if (m.type === 'attributes' && m.attributeName === 'data-active') {
+            doSearch(state.query || '');
+            break;
+          }
+        }
+      });
+      mo.observe(root, { subtree: true, attributes: true, attributeFilter: ['data-active'] });
+    };
+    observeFilters(filterContainer);
+    observeFilters(filterSection);
+
+    // React to price range changes instantly
+    const minEl = document.getElementById('min');
+    const maxEl = document.getElementById('max');
+    const onRange = debounce(() => { PRICE_FILTER_ACTIVE = true; doSearch(state.query || ''); }, 50);
+    if (minEl) minEl.addEventListener('input', onRange);
+    if (maxEl) maxEl.addEventListener('input', onRange);
+
+    // If favorites change and a favorites filter is active, re-apply filters
+    document.addEventListener('click', (e) => {
+      const heart = e.target && e.target.closest && e.target.closest('.js-heart');
+      if (!heart) return;
+      // run after main.js toggles classes
+      setTimeout(() => { doSearch(state.query || ''); }, 0);
+    });
   }
 
   function initOnceDataReady() {
