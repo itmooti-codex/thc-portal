@@ -35,11 +35,7 @@
                 const check = li.querySelector('[data-check]');
                 if (check) check.classList.remove('opacity-0');
 
-                // Example: reflect page size in "Showing X of Y"
-                if (root.getAttribute('data-dd') === 'pagesize') {
-                    const showing = document.getElementById('pageShowing');
-                    if (showing) showing.textContent = value;
-                }
+                // pagesize behavior handled by search.js; skip count updates here
                 menu.classList.add('hidden');
                 trigger.setAttribute('aria-expanded', 'false');
             });

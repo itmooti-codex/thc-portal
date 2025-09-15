@@ -1,7 +1,7 @@
 // Simple front-end search + pagination for the dynamic grid
 (function () {
   const GRID_SELECTOR = '.grid-root[data-dynamic-list]';
-  const PAGE_SIZE = 10;
+  let PAGE_SIZE = 10;
   const COUNT_SHOWING = document.getElementById('pageShowing');
   const COUNT_TOTAL = document.getElementById('totalResults');
   const PAGINATION = document.getElementById('gridPagination');
@@ -191,6 +191,34 @@
     // Only search when the Search button is clicked
     if (SEARCH_BTN) {
       SEARCH_BTN.addEventListener('click', () => doSearch(SEARCH_INPUT ? SEARCH_INPUT.value : ''));
+    }
+
+    // Hook into results-per-page dropdown
+    const psRoot = document.querySelector('[data-dd="pagesize"]');
+    if (psRoot) {
+      // Ensure label matches default page size
+      const label = psRoot.querySelector('[data-dd-label]');
+      if (label) label.textContent = String(PAGE_SIZE);
+
+      // Reflect initial check mark
+      const menuAll = psRoot.querySelectorAll('[data-dd-menu] [data-check]');
+      menuAll.forEach(icon => icon.classList.add('opacity-0'));
+      const defaultLi = psRoot.querySelector(`[data-dd-menu] li[role="option"][data-value="${PAGE_SIZE}"] [data-check]`);
+      if (defaultLi) defaultLi.classList.remove('opacity-0');
+
+      const menu = psRoot.querySelector('[data-dd-menu]');
+      if (menu) {
+        menu.addEventListener('click', (e) => {
+          const li = e.target.closest('li[role="option"][data-value]');
+          if (!li) return;
+          const value = parseInt(li.getAttribute('data-value'), 10);
+          if (!isNaN(value) && value > 0) {
+            PAGE_SIZE = value;
+            state.page = 1;
+            renderPage();
+          }
+        });
+      }
     }
   }
 
