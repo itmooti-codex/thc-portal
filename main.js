@@ -137,6 +137,10 @@
             addTextarea(panel, 'Dosage Instructions', 'dosage');
             // Removed Additional Instructions as per requirements
             addRouteSelect(panel, 'Route of administration', 'route');
+            // Only for custom (not-found) entries, include Item Link
+            if (entry.custom) {
+                addTextInput(panel, 'Item Link', 'newItemLink', 'text');
+            }
             addTextInput(panel, 'Repeats', 'repeats', 'number');
             addTextInput(panel, 'Interval Days', 'intervalDays', 'number');
             addTextInput(panel, 'Dispense Quantity', 'dispenseQty', 'number');
@@ -231,13 +235,55 @@
 
     document.addEventListener('change', handleChange);
 
+    // Allow adding a custom script entry when user searches and finds no match
+    window.vsAddCustomScriptEntry = function (opts) {
+        try {
+            var defaults = (window.THCPortalDefaults || {});
+            var name = (opts && opts.name) ? String(opts.name) : '';
+            var entry = {
+                custom: true,
+                name: name || 'New Item',
+                checkbox: null,
+                // Leave dosage and route blank for user to fill
+                dosage: '',
+                route: '',
+                // Same defaults as normal
+                qty: (defaults.qty != null ? defaults.qty : 1),
+                repeats: (defaults.repeats != null ? defaults.repeats : 3),
+                intervalDays: (defaults.intervalDays != null ? defaults.intervalDays : 1),
+                dispenseQty: (defaults.dispenseQty != null ? defaults.dispenseQty : 1),
+                validUntil: (function sixMonthsFromToday() {
+                    var d = new Date();
+                    d.setMonth(d.getMonth() + (defaults.validUntilMonths || 6));
+                    var yyyy = d.getFullYear();
+                    var mm = String(d.getMonth() + 1).padStart(2, '0');
+                    var dd = String(d.getDate()).padStart(2, '0');
+                    return yyyy + '-' + mm + '-' + dd;
+                })(),
+                // New optional field for custom entries only
+                newItemLink: ''
+            };
+            // Use a synthetic id to avoid collision with real ids
+            var syntheticId = 'custom:' + Date.now();
+            entry.open = true; // open accordion by default for quick editing
+            selected.set(syntheticId, entry);
+            collapsed = false; // ensure sidebar is expanded
+            renderSidebar();
+        } catch (e) {
+            console.error('Failed to add custom script entry', e);
+        }
+    };
+
     // Cleanup if dynamic list refreshes
     document.addEventListener('DOMContentLoaded', function () {
         var host = document.querySelector('[data-dynamic-list]');
         if (!host) return;
         var mo = new MutationObserver(function () {
             selected.forEach(function (entry, id) {
-                if (!entry.checkbox || !document.body.contains(entry.checkbox)) {
+                // Do not auto-remove custom entries (added via Add New Product)
+                if (entry && entry.custom) return;
+                // Only prune entries that were tied to a checkbox and that checkbox left the DOM
+                if (entry && entry.checkbox && !document.body.contains(entry.checkbox)) {
                     selected.delete(id);
                 }
             });
@@ -291,9 +337,8 @@
             selected.forEach(function (entry, id) {
                 // Prefer the explicit numeric drugId from the DOM, fallback to map key
                 var raw = (entry && entry.drugId != null) ? entry.drugId : id;
-                // Coerce numeric IDs when possible for GraphQL Int types
-                var drugId = (typeof raw === 'string' && /^\d+$/.test(raw)) ? Number(raw) : raw;
-                payload.push({
+                // Build common fields
+                var obj = {
                     dosage_instructions: entry.dosage || '',
                     route_of_administration: entry.route || '',
                     repeats: Number(entry.repeats || 0),
@@ -303,10 +348,18 @@
                     doctor_notes_to_pharmacy: entry.notesToPharmacy || '',
                     doctor_id: defaults.doctorId,
                     patient_id: defaults.patientId,
-                    drug_id: drugId,
                     script_status: 'Draft',
                     appointment_id: defaults.appointmentId
-                });
+                };
+                if (entry && entry.custom) {
+                    // For custom entries: do NOT send drug_id; send new_item_link if present
+                    if (entry.newItemLink) obj.new_item_link = entry.newItemLink;
+                } else {
+                    // Coerce numeric IDs when possible for GraphQL Int types
+                    var drugId = (typeof raw === 'string' && /^\d+$/.test(raw)) ? Number(raw) : raw;
+                    obj.drug_id = drugId;
+                }
+                payload.push(obj);
             });
 
             var query = `mutation createScripts($payload: [ScriptCreateInput] = null) {\n  createScripts(payload: $payload) {\n    dosage_instructions\n    route_of_administration\n    repeats\n    interval_days\n    dispense_quantity\n    valid_until @dateFormat(value: \"DD-MM-YYYY\")\n    doctor_notes_to_pharmacy\n    doctor_id\n    patient_id\n    drug_id\n    script_status\n   appointment_id\n}\n}`;
@@ -339,6 +392,11 @@
                             entry.checkbox.dispatchEvent(new Event('change', { bubbles: true }));
                         }
                     });
+                    // Remove custom entries we added from 'Add New Product'
+                    var toDelete = [];
+                    selected.forEach(function (entry, id) { if (entry && entry.custom) toDelete.push(id); });
+                    toDelete.forEach(function (id) { selected.delete(id); });
+                    renderSidebar();
                 }
             } catch (e) {
                 console.error(e);

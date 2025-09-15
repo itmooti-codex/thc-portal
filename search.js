@@ -295,6 +295,18 @@
           '</button>'
         ].join('');
         gridRoot.appendChild(noResultsEl);
+        // Wire the Add New Product button to open script sidebar with custom item
+        var addBtn = noResultsEl.querySelector('#addNewProductBtn');
+        if (addBtn) {
+          addBtn.addEventListener('click', function () {
+            try {
+              var q = state.query || '';
+              if (window.vsAddCustomScriptEntry) {
+                window.vsAddCustomScriptEntry({ name: q });
+              }
+            } catch (e) { console.error(e); }
+          });
+        }
       }
       return noResultsEl;
     };
