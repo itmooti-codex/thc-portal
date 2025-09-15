@@ -334,6 +334,7 @@
             }
             // Build payload
             var payload = [];
+            var hadCustom = false;
             selected.forEach(function (entry, id) {
                 // Prefer the explicit numeric drugId from the DOM, fallback to map key
                 var raw = (entry && entry.drugId != null) ? entry.drugId : id;
@@ -352,6 +353,7 @@
                     appointment_id: defaults.appointmentId
                 };
                 if (entry && entry.custom) {
+                    hadCustom = true;
                     // For custom entries: do NOT send drug_id; send new_item_link if present
                     if (entry.newItemLink) obj.new_item_link = entry.newItemLink;
                 } else {
@@ -397,6 +399,21 @@
                     selected.forEach(function (entry, id) { if (entry && entry.custom) toDelete.push(id); });
                     toDelete.forEach(function (id) { selected.delete(id); });
                     renderSidebar();
+
+                    // If this was a custom (not-found) add, reset filters and search to show products again
+                    if (hadCustom) {
+                        try {
+                            var resetBtn = document.getElementById('reset-button');
+                            if (resetBtn && typeof resetBtn.click === 'function') {
+                                resetBtn.click();
+                            } else if (typeof window.resetFilters === 'function') {
+                                window.resetFilters();
+                                // Best-effort: also clear search input
+                                var inp = document.querySelector('input[placeholder="Search products"]');
+                                if (inp) inp.value = '';
+                            }
+                        } catch (_) { }
+                    }
                 }
             } catch (e) {
                 console.error(e);
