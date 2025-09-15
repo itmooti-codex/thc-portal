@@ -112,10 +112,40 @@
     const end = Math.min(start + PAGE_SIZE, total);
     const pageItems = state.filtered.slice(start, end);
 
+    // Ensure/Toggle no-results empty state
+    const gridRoot = document.querySelector(GRID_SELECTOR);
+    let noResultsEl = gridRoot ? gridRoot.querySelector('#noResultsMessage') : null;
+    const ensureNoResultsEl = () => {
+      if (!gridRoot) return null;
+      if (!noResultsEl) {
+        noResultsEl = document.createElement('div');
+        noResultsEl.id = 'noResultsMessage';
+        noResultsEl.className = 'col-span-full flex flex-col items-center justify-center text-center rounded-xl border border-dashed border-slate-300 bg-white p-8 my-6';
+        noResultsEl.innerHTML = [
+          '<div class="text-lg font-semibold text-slate-900">No results found</div>',
+          '<p class="mt-2 text-slate-600">Try adjusting your search or filters.</p>',
+          '<button type="button" id="addNewProductBtn" class="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-white font-medium hover:bg-indigo-700">',
+          '  <span class="text-xl leading-none">+</span>',
+          '  Add New Product',
+          '</button>'
+        ].join('');
+        gridRoot.appendChild(noResultsEl);
+      }
+      return noResultsEl;
+    };
+
     // Hide/show cards
     const allNodes = state.items.map(it => it.node);
     allNodes.forEach(n => { n.style.display = 'none'; });
     pageItems.forEach(it => { it.node.style.display = ''; });
+
+    // Toggle empty state visibility based on total
+    if (total === 0) {
+      const el = ensureNoResultsEl();
+      if (el) el.style.display = '';
+    } else if (noResultsEl) {
+      noResultsEl.style.display = 'none';
+    }
 
     updateCounts(pageItems.length, total);
     renderPagination(totalPages);
