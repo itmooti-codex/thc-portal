@@ -29,6 +29,7 @@
     page: 1,
     query: ''
   };
+  let refreshScheduled = false;
 
   function norm(v) {
     return (v == null ? '' : String(v)).toLowerCase();
@@ -425,6 +426,24 @@
     renderPage();
   }
 
+  function refreshSearch(options) {
+    if (refreshScheduled) return;
+    refreshScheduled = true;
+    queueMicrotask(() => {
+      refreshScheduled = false;
+      const grid = document.querySelector(GRID_SELECTOR);
+      if (grid) pruneCheckCounts(grid);
+      buildIndex();
+      const prevPage = state.page;
+      applyQuery();
+      if (options && options.preservePage) {
+        const totalPages = Math.max(1, Math.ceil(state.filtered.length / PAGE_SIZE));
+        state.page = Math.min(prevPage, totalPages);
+      }
+      renderPage();
+    });
+  }
+
   // Debounce helper
   function debounce(fn, ms) {
     let t; return function (...args) { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), ms); };
@@ -522,15 +541,33 @@
     // Dynamic list populates asynchronously; observe until at least one card appears, then build index once
     const grid = document.querySelector(GRID_SELECTOR);
     if (!grid) return;
+    if (grid.querySelector('input.js-compare')) {
+      refreshSearch({ preservePage: false });
+      startContinuousObserver(grid);
+      return;
+    }
     const observer = new MutationObserver(() => {
       const hasCards = !!grid.querySelector('input.js-compare');
       if (!hasCards) return;
-      pruneCheckCounts(grid);
       observer.disconnect();
-      buildIndex();
-      doSearch(''); // initial render
+      refreshSearch({ preservePage: false });
+      startContinuousObserver(grid);
     });
     observer.observe(grid, { childList: true, subtree: true });
+  }
+
+  function startContinuousObserver(grid) {
+    const continuousObserver = new MutationObserver((mutations) => {
+      let needsRefresh = false;
+      for (const m of mutations) {
+        if (m.type === 'childList' && (m.addedNodes.length || m.removedNodes.length)) {
+          needsRefresh = true;
+          break;
+        }
+      }
+      if (needsRefresh) refreshSearch({ preservePage: true });
+    });
+    continuousObserver.observe(grid, { childList: true, subtree: false });
   }
 
   if (document.readyState === 'loading') {
