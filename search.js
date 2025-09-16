@@ -36,6 +36,39 @@
 
   function textOf(el) { return (el && el.textContent ? el.textContent : '').trim(); }
 
+  function pruneCheckCounts(root = document) {
+    if (!root) return;
+    const containers = new Set();
+    const badges = root.querySelectorAll ? root.querySelectorAll('.checkCount') : [];
+    badges.forEach((badge) => {
+      const raw = (badge.textContent || '').trim();
+      const normalized = raw.replace(/\s+/g, ' ');
+      const lowered = normalized.toLowerCase();
+      let remove = false;
+      if (!normalized) remove = true;
+      else if (/^(?:null|undefined|n\/?a|--?|—)$/.test(lowered)) remove = true;
+      else {
+        const numbers = normalized.match(/-?\d+(?:\.\d+)?/g) || [];
+        if (numbers.length > 0) {
+          const hasValue = numbers.some((token) => {
+            const value = parseFloat(token);
+            return !Number.isNaN(value) && value !== 0;
+          });
+          if (!hasValue) remove = true;
+        }
+      }
+      if (remove) {
+        containers.add(badge.parentElement);
+        badge.remove();
+      }
+    });
+    containers.forEach((container) => {
+      if (!container) return;
+      if (container.querySelector('.checkCount')) return;
+      container.classList.add('hidden');
+    });
+  }
+
   function parseCardMeta(card) {
     const si = card.querySelector('.search-index');
     // Type: prefer visible label next to the icon
@@ -489,6 +522,7 @@
     const observer = new MutationObserver(() => {
       const hasCards = !!grid.querySelector('input.js-compare');
       if (!hasCards) return;
+      pruneCheckCounts(grid);
       observer.disconnect();
       buildIndex();
       doSearch(''); // initial render
