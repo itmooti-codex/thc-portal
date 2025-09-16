@@ -135,6 +135,12 @@
     text-align: center;
 }
 
+.compare-sidebar input,
+.compare-sidebar textarea,
+.compare-sidebar select {
+    font-size: 16px;
+}
+
 .ck-editor__editable {
     font-size: 16px;
     line-height: 1.5;
