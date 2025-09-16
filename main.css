@@ -95,16 +95,30 @@
  }
 
  /* Disable/processing visuals for favorite actions */
- .heart-btn[disabled],
- .fav-remove-btn[disabled] {
-     opacity: 0.5;
-     cursor: not-allowed;
- }
+.heart-btn[disabled],
+.fav-remove-btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 
- /* Favorites button counter positioning */
- .favorites-btn {
-     position: relative;
- }
+.note-editor-surface[data-placeholder] {
+    position: relative;
+}
+
+.note-editor-surface[data-placeholder][data-empty="true"]::before {
+    content: attr(data-placeholder);
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    right: 1rem;
+    color: #94a3b8;
+    pointer-events: none;
+}
+
+/* Favorites button counter positioning */
+.favorites-btn {
+    position: relative;
+}
 
  .favorites-btn .badge {
      position: absolute;
