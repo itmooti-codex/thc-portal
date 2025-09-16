@@ -49,7 +49,9 @@
       else if (/^(?:null|undefined|n\/?a|--?|—)$/.test(lowered)) remove = true;
       else {
         const numbers = normalized.match(/-?\d+(?:\.\d+)?/g) || [];
-        if (numbers.length > 0) {
+        if (numbers.length === 0) {
+          remove = true;
+        } else {
           const hasValue = numbers.some((token) => {
             const value = parseFloat(token);
             return !Number.isNaN(value) && value !== 0;
@@ -358,6 +360,7 @@
     }
 
     updateCounts(pageItems.length, total);
+    pruneCheckCounts(gridRoot);
     renderPagination(totalPages);
   }
 
