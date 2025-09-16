@@ -20,79 +20,19 @@
   }
 }`;
 
-  const wrap = document.querySelector('[data-note-new]');
-  if (!wrap) return;
-
-  const toolbar = wrap.querySelector('[data-note-toolbar]');
-  const surface = wrap.querySelector('[data-note-surface]');
-  const status = wrap.querySelector('[data-note-status]');
-
-  if (!surface) return;
-
-  let savedRange = null;
+  const editorHost = document.getElementById('clinical-note-editor');
+  const statusEl = document.querySelector('[data-note-status]');
+  if (!editorHost) return;
 
   function setStatus(text) {
-    if (!status) return;
+    if (!statusEl) return;
     if (!text) {
-      status.hidden = true;
+      statusEl.hidden = true;
       return;
     }
-    status.hidden = false;
-    status.textContent = text;
+    statusEl.hidden = false;
+    statusEl.textContent = text;
   }
-
-  function updateEmptyState() {
-    const text = surface.textContent.replace(/\u00a0/g, ' ').trim();
-    surface.setAttribute('data-empty', text ? 'false' : 'true');
-  }
-
-  function saveSelection() {
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
-    const range = sel.getRangeAt(0);
-    if (!surface.contains(range.commonAncestorContainer)) return;
-    savedRange = range.cloneRange();
-  }
-
-  function restoreSelection() {
-    if (!savedRange) return;
-    const sel = window.getSelection();
-    if (!sel) return;
-    sel.removeAllRanges();
-    sel.addRange(savedRange);
-  }
-
-  function bindToolbar() {
-    if (!toolbar) return;
-    toolbar.querySelectorAll('[data-action]').forEach((btn) => {
-      btn.addEventListener('mousedown', (evt) => {
-        evt.preventDefault();
-        surface.focus({ preventScroll: true });
-        restoreSelection();
-        const action = btn.dataset.action;
-        if (!action) return;
-        if (action === 'link') {
-          let url = window.prompt('Enter URL');
-          if (!url) return;
-          if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-          document.execCommand('createLink', false, url);
-          return;
-        }
-        if (action === 'bullet') {
-          document.execCommand('insertUnorderedList');
-          return;
-        }
-        document.execCommand(action);
-        saveSelection();
-      });
-    });
-  }
-
-  bindToolbar();
-  updateEmptyState();
-
-  let inFlight = false;
-  let pending = false;
 
   function cleanHtml(html) {
     if (!html) return '';
@@ -136,63 +76,122 @@
     return json.data;
   }
 
-  async function createNote() {
-    if (inFlight) {
-      pending = true;
-      return;
-    }
+  let editorInstance = null;
+  let inFlight = false;
+  let pendingSave = false;
 
-    const cleaned = cleanHtml(surface.innerHTML);
+  function saveIfNeeded(html) {
+    const cleaned = cleanHtml(html);
     if (!htmlToPlain(cleaned)) {
       setStatus('');
       return;
     }
 
+    if (inFlight) {
+      pendingSave = true;
+      return;
+    }
+
     inFlight = true;
-    pending = false;
+    pendingSave = false;
     setStatus('Saving…');
 
-   try {
-      const nowSeconds = Math.floor(Date.now() / 1000);
-      const payload = {
-        content: cleaned,
-        title: extractTitle(cleaned),
-        appointment_id: APPOINTMENT_ID,
-        patient_id: PATIENT_ID,
-        author_id: AUTHOR_ID,
-        date_created: nowSeconds,
-      };
-      await sendMutation(payload);
-      surface.innerHTML = '';
-      updateEmptyState();
-      setStatus('Saved');
-      window.setTimeout(() => setStatus(''), 2000);
-    } catch (err) {
-      console.error('Failed to create clinical note', err);
-      setStatus('Failed to save');
-    } finally {
-      inFlight = false;
-      if (pending) {
-        pending = false;
-        createNote();
+    (async () => {
+      try {
+        const nowSeconds = Math.floor(Date.now() / 1000);
+        const payload = {
+          content: cleaned,
+          title: extractTitle(cleaned),
+          appointment_id: APPOINTMENT_ID,
+          patient_id: PATIENT_ID,
+          author_id: AUTHOR_ID,
+          date_created: nowSeconds,
+        };
+        await sendMutation(payload);
+        if (editorInstance) editorInstance.setData('');
+        setStatus('Saved');
+        setTimeout(() => setStatus(''), 2000);
+      } catch (err) {
+        console.error('Failed to create clinical note', err);
+        setStatus('Failed to save');
+      } finally {
+        inFlight = false;
+        if (pendingSave && editorInstance) {
+          pendingSave = false;
+          saveIfNeeded(editorInstance.getData());
+        }
       }
-    }
+    })();
   }
 
-  surface.addEventListener('input', () => {
-    updateEmptyState();
-    if (!htmlToPlain(surface.innerHTML)) {
+  const EditorConstructor = (window.CKEDITOR && window.CKEDITOR.ClassicEditor) ? window.CKEDITOR.ClassicEditor : window.ClassicEditor;
+
+  EditorConstructor
+    .create(editorHost, {
+      placeholder: 'Write a new clinical note…',
+      toolbar: {
+        items: [
+          'bold',
+          'italic',
+          'underline',
+          'link',
+          'bulletedList',
+          '|',
+          'alignment'
+        ],
+        shouldNotGroupWhenFull: true,
+      },
+      alignment: {
+        options: ['left', 'center', 'right', 'justify'],
+      },
+      removePlugins: [
+        'CKBox',
+        'CKFinder',
+        'EasyImage',
+        'RealTimeCollaborativeComments',
+        'RealTimeCollaborativeTrackChanges',
+        'RealTimeCollaborativeRevisionHistory',
+        'PresenceList',
+        'Comments',
+        'TrackChanges',
+        'TrackChangesData',
+        'RevisionHistory',
+        'Pagination',
+        'WProofreader',
+        'MathType',
+        'SlashCommand',
+        'Template',
+        'DocumentOutline',
+        'FormatPainter',
+        'GrammarChecker',
+        'AIAssistant',
+        'CaseChange',
+        'ExportPdf',
+        'ExportWord',
+        'Title',
+        'MultiLevelList',
+        'TableOfContents',
+        'PasteFromOfficeEnhanced'
+      ],
+      heading: {
+        options: [
+          { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' }
+        ]
+      }
+    })
+    .then((editor) => {
+      editorInstance = editor;
       setStatus('');
-    }
-    saveSelection();
-  });
-
-  surface.addEventListener('blur', () => {
-    updateEmptyState();
-    createNote();
-  });
-
-  surface.addEventListener('mouseup', saveSelection);
-  surface.addEventListener('keyup', saveSelection);
-  document.addEventListener('selectionchange', saveSelection);
+      editor.model.document.on('change:data', () => {
+        setStatus('');
+      });
+      editor.ui.focusTracker.on('change:isFocused', (evt, name, isFocused) => {
+        if (!isFocused) {
+          saveIfNeeded(editor.getData());
+        }
+      });
+    })
+    .catch((err) => {
+      console.error('Failed to initialize editor', err);
+    });
 })();

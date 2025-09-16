@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
     <script src="https://cdn.tailwindcss.com">    </script>
+    <script src="https://cdn.ckeditor.com/ckeditor5/41.3.1/super-build/ckeditor.js"></script>
     <link href="main.css" rel="stylesheet">
     <script async src="https://static-au03.vitalstats.app/static/dynamic-list/v1/latest.js"
         crossorigin="anonymous"></script>
@@ -73,26 +74,7 @@
             </header>
 
             <div class="space-y-3" data-note-new>
-                <div class="flex flex-wrap items-center gap-2 note-toolbar" data-note-toolbar>
-                    <button type="button"
-                        class="note-btn inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200"
-                        data-action="bold" aria-label="Bold"><span class="font-semibold">B</span></button>
-                    <button type="button"
-                        class="note-btn inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-100 px-2 py-1 text-xs font-semibold italic text-slate-700 hover:bg-slate-200"
-                        data-action="italic" aria-label="Italic">I</button>
-                    <button type="button"
-                        class="note-btn inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-100 px-2 py-1 text-xs font-semibold underline text-slate-700 hover:bg-slate-200"
-                        data-action="underline" aria-label="Underline">U</button>
-                    <button type="button"
-                        class="note-btn inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200"
-                        data-action="link" aria-label="Insert link">Link</button>
-                    <button type="button"
-                        class="note-btn inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200"
-                        data-action="bullet" aria-label="Bulleted list">• List</button>
-                </div>
-                <div class="note-editor-surface min-h-[9rem] w-full rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                    contenteditable="true" spellcheck="true" data-note-surface
-                    data-placeholder="Write a new clinical note…"></div>
+                <div id="clinical-note-editor" class="bg-white rounded-lg border border-slate-200"></div>
                 <div class="text-xs text-slate-500" data-note-status hidden>Ready</div>
             </div>
         </div>
@@ -657,7 +639,6 @@
         </div>
     </div>
 
-    <script src="js/clinicalNotes.js"></script>
     <script src="js/clinicalNotes.js"></script>
     <script src="js/sidebar.js"></script>
     <script src="js/productIcons.js"></script>

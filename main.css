@@ -305,3 +305,8 @@
          grid-template-columns: repeat(1, 1fr);
      }
  }
+
+
+ .ck-content{
+    padding: 0 24px !important;
+ }
