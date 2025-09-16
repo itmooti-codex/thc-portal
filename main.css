@@ -95,45 +95,51 @@
  }
 
  /* Disable/processing visuals for favorite actions */
-.heart-btn[disabled],
-.fav-remove-btn[disabled] {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
+ .heart-btn[disabled],
+ .fav-remove-btn[disabled] {
+     opacity: 0.5;
+     cursor: not-allowed;
+ }
 
-.note-editor-surface[data-placeholder] {
-    position: relative;
-}
+ .note-editor-surface[data-placeholder] {
+     position: relative;
+ }
 
-.note-editor-surface[data-placeholder][data-empty="true"]::before {
-    content: attr(data-placeholder);
-    position: absolute;
-    top: 1rem;
-    left: 1rem;
-    right: 1rem;
-    color: #94a3b8;
-    pointer-events: none;
-}
-
-/* Favorites button counter positioning */
-.favorites-btn {
-    position: relative;
-}
-
- .favorites-btn .badge {
+ .note-editor-surface[data-placeholder][data-empty="true"]::before {
+     content: attr(data-placeholder);
      position: absolute;
-     top: -6px;
-     right: -6px;
-     height: 20px;
+     top: 1rem;
+     left: 1rem;
+     right: 1rem;
+     color: #94a3b8;
+     pointer-events: none;
+ }
+
+ /* Favorites button counter positioning */
+ .favorites-btn {
+     position: relative;
+ }
+
+.favorites-btn .badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    height: 20px;
      min-width: 20px;
      padding: 0 6px;
      border-radius: 9999px;
-     background: #ef4444;
-     color: #fff;
-     font-size: 12px;
-     line-height: 20px;
-     text-align: center;
- }
+    background: #ef4444;
+    color: #fff;
+    font-size: 12px;
+    line-height: 20px;
+    text-align: center;
+}
+
+.ck-editor__editable {
+    font-size: 16px;
+    line-height: 1.5;
+    min-height: 9rem;
+}
 
  .range-input {
      -webkit-appearance: none !important;
@@ -307,7 +313,7 @@
  }
 
 
- .ck-content{
-    padding: 0 24px !important;
-    font-size: 16px !important;
+ .ck-content {
+     padding: 0 24px !important;
+     font-size: 16px !important;
  }
