@@ -41,7 +41,9 @@
 
             var name = document.createElement('div');
             name.className = 'text-slate-900 text-sm font-semibold truncate';
-            name.textContent = entry.name || id;
+            var safeName = (entry && typeof entry.name === 'string') ? entry.name.trim() : '';
+            var displayName = safeName || (entry && entry.custom ? 'New Item' : id);
+            name.textContent = displayName;
 
             var controls = document.createElement('div');
             controls.className = 'flex items-center gap-2';
@@ -86,7 +88,8 @@
             var panel = document.createElement('div');
             panel.className = 'px-4 pb-4 bg-white border-t border-slate-200 ' + (entry.open ? '' : 'hidden');
 
-            function addTextInput(parent, labelText, key, type) {
+            function addTextInput(parent, labelText, key, type, opts) {
+                opts = opts || {};
                 var wrap = document.createElement('div');
                 wrap.className = 'mt-3';
                 var lbl = document.createElement('label');
@@ -101,7 +104,17 @@
                 inp.dataset.entryId = id;
                 inp.dataset.entryField = key;
                 inp.addEventListener('click', function (e) { e.stopPropagation(); });
-                inp.addEventListener('input', function () { entry[key] = (type === 'number') ? this.valueAsNumber : this.value; });
+                inp.addEventListener('input', function () {
+                    var rawVal = this.value;
+                    if (type === 'number') {
+                        entry[key] = rawVal === '' ? '' : this.valueAsNumber;
+                    } else {
+                        entry[key] = rawVal;
+                    }
+                    if (typeof opts.onInput === 'function') {
+                        opts.onInput(rawVal, this);
+                    }
+                });
                 wrap.appendChild(lbl);
                 wrap.appendChild(inp);
                 parent.appendChild(wrap);
@@ -172,14 +185,19 @@
             }
 
             // Fields
+            if (entry.custom) {
+                addTextInput(panel, 'Item Name', 'name', 'text', {
+                    onInput: function (value) {
+                        var trimmed = String(value || '').trim();
+                        name.textContent = trimmed || 'New Item';
+                    }
+                });
+                addTextInput(panel, 'Catalyst Link', 'newItemLink', 'text');
+            }
             addTextInput(panel, 'Quantity', 'qty', 'number');
             addTextarea(panel, 'Dosage Instructions', 'dosage');
             // Removed Additional Instructions as per requirements
             addRouteSelect(panel, 'Route of administration', 'route');
-            // Only for custom (not-found) entries, include Item Link
-            if (entry.custom) {
-                addTextInput(panel, 'Catalyst Link', 'newItemLink', 'text');
-            }
             addTextInput(panel, 'Repeats', 'repeats', 'number');
             addTextInput(panel, 'Interval Days', 'intervalDays', 'number');
             addTextInput(panel, 'Dispense Quantity', 'dispenseQty', 'number');
@@ -328,7 +346,8 @@
             entry.open = true; // open accordion by default for quick editing
             selected.set(syntheticId, entry);
             collapsed = false; // ensure sidebar is expanded
-            pendingFocus = { id: syntheticId, field: 'dosage', start: null, end: null };
+            var focusLength = entry.name ? String(entry.name).length : 0;
+            pendingFocus = { id: syntheticId, field: 'name', start: 0, end: focusLength };
             renderSidebar();
         } catch (e) {
             console.error('Failed to add custom script entry', e);

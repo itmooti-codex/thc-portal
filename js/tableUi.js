@@ -87,6 +87,47 @@ window.vsInit = function (dynamicList) {
             density: 'compact',
         })
         .setFinalizeColumns((cols) => {
+            const lower = (v) => (typeof v === 'string' ? v.toLowerCase() : '');
+            const isRepeatsColumn = (col) => {
+                const f = lower(col?.field);
+                const h = lower(col?.headerName);
+                return f === 'repeats' || f === 'script_repeats' || h === 'repeats';
+            };
+            const isRemainingColumn = (col) => {
+                const f = lower(col?.field);
+                const h = lower(col?.headerName);
+                return f === 'remaining' || f === 'scriptremaining' || f === 'script_remaining' || h === 'remaining';
+            };
+            const enhanceFormatter = (col) => {
+                const originalFormatter = col.valueFormatter;
+                col.valueFormatter = (params) => {
+                    let value = params?.value ?? (col.field ? params?.row?.[col.field] : undefined);
+                    let normalized = value;
+                    if (typeof normalized === 'string') {
+                        normalized = normalized.trim();
+                    }
+                    const normalizedLower = (typeof normalized === 'string') ? normalized.toLowerCase() : normalized;
+                    const isBlankLike = normalized == null || normalized === '' || normalizedLower === 'null' || normalizedLower === 'undefined' || normalizedLower === 'n/a' || normalizedLower === 'na';
+                    if (isBlankLike) {
+                        if (isRepeatsColumn(col) || isRemainingColumn(col)) {
+                            return 0;
+                        }
+                        return '-';
+                    }
+                    if (typeof value === 'string' && value !== normalized) {
+                        value = normalized;
+                    }
+                    if (originalFormatter) {
+                        const next = originalFormatter({ ...params, value, formattedValue: value });
+                        const nextStr = typeof next === 'string' ? next.trim().toLowerCase() : next;
+                        if (next == null || next === '' || nextStr === 'null' || nextStr === 'undefined') {
+                            return '-';
+                        }
+                        return next;
+                    }
+                    return value;
+                };
+            };
             if (cols && cols[0]) cols[0] = { ...cols[0], minWidth: 160 };
             const hasActions = Array.isArray(cols) && cols.some(c => c.field === '__actions');
             if (!hasActions) {
@@ -114,12 +155,18 @@ window.vsInit = function (dynamicList) {
                             } catch (_) { }
                         };
                         // Keep a reference to the full row for selection validation later
-                        try { window.vsRowMap[params.id] = params.row; } catch (_) {}
+                        try { window.vsRowMap[params.id] = params.row; } catch (_) { }
                         const status = getStatus(params?.row);
                         const isDraft = String(status) === 'Draft';
                         if (!isDraft) return null;
                         return R.createElement('button', { type: 'button', className: 'dl-btn-delete', onClick }, 'Delete');
                     }
+                });
+            }
+            if (Array.isArray(cols)) {
+                cols.forEach((col) => {
+                    if (!col || !col.field || col.field === '__actions') return;
+                    enhanceFormatter(col);
                 });
             }
             return cols;
