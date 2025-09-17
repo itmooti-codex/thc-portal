@@ -48,12 +48,6 @@
     return temp.textContent.replace(/\u00a0/g, ' ').trim();
   }
 
-  function extractTitle(html) {
-    const text = htmlToPlain(html);
-    if (!text) return 'Clinical note';
-    return text.split(/\n|\r/).map((part) => part.trim()).filter(Boolean)[0]?.slice(0, 120) || 'Clinical note';
-  }
-
   async function sendMutation(payload) {
     if (!API_ENDPOINT || !API_KEY) {
       throw new Error('API endpoint or key not configured.');
@@ -101,7 +95,7 @@
         const nowSeconds = Math.floor(Date.now() / 1000);
         const payload = {
           content: cleaned,
-          title: extractTitle(cleaned),
+          title: "Consult Notes",
           appointment_id: APPOINTMENT_ID,
           patient_id: PATIENT_ID,
           author_id: AUTHOR_ID,
