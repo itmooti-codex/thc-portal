@@ -98,41 +98,73 @@ window.vsInit = function (dynamicList) {
                 const h = lower(col?.headerName);
                 return f === 'remaining' || f === 'scriptremaining' || f === 'script_remaining' || h === 'remaining';
             };
+            const isBlankLike = (value) => {
+                if (value == null) return true;
+                if (typeof value === 'number') return false;
+                if (typeof value === 'string') {
+                    const trimmed = value.trim();
+                    if (!trimmed) return true;
+                    const lowerTrim = trimmed.toLowerCase();
+                    return lowerTrim === 'null' || lowerTrim === 'undefined' || lowerTrim === 'n/a' || lowerTrim === 'na';
+                }
+                return false;
+            };
+            const normalizeDisplay = (col, value, params) => {
+                if (!isBlankLike(value)) return value;
+                let fallback = col && col.field ? params?.row?.[col.field] : undefined;
+                if (isBlankLike(fallback)) {
+                    const target = col && col.field ? lower(col.field) : '';
+                    if (target && params?.row && typeof params.row === 'object') {
+                        for (const key in params.row) {
+                            if (!Object.prototype.hasOwnProperty.call(params.row, key)) continue;
+                            if (lower(key) === target) {
+                                fallback = params.row[key];
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (!isBlankLike(fallback)) return fallback;
+                if (isRepeatsColumn(col) || isRemainingColumn(col)) return 0;
+                return '-';
+            };
             const enhanceFormatter = (col) => {
                 const originalFormatter = col.valueFormatter;
+                const originalRenderCell = col.renderCell;
                 col.valueFormatter = (params) => {
-                    let value = params?.value ?? (col.field ? params?.row?.[col.field] : undefined);
-                    let normalized = value;
-                    if (typeof normalized === 'string') {
-                        normalized = normalized.trim();
-                    }
-                    const normalizedLower = (typeof normalized === 'string') ? normalized.toLowerCase() : normalized;
-                    const isBlankLike = normalized == null || normalized === '' || normalizedLower === 'null' || normalizedLower === 'undefined' || normalizedLower === 'n/a' || normalizedLower === 'na';
-                    if (isBlankLike) {
-                        if (isRepeatsColumn(col) || isRemainingColumn(col)) {
-                            return 0;
-                        }
-                        return '-';
-                    }
-                    if (typeof value === 'string' && value !== normalized) {
-                        value = normalized;
-                    }
-                    if (originalFormatter) {
-                        const next = originalFormatter({ ...params, value, formattedValue: value });
-                        const nextStr = typeof next === 'string' ? next.trim().toLowerCase() : next;
-                        if (next == null || next === '' || nextStr === 'null' || nextStr === 'undefined') {
-                            return '-';
-                        }
-                        return next;
-                    }
+                    let value = originalFormatter ? originalFormatter(params) : params?.value;
+                    value = normalizeDisplay(col, value, params);
                     return value;
                 };
+                if (originalRenderCell) {
+                    col.renderCell = (params) => {
+                        const result = originalRenderCell(params);
+                        if (typeof result === 'string' && isBlankLike(result)) {
+                            return normalizeDisplay(col, result, params);
+                        }
+                        if (result == null) {
+                            const fallback = normalizeDisplay(col, result, params);
+                            return fallback;
+                        }
+                        return result;
+                    };
+                }
             };
-            if (cols && cols[0]) cols[0] = { ...cols[0], minWidth: 160 };
-            const hasActions = Array.isArray(cols) && cols.some(c => c.field === '__actions');
+
+            cols = Array.isArray(cols) ? cols.slice() : [];
+            cols = cols.filter((col) => {
+                if (!col) return false;
+                const header = (col.headerName || '').trim().toLowerCase();
+                const field = (col.field || '').trim().toLowerCase();
+                if (header === 'id' || field === 'id') return false;
+                if (header === 'drug id' || field === 'drug_id' || field === 'drugid') return false;
+                return true;
+            });
+
+            if (cols[0]) cols[0] = { ...cols[0], minWidth: 160 };
+            const hasActions = cols.some(c => c.field === '__actions');
             if (!hasActions) {
                 const R = window.vitalStatsReact || window.React;
-                cols = cols || [];
                 cols.push({
                     field: '__actions',
                     headerName: 'Actions',
@@ -154,7 +186,6 @@ window.vsInit = function (dynamicList) {
                                 }
                             } catch (_) { }
                         };
-                        // Keep a reference to the full row for selection validation later
                         try { window.vsRowMap[params.id] = params.row; } catch (_) { }
                         const status = getStatus(params?.row);
                         const isDraft = String(status) === 'Draft';
@@ -163,12 +194,11 @@ window.vsInit = function (dynamicList) {
                     }
                 });
             }
-            if (Array.isArray(cols)) {
-                cols.forEach((col) => {
-                    if (!col || !col.field || col.field === '__actions') return;
-                    enhanceFormatter(col);
-                });
-            }
+
+            cols.forEach((col) => {
+                if (!col || !col.field || col.field === '__actions') return;
+                enhanceFormatter(col);
+            });
             return cols;
         })
         .setFinalizeDataGridProps((props) => {
