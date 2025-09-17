@@ -323,3 +323,32 @@
      padding: 0 24px !important;
      font-size: 16px !important;
  }
+
+ /* Status dot styling */
+ .status-dot {
+     transition: background-color 0.2s ease;
+ }
+
+ .status-dot[data-status*="out of stock" i],
+ .status-dot[data-status*="not available" i],
+ .status-dot[data-status*="unavailable" i] {
+     background-color: #ef4444 !important; /* red-500 */
+ }
+
+ /* Out of stock message styling */
+ .out-of-stock-message {
+     display: none !important;
+ }
+
+ .out-of-stock-message[data-status*="out of stock" i],
+ .out-of-stock-message[data-status*="not available" i],
+ .out-of-stock-message[data-status*="unavailable" i] {
+     display: flex !important;
+ }
+
+ /* Hide create script section for out of stock items */
+ .create-script-section[data-status*="out of stock" i],
+ .create-script-section[data-status*="not available" i],
+ .create-script-section[data-status*="unavailable" i] {
+     display: none !important;
+ }

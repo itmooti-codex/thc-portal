@@ -139,19 +139,19 @@
     state.items.forEach((it, idx) => { it._ord = idx; });
   }
 
-  function scoreItem(item, tokens) {
-    if (tokens.length === 0) return 1; // neutral score when no query
+  function scoreItem(item, query) {
+    if (!query) return 1; // neutral score when no query
     let score = 0;
     for (const [field, text] of Object.entries(item.textByField)) {
       if (!text) continue;
       const w = FIELD_WEIGHT[field] || 1;
       let fieldScore = 0;
-      for (const t of tokens) {
-        if (!t) continue;
-        if (text === t) fieldScore += 3 * w;
-        else if (text.startsWith(t)) fieldScore += 2 * w;
-        else if (text.includes(t)) fieldScore += 1 * w;
+      
+      // Check for exact phrase match first (highest priority)
+      if (text.includes(query)) {
+        fieldScore += 5 * w; // Higher score for phrase matches
       }
+      
       score += fieldScore;
     }
     return score;
@@ -281,18 +281,20 @@
 
   function applyQuery() {
     const q = norm(state.query || '');
-    const tokens = q.split(/\s+/).filter(Boolean);
     const withScores = state.items.map(it => {
-      it.score = scoreItem(it, tokens);
+      it.score = scoreItem(it, q);
       return it;
     });
-    // Filter out zero-score when there is a query
-    const filtered = (tokens.length > 0)
+    
+    // For phrase matching: only show items that contain the search phrase
+    const filtered = (q.length > 0)
       ? withScores.filter(it => it.score > 0)
       : withScores.slice();
+    
     // Apply button/price filters
     const filters = getActiveFilters();
     const filtered2 = filtered.filter(it => itemMatchesFilters(it, filters));
+    
     // Sort by score desc, then stable by original order
     filtered2.sort((a, b) => (b.score - a.score) || (a._ord - b._ord));
     state.filtered = filtered2;
