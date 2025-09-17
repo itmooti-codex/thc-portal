@@ -161,7 +161,7 @@
     // Button filters
     const container = document.getElementById('product-type');
     const activeBtns = container ? Array.from(container.querySelectorAll('button[data-active="true"]')) : [];
-    const activeLabels = activeBtns.map(b => {
+    const primaryActiveLabels = activeBtns.map(b => {
       const s = b.querySelector('.font-medium');
       return (s ? s.textContent : b.textContent || '').trim();
     }).filter(Boolean);
@@ -176,7 +176,7 @@
         s.includes('concentrate') || s.includes('bubble hash') || s.includes('hash')
       );
     };
-    for (const label of activeLabels) {
+    for (const label of primaryActiveLabels) {
       const l = label.toLowerCase();
       if (l.includes('favourites') || l.includes('favorites')) {
         // Treat any favourites as personal favorites filter for now
@@ -191,6 +191,21 @@
       if (isKnownTypeLabel(label)) types.add(label);
     }
 
+    // Exact field buttons (multi-select per group)
+    function activeLabels(rootId) {
+      const root = document.getElementById(rootId);
+      if (!root) return [];
+      const actives = Array.from(root.querySelectorAll('button[data-active="true"] .font-medium'));
+      return actives.map((el) => norm(el.textContent || ''));
+    }
+    const exact = {
+      type: activeLabels('filter-type'),
+      sub_type: activeLabels('filter-subtype'),
+      dominance: activeLabels('filter-dominance'),
+      carrier: activeLabels('filter-carrier'),
+      plant_species: activeLabels('filter-plant-species')
+    };
+
     // Price range
     const minEl = document.getElementById('min');
     const maxEl = document.getElementById('max');
@@ -201,6 +216,7 @@
       types,
       statuses,
       myFav,
+      exact,
       priceMin: PRICE_FILTER_ACTIVE ? (isNaN(minVal) ? null : minVal) : null,
       priceMax: PRICE_FILTER_ACTIVE ? (isNaN(maxVal) ? null : maxVal) : null,
     };
@@ -243,6 +259,8 @@
 
   function itemMatchesFilters(it, f) {
     const metaNow = readRuntimeMeta(it.node);
+    const si = it.node.querySelector('.search-index');
+    const equals = (a, b) => norm(a) === norm(b);
     // Type filter: if any active, require item type to include any label
     if (f.types && f.types.size > 0) {
       const t = (metaNow.typeText || '').toLowerCase();
@@ -275,6 +293,21 @@
         if (f.priceMin != null && p < f.priceMin) return false;
         if (f.priceMax != null && p > f.priceMax) return false;
       }
+    }
+
+    // Exact button filters (AND within field, OR across values in a group)
+    if (si && f.exact) {
+      function groupMatches(value, wants) {
+        if (!Array.isArray(wants) || wants.length === 0) return true;
+        const v = norm(value);
+        for (let i = 0; i < wants.length; i++) { if (v === wants[i]) return true; }
+        return false;
+      }
+      if (!groupMatches(si.getAttribute('data-type'), f.exact.type)) return false;
+      if (!groupMatches(si.getAttribute('data-sub_type'), f.exact.sub_type)) return false;
+      if (!groupMatches(si.getAttribute('data-dominance'), f.exact.dominance)) return false;
+      if (!groupMatches(si.getAttribute('data-carrier'), f.exact.carrier)) return false;
+      if (!groupMatches(si.getAttribute('data-plant_species'), f.exact.plant_species)) return false;
     }
     return true;
   }
@@ -522,6 +555,13 @@
     };
     observeFilters(filterContainer);
     observeFilters(filterSection);
+
+    // React to select changes for exact filters
+    const selectIds = ['filter-type','filter-subtype','filter-dominance','filter-carrier','filter-plant-species'];
+    selectIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', () => { doSearch(state.query || ''); });
+    });
 
     // React to price range changes instantly
     const minEl = document.getElementById('min');

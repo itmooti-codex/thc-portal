@@ -210,23 +210,33 @@
      /* indigo-700 */
  }
 
- /* Active state for filter buttons */
- #product-type button[data-active="true"],
- #stock-status button[data-active="true"],
- #day-night-section button[data-active="true"],
- #cured-section button[data-active="true"],
- #favorites-section button[data-active="true"] {
+/* Active state for filter buttons */
+#product-type button[data-active="true"],
+#stock-status button[data-active="true"],
+#day-night-section button[data-active="true"],
+#cured-section button[data-active="true"],
+#favorites-section button[data-active="true"],
+#filter-type button[data-active="true"],
+#filter-subtype button[data-active="true"],
+#filter-dominance button[data-active="true"],
+#filter-carrier button[data-active="true"],
+#filter-plant-species button[data-active="true"] {
      background-color: rgb(79, 70, 229);
      color: white;
      border-color: rgb(79, 70, 229);
  }
 
- /* Explicitly revert visuals when not active */
- #product-type button[data-active="false"],
- #stock-status button[data-active="false"],
- #day-night-section button[data-active="false"],
- #cured-section button[data-active="false"],
- #favorites-section button[data-active="false"] {
+/* Explicitly revert visuals when not active */
+#product-type button[data-active="false"],
+#stock-status button[data-active="false"],
+#day-night-section button[data-active="false"],
+#cured-section button[data-active="false"],
+#favorites-section button[data-active="false"],
+#filter-type button[data-active="false"],
+#filter-subtype button[data-active="false"],
+#filter-dominance button[data-active="false"],
+#filter-carrier button[data-active="false"],
+#filter-plant-species button[data-active="false"] {
      background-color: white;
      color: white;
      color: black;

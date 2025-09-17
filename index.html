@@ -134,7 +134,7 @@
 
     <div class="flex flex-col lg:flex-row items-start gap-6">
       <div
-        class="bg-white text-slate-900 antialiased w-full lg:w-80 xl:w-96 lg:flex-none"
+        class="bg-white text-slate-900 antialiased w-full lg:w-80 xl:w-[28rem] lg:flex-none"
       >
         <div class="flex flex-col flex-auto p-4">
           <!-- search-section -->
@@ -191,86 +191,279 @@
 
             <!-- Product details -->
             <section class="mt-8 filter-buttons">
-              <!-- Product type -->
-              <div id="product-type" class="mt-3 flex flex-wrap gap-3">
+              <!-- Favorites (kept) -->
+              <div id="favorites-section" class="mt-3 flex flex-wrap gap-3">
                 <button
                   data-active="false"
                   type="button"
                   class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
                 >
-                  <span
-                    class="inline-block text-2xl leading-none bg-[rgb(255,231,159)] rounded-2xl px-1 py-1"
-                  >
-                    ❤️
-                  </span>
-
                   <span class="font-medium">My Favourites</span>
                 </button>
-
                 <button
                   data-active="false"
                   type="button"
                   class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
                 >
-                  <span
-                    class="inline-block text-2xl leading-none bg-[rgb(255,231,159)] rounded-2xl px-1 py-1"
-                  >
-                    👤
-                  </span>
-
                   <span class="font-medium">Patient Favourites</span>
                 </button>
+              </div>
 
+              <!-- New button filters -->
+              <div id="filter-type" class="mt-3 flex flex-wrap gap-3">
                 <button
                   data-active="false"
                   type="button"
                   class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
                 >
-                  <span
-                    class="inline-block text-2xl leading-none bg-[rgb(255,231,159)] rounded-2xl px-1 py-1"
-                  >
-                    🍃
-                  </span>
-
-                  <span class="font-medium">Flower</span>
+                  <span class="font-medium">Accessory</span>
                 </button>
-
                 <button
                   data-active="false"
                   type="button"
                   class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
                 >
-                  <span class="text-2xl leading-none">🛢️</span>
-                  <span class="font-medium">Oil</span>
-                </button>
-
-                <button
-                  data-active="false"
-                  type="button"
-                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
-                >
-                  <span class="text-2xl leading-none">💨</span>
-                  <span class="font-medium">Liquid vape cartridge</span>
-                </button>
-
-                <button
-                  data-active="false"
-                  type="button"
-                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
-                >
-                  <span class="text-2xl leading-none">🍬</span>
-                  <span class="font-medium">Gummy</span>
-                </button>
-
-                <button
-                  data-active="false"
-                  type="button"
-                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
-                >
-                  <span class="text-2xl leading-none">🍪</span>
                   <span class="font-medium">Edible</span>
                 </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Flower</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Vape</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Oil</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Extract</span>
+                </button>
+              </div>
 
+              <div id="filter-subtype" class="mt-3 flex flex-wrap gap-3 hidden">
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Vaporiser</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Budget</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Core</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Craft</span>
+                </button>
+              </div>
+
+              <div id="filter-dominance" class="mt-3 flex flex-wrap gap-3 hidden">
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">THC-dominant</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">CBD-dominant</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">CBG-dominant</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">CBN-dominant</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">THCV-dominant</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Broad-spectrum</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Full-spectrum</span>
+                </button>
+              </div>
+
+              <div id="filter-carrier" class="mt-3 flex flex-wrap gap-3 hidden">
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Coconut Oil</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">MCT Oil</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Olive Oil</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Hemp Seed Oil</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Hemp Oil</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Other</span>
+                </button>
+              </div>
+
+              <div id="filter-plant-species" class="mt-3 flex flex-wrap gap-3 hidden">
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Sativa dominant</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Indica dominant</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Sativa 70/30</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Indica 70/30</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Indica 80/20</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Indica</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Balanced Hybrid</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Sativa 80/20</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Indica 60/40</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Sativa</span>
+                </button>
+                <button
+                  data-active="false"
+                  type="button"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition"
+                >
+                  <span class="font-medium">Sativa 60/40</span>
+                </button>
+              </div>
+              <!-- Stock/other controls only -->
+              <div id="product-type" class="mt-3 flex flex-wrap gap-3">
                 <div id="more-product-type" class="hidden flex flex-wrap gap-2">
                   <button
                     data-active="false"
@@ -315,44 +508,6 @@
                       </svg>
                     </span>
                     <span class="font-medium">Out of stock</span>
-                  </button>
-
-                  <button
-                    data-active="false"
-                    type="button"
-                    class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition"
-                  >
-                    <span class="font-medium">Both/Either</span>
-                  </button>
-                  <button
-                    data-active="false"
-                    type="button"
-                    class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition"
-                  >
-                    <span class="font-medium">Night</span>
-                  </button>
-
-                  <button
-                    data-active="false"
-                    type="button"
-                    class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition"
-                  >
-                    <span class="font-medium">Day</span>
-                  </button>
-
-                  <button
-                    data-active="false"
-                    type="button"
-                    class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition"
-                  >
-                    <span class="font-medium">Not cured</span>
-                  </button>
-                  <button
-                    data-active="false"
-                    type="button"
-                    class="relative rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow transition"
-                  >
-                    <span class="font-medium">Cured</span>
                   </button>
 
                   <div class="w-full">
@@ -731,6 +886,8 @@
               data-dosage_form="[Dosage_Form]"
               data-dosage_instructions="[Dosage_Instructions]"
               data-item_name="[Item_Name]"
+              data-type="[Type]"
+              data-carrier="[Carrier]"
               data-plant_species="[Plant_Species]"
               data-route="[Route]"
               data-status="[Status]"
@@ -866,5 +1023,6 @@
     <script src="js/dropdown.js"></script>
     <script src="js/tableUi.js"></script>
     <script src="js/stockStatus.js"></script>
+    <script src="js/filterIcons.js"></script>
   </body>
 </html>

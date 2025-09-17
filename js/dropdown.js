@@ -48,10 +48,21 @@
 ; (function () {
     const toggleBtn = document.getElementById("toggle-view-more");
     const moreGroup = document.getElementById("more-product-type");
+    const extraGroups = [
+        document.getElementById('filter-subtype'),
+        document.getElementById('filter-dominance'),
+        document.getElementById('filter-carrier'),
+        document.getElementById('filter-plant-species'),
+    ];
 
     toggleBtn.addEventListener("click", () => {
         const isHidden = moreGroup.classList.contains("hidden");
         moreGroup.classList.toggle("hidden");
+        // Toggle additional filter groups together with stock group
+        for (let i = 0; i < extraGroups.length; i++) {
+            const g = extraGroups[i];
+            if (g) g.classList.toggle('hidden');
+        }
         toggleBtn.textContent = isHidden ? "view less" : "view more";
     });
 })();
@@ -104,7 +115,12 @@ update();
 
 (function () {
     var ids = [
-        'product-type'
+        'product-type',
+        'filter-type',
+        'filter-subtype',
+        'filter-dominance',
+        'filter-carrier',
+        'filter-plant-species'
     ];
 
     function attach(section) {
@@ -157,6 +173,23 @@ function resetFilters() {
             cb.dispatchEvent(new Event('change', { bubbles: true }));
         }
     }
+
+  // 5) Reset exact-match selects
+  var buttonGroups = [
+    'filter-type',
+    'filter-subtype',
+    'filter-dominance',
+    'filter-carrier',
+    'filter-plant-species'
+  ];
+  for (var g = 0; g < buttonGroups.length; g++) {
+    var grp = document.getElementById(buttonGroups[g]);
+    if (!grp) continue;
+    var btns = grp.querySelectorAll('button[data-active]');
+    for (var b = 0; b < btns.length; b++) {
+      btns[b].setAttribute('data-active', 'false');
+    }
+  }
 };
 
 function setupResetFilters() {
