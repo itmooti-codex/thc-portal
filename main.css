@@ -90,20 +90,36 @@
      fill: currentColor;
  }
 
- .heart-btn.active {
-     color: #ef4444;
- }
+.heart-btn.active {
+    color: #ef4444;
+}
 
- /* Disable/processing visuals for favorite actions */
- .heart-btn[disabled],
- .fav-remove-btn[disabled] {
-     opacity: 0.5;
-     cursor: not-allowed;
- }
+/* Disable/processing visuals for favorite actions */
+.heart-btn[disabled],
+.fav-remove-btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 
- .note-editor-surface[data-placeholder] {
-     position: relative;
- }
+.filter-group {
+    border-top: 0 solid transparent;
+}
+
+.filter-group:not(:first-of-type) {
+    margin-top: 18px;
+    padding-top: 22px;
+    border-top-width: 1px;
+    border-top-color: rgba(148, 163, 184, 0.14);
+}
+
+.filter-subgroup {
+    margin-top: 18px;
+    padding-top: 20px;
+}
+
+.note-editor-surface[data-placeholder] {
+    position: relative;
+}
 
  .note-editor-surface[data-placeholder][data-empty="true"]::before {
      content: attr(data-placeholder);

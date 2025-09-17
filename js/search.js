@@ -37,6 +37,14 @@
 
   function textOf(el) { return (el && el.textContent ? el.textContent : '').trim(); }
 
+  function canonicalStatus(value) {
+    const s = norm(value).replace(/\s+/g, ' ').trim();
+    if (!s) return '';
+    if (/(out\s*of\s*stock|not\s*available|unavailable|sold\s*out)/.test(s)) return 'not available';
+    if (/(in\s*stock|available)/.test(s)) return 'available';
+    return s;
+  }
+
   function pruneCheckCounts(root = document) {
     if (!root) return;
     const containers = new Set();
@@ -190,8 +198,9 @@
         myFav = true;
         continue;
       }
-      if (/(in\s*stock|out\s*of\s*stock)/.test(l)) {
-        statuses.add(label);
+      const statusCandidate = canonicalStatus(label);
+      if (statusCandidate === 'available' || statusCandidate === 'not available') {
+        statuses.add(statusCandidate);
         continue;
       }
       // Only treat known product-type labels as a type filter
@@ -281,11 +290,14 @@
     }
     // Status filter
     if (f.statuses && f.statuses.size > 0) {
-      const s = (metaNow.statusText || '').toLowerCase();
+      const statusCanon = canonicalStatus(metaNow.statusText);
+      const statusNorm = norm(metaNow.statusText);
       let ok = false;
       for (const want of f.statuses) {
-        const w = String(want).toLowerCase();
-        if (s.includes(w)) { ok = true; break; }
+        const wantCanon = canonicalStatus(want);
+        if (wantCanon && statusCanon && wantCanon === statusCanon) { ok = true; break; }
+        const wantNorm = norm(want);
+        if (wantNorm && statusNorm.includes(wantNorm)) { ok = true; break; }
       }
       if (!ok) return false;
     }

@@ -137,7 +137,7 @@
           <!-- Product details -->
           <section class="mt-8 filter-buttons">
             <!-- Favorites (kept) -->
-            <div id="favorites-section" class="mt-3 flex flex-wrap gap-3">
+            <div id="favorites-section" class="filter-group mt-3 flex flex-wrap gap-3">
               <button data-active="false" type="button"
                 class="my-favorite relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
                 <span class="font-medium">My Favourites</span>
@@ -146,7 +146,7 @@
 
 
             <!-- New button filters -->
-            <div id="filter-type" class="mt-3 flex flex-wrap gap-3">
+            <div id="filter-type" class="filter-group mt-3 flex flex-wrap gap-3">
               <button data-active="false" type="button"
                 class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
                 <span class="font-medium">Accessory</span>
@@ -173,7 +173,7 @@
               </button>
             </div>
 
-            <div id="filter-subtype" class="mt-3 flex flex-wrap gap-3 hidden">
+            <div id="filter-subtype" class="filter-group mt-3 flex flex-wrap gap-3 hidden">
               <button data-active="false" type="button"
                 class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
                 <span class="font-medium">Vaporiser</span>
@@ -192,7 +192,7 @@
               </button>
             </div>
 
-            <div id="filter-dominance" class="mt-3 flex flex-wrap gap-3 hidden">
+            <div id="filter-dominance" class="filter-group mt-3 flex flex-wrap gap-3 hidden">
               <button data-active="false" type="button"
                 class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
                 <span class="font-medium">THC-dominant</span>
@@ -223,7 +223,7 @@
               </button>
             </div>
 
-            <div id="filter-carrier" class="mt-3 flex flex-wrap gap-3 hidden">
+            <div id="filter-carrier" class="filter-group mt-3 flex flex-wrap gap-3 hidden">
               <button data-active="false" type="button"
                 class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
                 <span class="font-medium">Coconut Oil</span>
@@ -250,7 +250,7 @@
               </button>
             </div>
 
-            <div id="filter-plant-species" class="mt-3 flex flex-wrap gap-3 hidden">
+            <div id="filter-plant-species" class="filter-group mt-3 flex flex-wrap gap-3 hidden">
               <button data-active="false" type="button"
                 class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
                 <span class="font-medium">Sativa dominant</span>
@@ -297,30 +297,16 @@
               </button>
             </div>
             <!-- Stock/other controls only -->
-            <div id="product-type" class="mt-3 flex flex-wrap gap-3">
-              <div id="more-product-type" class="hidden flex flex-wrap gap-2">
+            <div id="product-type" class="filter-group mt-3 flex flex-wrap gap-3">
+              <div id="more-product-type" class="filter-subgroup hidden flex flex-wrap gap-2">
                 <button data-active="false" type="button"
                   class="relative flex items-center gap-2 rounded-2xl border bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none">
-                  <span class="inline-flex h-6 w-6 items-center justify-center rounded-2xl bg-green-100">
-                    <svg viewBox="0 0 24 24" aria-hidden="true" class="h-5 w-5" fill="rgb(147,170,82)">
-                      <path
-                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z">
-                      </path>
-                    </svg>
-                  </span>
                   <span class="font-medium">In stock</span>
                 </button>
 
                 <!-- Out of stock -->
                 <button data-active="false" type="button"
                   class="relative flex items-center gap-2 rounded-2xl border bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none">
-                  <span class="inline-flex h-6 w-6 items-center justify-center rounded-2xl bg-rose-100">
-                    <svg viewBox="0 0 24 24" aria-hidden="true" class="h-5 w-5" fill="rgb(242,109,106)">
-                      <path
-                        d="M14.59 8L12 10.59 9.41 8 8 9.41 10.59 12 8 14.59 9.41 16 12 13.41 14.59 16 16 14.59 13.41 12 16 9.41 14.59 8zM12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z">
-                      </path>
-                    </svg>
-                  </span>
                   <span class="font-medium">Out of stock</span>
                 </button>
 
@@ -612,17 +598,6 @@
   <script src="js/tableUi.js"></script>
   <script src="js/stockStatus.js"></script>
   <script src="js/filterIcons.js"></script>
-
-  <!-- <script src="https://itmooti-codex.github.io/thc-portal/js/clinicalNotes.js"></script>
-  <script src="https://itmooti-codex.github.io/thc-portal/js/sidebar.js"></script>
-  <script src="https://itmooti-codex.github.io/thc-portal/js/productIcons.js"></script>
-  <script src="https://itmooti-codex.github.io/thc-portal/js/tableActions.js"></script>
-  <script src="https://itmooti-codex.github.io/thc-portal/js/favorites.js"></script>
-  <script src="https://itmooti-codex.github.io/thc-portal/js/dropdown.js"></script>
-  <script src="https://itmooti-codex.github.io/thc-portal/js/tableUi.js"></script>
-  <script src="https://itmooti-codex.github.io/thc-portal/js/search.js"></script>
-  <script src="https://itmooti-codex.github.io/thc-portal/js/stockStatus.js"></script>
-  <script src="https://itmooti-codex.github.io/thc-portal/js/filterIcons.js"></script> -->
 </body>
 
 </html>
