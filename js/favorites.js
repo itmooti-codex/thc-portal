@@ -20,17 +20,35 @@
         };
     }
 
+    function normalizeKey(v) {
+        if (v == null) return '';
+        return String(v).trim();
+    }
+
+    function resolveOwnerId(cfg) {
+        var id = (cfg && cfg.loggednInUserId != null && cfg.loggednInUserId !== '')
+            ? cfg.loggednInUserId
+            : cfg && cfg.doctorId;
+        return normalizeKey(id);
+    }
+
     function toIdMaybeNum(v) {
         if (v == null) return v;
         if (typeof v === 'number') return v;
-        if (typeof v === 'string' && /^\d+$/.test(v)) return Number(v);
+        if (typeof v === 'string') {
+            var trimmed = v.trim();
+            if (trimmed === '') return trimmed;
+            if (/^\d+$/.test(trimmed)) return Number(trimmed);
+            return trimmed;
+        }
         return v;
     }
 
     async function fetchFavorites() {
         var cfg = getCfg();
+        var ownerId = resolveOwnerId(cfg);
         // If config missing, mark loaded and leave map empty (no server sync)
-        if (!cfg.endpoint || !cfg.apiKey || !cfg.doctorId) {
+        if (!cfg.endpoint || !cfg.apiKey || !ownerId) {
             favState.loaded = true;
             applyHearts();
             return;
@@ -50,13 +68,13 @@
                 return;
             }
             var rows = (json && json.data && json.data.calcOPatientInterestedPatientInterestedItems) || [];
-            var docIdStr = String(cfg.doctorId);
             var map = new Map();
             for (var i = 0; i < rows.length; i++) {
                 var r = rows[i] || {};
-                // Only keep records for this logged-in doctor
-                if (String(r.Patient_Interested_ID) !== docIdStr) continue;
-                var itemId = String(r.Patient_Interested_Item_ID);
+                // Only keep records for the active favorite owner
+                if (normalizeKey(r.Patient_Interested_ID) !== ownerId) continue;
+                var itemId = normalizeKey(r.Patient_Interested_Item_ID);
+                if (!itemId) continue;
                 var favId = r.ID;
                 if (!map.has(itemId)) map.set(itemId, []);
                 map.get(itemId).push(favId);
@@ -73,11 +91,12 @@
 
     async function createFavorite(itemId) {
         var cfg = getCfg();
+        var ownerId = resolveOwnerId(cfg);
         var query = "mutation createOPatientInterestedPatientInterestedItem($payload: OPatientInterestedPatientInterestedItemCreateInput = null) {\n  createOPatientInterestedPatientInterestedItem(payload: $payload) {\n    patient_interested_id\n    patient_interested_item_id\n  }\n}";
         var variables = {
             payload: {
                 // For creation only, prefer loggednInUserId if present; otherwise doctorId
-                patient_interested_id: toIdMaybeNum((cfg.loggednInUserId != null && cfg.loggednInUserId !== '') ? cfg.loggednInUserId : cfg.doctorId),
+                patient_interested_id: toIdMaybeNum(ownerId),
                 patient_interested_item_id: toIdMaybeNum(itemId)
             }
         };
@@ -108,8 +127,8 @@
         var nodes = document.querySelectorAll('.js-heart');
         for (var i = 0; i < nodes.length; i++) {
             var b = nodes[i];
-            var id = b.getAttribute('data-item-id');
-            var has = favState.map.has(String(id));
+            var id = normalizeKey(b.getAttribute('data-item-id'));
+            var has = id ? favState.map.has(id) : false;
             b.classList.toggle('active', !!has);
             b.setAttribute('aria-pressed', has ? 'true' : 'false');
         }
@@ -117,17 +136,18 @@
 
     async function toggleFavorite(btn) {
         var cfg = getCfg();
-        var itemId = btn.getAttribute('data-item-id');
+        var itemId = normalizeKey(btn.getAttribute('data-item-id'));
         if (!itemId) return;
+        var ownerId = resolveOwnerId(cfg);
         // Guard against misconfiguration: fall back to local toggle if no API
-        if (!cfg.endpoint || !cfg.apiKey || !cfg.doctorId) {
+        if (!cfg.endpoint || !cfg.apiKey || !ownerId) {
             // Local fallback (no persistence server-side)
             var on = !btn.classList.contains('active');
             btn.classList.toggle('active', on);
             btn.setAttribute('aria-pressed', on ? 'true' : 'false');
             return;
         }
-        var key = String(itemId);
+        var key = itemId;
         if (locks.has(key)) return;
         locks.add(key);
         btn.disabled = true;
