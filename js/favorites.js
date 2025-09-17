@@ -132,6 +132,9 @@
             b.classList.toggle('active', !!has);
             b.setAttribute('aria-pressed', has ? 'true' : 'false');
         }
+        try {
+            document.dispatchEvent(new CustomEvent('thc:favorites-sync'));
+        } catch (_) { }
     }
 
     async function toggleFavorite(btn) {

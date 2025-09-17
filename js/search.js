@@ -168,6 +168,13 @@
     const types = new Set();
     const statuses = new Set();
     let myFav = false;
+    const favSection = document.getElementById('favorites-section');
+    if (favSection) {
+      const favBtn = favSection.querySelector('.my-favorite');
+      if (favBtn && favBtn.getAttribute('data-active') === 'true') {
+        myFav = true;
+      }
+    }
     const isKnownTypeLabel = (l) => {
       const s = l.toLowerCase();
       return (
@@ -576,6 +583,12 @@
       if (!heart) return;
       // run after main.js toggles classes
       setTimeout(() => { doSearch(state.query || ''); }, 0);
+    });
+
+    document.addEventListener('thc:favorites-sync', () => {
+      const filters = getActiveFilters();
+      if (!filters.myFav) return;
+      doSearch(state.query || '');
     });
   }
 
