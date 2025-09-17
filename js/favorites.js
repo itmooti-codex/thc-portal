@@ -181,12 +181,13 @@
     });
 
     document.addEventListener('DOMContentLoaded', function () {
-        // Initial fetch of favorites and bind to dynamic list changes
-        fetchFavorites();
-        var host = document.querySelector('[data-dynamic-list]');
-        if (!host) return;
-        var mo = new MutationObserver(function () { applyHearts(); });
-        mo.observe(host, { childList: true, subtree: true });
+        setTimeout(() => {
+            fetchFavorites();
+            var host = document.querySelector('.items-grid');
+            if (!host) return;
+            var mo = new MutationObserver(function () { applyHearts(); });
+            mo.observe(host, { childList: true, subtree: true });
+        }, 100);
     });
 
     // Favorites section buttons: toggle active styling (no popup)
