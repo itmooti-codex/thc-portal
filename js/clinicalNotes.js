@@ -8,7 +8,7 @@
     ? String(defaults.loggednInUserId)
     : (defaults.doctorId != null ? String(defaults.doctorId) : null);
 
-  const mutation = `mutation createClinicalNote($payload: ClinicalNoteCreateInput = null) {
+  const CREATE_MUTATION = `mutation createClinicalNote($payload: ClinicalNoteCreateInput = null) {
   createClinicalNote(payload: $payload) {
     id
     content
@@ -17,6 +17,18 @@
     author_id
     patient_id
     date_created
+  }
+}`;
+
+  const UPDATE_MUTATION = `mutation updateClinicalNote(
+  $id: ThcClinicalNoteID
+  $payload: ClinicalNoteUpdateInput = null
+) {
+  updateClinicalNote(
+    query: [{ where: { id: $id } }]
+    payload: $payload
+  ) {
+    content
   }
 }`;
 
@@ -48,7 +60,7 @@
     return temp.textContent.replace(/\u00a0/g, ' ').trim();
   }
 
-  async function sendMutation(payload) {
+  async function executeMutation(query, variables) {
     if (!API_ENDPOINT || !API_KEY) {
       throw new Error('API endpoint or key not configured.');
     }
@@ -58,7 +70,7 @@
         'Content-Type': 'application/json',
         'Api-Key': API_KEY,
       },
-      body: JSON.stringify({ query: mutation, variables: { payload } }),
+      body: JSON.stringify({ query, variables }),
     });
     const json = await res.json();
     if (json.errors) {
@@ -70,13 +82,34 @@
     return json.data;
   }
 
+  async function createClinicalNote(payload) {
+    const data = await executeMutation(CREATE_MUTATION, { payload });
+    return data && data.createClinicalNote ? data.createClinicalNote : null;
+  }
+
+  async function updateClinicalNote(id, payload) {
+    if (id == null) {
+      throw new Error('Cannot update clinical note without an id.');
+    }
+    const resolvedId = typeof id === 'string' && /^\d+$/.test(id) ? Number(id) : id;
+    return executeMutation(UPDATE_MUTATION, { id: resolvedId, payload });
+  }
+
   let editorInstance = null;
   let inFlight = false;
   let pendingSave = false;
+  let currentNoteId = null;
+  let lastSavedHtml = null;
 
   function saveIfNeeded(html) {
     const cleaned = cleanHtml(html);
-    if (!htmlToPlain(cleaned)) {
+    const plain = htmlToPlain(cleaned);
+    if (!plain) {
+      setStatus('');
+      return;
+    }
+
+    if (currentNoteId && cleaned === lastSavedHtml) {
       setStatus('');
       return;
     }
@@ -92,21 +125,29 @@
 
     (async () => {
       try {
-        const nowSeconds = Math.floor(Date.now() / 1000);
-        const payload = {
-          content: cleaned,
-          title: "Consult Notes",
-          appointment_id: APPOINTMENT_ID,
-          patient_id: PATIENT_ID,
-          author_id: AUTHOR_ID,
-          date_created: nowSeconds,
-        };
-        await sendMutation(payload);
-        if (editorInstance) editorInstance.setData('');
+        if (!currentNoteId) {
+          const nowSeconds = Math.floor(Date.now() / 1000);
+          const payload = {
+            content: cleaned,
+            title: 'Consult Notes',
+            appointment_id: APPOINTMENT_ID,
+            patient_id: PATIENT_ID,
+            author_id: AUTHOR_ID,
+            date_created: nowSeconds,
+          };
+          const note = await createClinicalNote(payload);
+          if (note && note.id != null) {
+            currentNoteId = String(note.id);
+          }
+          lastSavedHtml = cleaned;
+        } else {
+          await updateClinicalNote(currentNoteId, { content: cleaned });
+          lastSavedHtml = cleaned;
+        }
         setStatus('Saved');
         setTimeout(() => setStatus(''), 2000);
       } catch (err) {
-        console.error('Failed to create clinical note', err);
+        console.error('Failed to save clinical note', err);
         setStatus('Failed to save');
       } finally {
         inFlight = false;
