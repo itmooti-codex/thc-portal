@@ -89,15 +89,14 @@
       <h2 class="text-xl font-semibold text-slate-900">Previously Saved Notes</h2>
     </header>
     <div id="clinical-notes-list" data-dynamic-list="d5GNzocnu1gOZPEDX0wlC" data-entity="thc"
-      data-entity-key="awWH16PsRms2px8-93-Uw" data-var-uid="EV7U000" data-limit="500"
-      class="space-y-3">
-      <div class="js-accordion border rounded bg-white" data-uid="[Unique_ID]" data-id = "[ID]"
+      data-entity-key="awWH16PsRms2px8-93-Uw" data-var-uid="EV7U000" data-limit="500" class="space-y-3">
+      <div class="js-accordion border rounded bg-white" data-uid="[Unique_ID]" data-id="[ID]"
         data-appointemnt-uid="[Appointment_Unique_ID]" data-patient-uid="[Patient_Unique_ID]">
         <div
           class="h3 cursor-pointer select-none p-3 bg-gray-100 hover:bg-gray-200 rounded-t flex items-center justify-between js-acc-header">
           <span class="truncate">
             ([Date_Created] - [Author_First_Name] [Author_Last_Name])
-            <span class="block text-sm text-gray-600">[note_title]</span>
+            <span class="block text-sm text-gray-600">[note_title] | Script Count ([Appointment_Script_Count])</span>
           </span>
           <svg class="w-4 h-4 transition-transform duration-300" data-chevron fill="none" stroke="currentColor"
             viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -109,18 +108,19 @@
           <div class="border rounded bg-white p-4">
             <div class="font-semibold px-3 py-2 border-b">Clinical note</div>
             <div class="p-3 body-text whitespace-pre-wrap js-rich-content note-content">[Content]</div>
-            <div class="px-3 pb-3 pt-1 text-sm text-gray-600">
-              Upload: <span class="js-empty-dash">[Upload]</span>
+            <div class="pb-3 pt-1 text-sm text-gray-600 mt-2" data-note-upload-row hidden>
+              <span data-note-upload>[Upload]</span>
             </div>
           </div>
 
           <div class="border rounded bg-white js-script-card">
-            <div class="font-semibold px-3 py-2 border-b">Script</div>
+            <div class="font-semibold px-3 py-2 border-b">[ItemBrand] | [Item_Item_Name]</div>
             <div class="p-3 body-text">
-              Status: <span class="js-empty-dash">[Script_Script_Status]</span><br>
-              Drug: <span class="js-empty-dash">[Item_Item_Name]</span><br>
-              Supply: <span class="js-empty-dash">[Script_Supply_Limit]</span><br>
-              Remaining: <span class="js-null-to-dash">[ScriptRemaining]</span>
+              <b>Status:</b> <span class="js-empty-dash">[Script_Script_Status]</span><br>
+              <b>Type:</b> <span class="js-empty-dash">[ItemType]</span><br>
+              <b>Supply:</b> <span class="js-empty-dash">[Script_Supply_Limit] out of [ScriptRemaining]</span><br>
+              <b>Expiry :</b> <span class="js-empty-dash">[Script_Valid_Until]</span><br>
+              <b>Dosage Instructions:</b> <span class="js-empty-dash">[Script_Dosage_Instructions]</span><br>
             </div>
           </div>
         </div>

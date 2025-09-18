@@ -90,36 +90,36 @@
      fill: currentColor;
  }
 
-.heart-btn.active {
-    color: #ef4444;
-}
+ .heart-btn.active {
+     color: #ef4444;
+ }
 
-/* Disable/processing visuals for favorite actions */
-.heart-btn[disabled],
-.fav-remove-btn[disabled] {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
+ /* Disable/processing visuals for favorite actions */
+ .heart-btn[disabled],
+ .fav-remove-btn[disabled] {
+     opacity: 0.5;
+     cursor: not-allowed;
+ }
 
-.filter-group {
-    border-top: 0 solid transparent;
-}
+ .filter-group {
+     border-top: 0 solid transparent;
+ }
 
-.filter-group:not(:first-of-type) {
-    margin-top: 18px;
-    padding-top: 22px;
-    border-top-width: 1px;
-    border-top-color: rgba(148, 163, 184, 0.14);
-}
+ .filter-group:not(:first-of-type) {
+     margin-top: 18px;
+     padding-top: 22px;
+     border-top-width: 1px;
+     border-top-color: rgba(148, 163, 184, 0.14);
+ }
 
-.filter-subgroup {
-    margin-top: 18px;
-    padding-top: 20px;
-}
+ .filter-subgroup {
+     margin-top: 18px;
+     padding-top: 20px;
+ }
 
-.note-editor-surface[data-placeholder] {
-    position: relative;
-}
+ .note-editor-surface[data-placeholder] {
+     position: relative;
+ }
 
  .note-editor-surface[data-placeholder][data-empty="true"]::before {
      content: attr(data-placeholder);
@@ -136,32 +136,32 @@
      position: relative;
  }
 
-.favorites-btn .badge {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    height: 20px;
+ .favorites-btn .badge {
+     position: absolute;
+     top: -6px;
+     right: -6px;
+     height: 20px;
      min-width: 20px;
      padding: 0 6px;
      border-radius: 9999px;
-    background: #ef4444;
-    color: #fff;
-    font-size: 12px;
-    line-height: 20px;
-    text-align: center;
-}
+     background: #ef4444;
+     color: #fff;
+     font-size: 12px;
+     line-height: 20px;
+     text-align: center;
+ }
 
-.compare-sidebar input,
-.compare-sidebar textarea,
-.compare-sidebar select {
-    font-size: 16px;
-}
+ .compare-sidebar input,
+ .compare-sidebar textarea,
+ .compare-sidebar select {
+     font-size: 16px;
+ }
 
-.ck-editor__editable {
-    font-size: 16px;
-    line-height: 1.5;
-    min-height: 9rem;
-}
+ .ck-editor__editable {
+     font-size: 16px;
+     line-height: 1.5;
+     min-height: 9rem;
+ }
 
  .range-input {
      -webkit-appearance: none !important;
@@ -226,36 +226,54 @@
      /* indigo-700 */
  }
 
-/* Active state for filter buttons */
-#product-type button[data-active="true"],
-#stock-status button[data-active="true"],
-#day-night-section button[data-active="true"],
-#cured-section button[data-active="true"],
-#favorites-section button[data-active="true"],
-#filter-type button[data-active="true"],
-#filter-subtype button[data-active="true"],
-#filter-dominance button[data-active="true"],
-#filter-carrier button[data-active="true"],
-#filter-plant-species button[data-active="true"] {
+ /* Active state for filter buttons */
+ #product-type button[data-active="true"],
+ #stock-status button[data-active="true"],
+ #day-night-section button[data-active="true"],
+ #cured-section button[data-active="true"],
+ #favorites-section button[data-active="true"],
+ #filter-type button[data-active="true"],
+ #filter-subtype button[data-active="true"],
+ #filter-dominance button[data-active="true"],
+ #filter-carrier button[data-active="true"],
+ #filter-plant-species button[data-active="true"] {
      background-color: rgb(79, 70, 229);
      color: white;
      border-color: rgb(79, 70, 229);
  }
 
-/* Explicitly revert visuals when not active */
-#product-type button[data-active="false"],
-#stock-status button[data-active="false"],
-#day-night-section button[data-active="false"],
-#cured-section button[data-active="false"],
-#favorites-section button[data-active="false"],
-#filter-type button[data-active="false"],
-#filter-subtype button[data-active="false"],
-#filter-dominance button[data-active="false"],
-#filter-carrier button[data-active="false"],
-#filter-plant-species button[data-active="false"] {
+
+ /* Explicitly revert visuals when not active */
+ #product-type button[data-active="false"],
+ #stock-status button[data-active="false"],
+ #day-night-section button[data-active="false"],
+ #cured-section button[data-active="false"],
+ #favorites-section button[data-active="false"],
+ #filter-type button[data-active="false"],
+ #filter-subtype button[data-active="false"],
+ #filter-dominance button[data-active="false"],
+ #filter-carrier button[data-active="false"],
+ #filter-plant-species button[data-active="false"] {
      background-color: white;
      color: white;
      color: black;
+ }
+
+ .primary-button {
+     padding: 8px 16px;
+     font-size: 14px;
+     line-height: 20px;
+     border: 1px solid #1e40af;
+     background: #2563eb;
+     border-radius: 4px;
+     cursor: pointer;
+     text-decoration: none;
+     display: inline-block;
+     text-align: center;
+
+     a {
+         color: #fff;
+     }
  }
 
  input[type=range] {
@@ -358,7 +376,8 @@
  .status-dot[data-status*="out of stock" i],
  .status-dot[data-status*="not available" i],
  .status-dot[data-status*="unavailable" i] {
-     background-color: #ef4444 !important; /* red-500 */
+     background-color: #ef4444 !important;
+     /* red-500 */
  }
 
  /* Out of stock message styling */
@@ -378,3 +397,4 @@
  .create-script-section[data-status*="unavailable" i] {
      display: none !important;
  }
+

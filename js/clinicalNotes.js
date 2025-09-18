@@ -60,6 +60,180 @@
     return temp.textContent.replace(/\u00a0/g, ' ').trim();
   }
 
+  function normalizeScriptValue(value) {
+    return (value == null ? '' : String(value))
+      .replace(/\u2014/g, '')
+      .trim();
+  }
+
+  function isPlaceholderToken(value) {
+    if (!value) return false;
+    return /\[[^\]]+\]/.test(value);
+  }
+
+  function isBlankScriptValue(value) {
+    let normalized = normalizeScriptValue(value);
+    if (!normalized) return true;
+    const lower = normalized.toLowerCase();
+    if (lower === 'null' || lower === 'undefined' || lower === 'na' || lower === 'n/a' || lower === 'none') {
+      return true;
+    }
+    normalized = normalized.replace(/\bout of\b/gi, ' ');
+    normalized = normalized.replace(/\s+/g, ' ').trim();
+    if (!normalized) return true;
+    return !/[0-9a-z]/i.test(normalized);
+  }
+
+  function shouldRemoveScriptCard(card) {
+    if (!card) return false;
+    const valueNodes = card.querySelectorAll('.js-empty-dash, .js-null-to-dash');
+    if (!valueNodes.length) return false;
+    for (const node of valueNodes) {
+      const text = node.textContent || '';
+      if (isPlaceholderToken(text)) {
+        return false;
+      }
+      if (!isBlankScriptValue(text)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function removeScriptCard(card) {
+    if (!card) return;
+    const parent = card.parentElement;
+    card.remove();
+    if (parent && parent.classList && parent.classList.contains('js-script-grid')) {
+      if (!parent.querySelector('.js-script-card')) {
+        parent.remove();
+      }
+    }
+  }
+
+  function pruneEmptyScriptCards(target) {
+    if (!target) return;
+    const cards = new Set();
+    if (target.nodeType === 1 && target.classList.contains('js-script-card')) {
+      cards.add(target);
+    }
+    if (target.querySelectorAll) {
+      target.querySelectorAll('.js-script-card').forEach((card) => cards.add(card));
+    }
+    cards.forEach((card) => {
+      if (!card.isConnected) return;
+      if (shouldRemoveScriptCard(card)) {
+        removeScriptCard(card);
+      }
+    });
+  }
+
+  function deriveFileName(link, fallback) {
+    if (fallback) {
+      const trimmed = fallback.trim();
+      if (trimmed) return trimmed;
+    }
+    if (!link) return '';
+    try {
+      const url = new URL(link, window.location.origin);
+      const pathname = url.pathname || '';
+      const segments = pathname.split('/').filter(Boolean);
+      if (segments.length) {
+        return decodeURIComponent(segments[segments.length - 1]);
+      }
+    } catch (err) {
+      // ignore URL parsing issues
+    }
+    return link;
+  }
+
+  function parseUploadValue(rawValue) {
+    if (!rawValue) return null;
+    const trimmed = rawValue.trim();
+    if (!trimmed) return null;
+    if (isPlaceholderToken(trimmed)) return null;
+    const normalized = trimmed.replace(/\u2014/g, '').trim();
+    if (!normalized) return null;
+    if (/^(null|undefined|n\/?.?a|none)$/i.test(normalized)) return null;
+
+    let payload = null;
+    if (normalized.startsWith('{') && normalized.endsWith('}')) {
+      try {
+        payload = JSON.parse(normalized);
+      } catch (err) {
+        return null;
+      }
+    } else if (/^https?:\/\//i.test(normalized)) {
+      payload = { link: normalized };
+    } else {
+      return null;
+    }
+
+    if (!payload || typeof payload !== 'object') return null;
+    const link = typeof payload.link === 'string' ? payload.link.trim() : '';
+    if (!link) return null;
+    const name = deriveFileName(link, typeof payload.name === 'string' ? payload.name : '');
+    if (!name) return null;
+    return { link, name };
+  }
+
+  function ensureUploadLink(row) {
+    let linkEl = row.querySelector('[data-note-upload-link]');
+    if (!linkEl) {
+      linkEl = document.createElement('a');
+      linkEl.setAttribute('data-note-upload-link', '');
+      // linkEl.className = 'inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500 underline';
+      linkEl.className = 'px-4 py-2 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition text-nowrap w-max';
+      
+      linkEl.target = '_blank';
+      linkEl.rel = 'noopener noreferrer';
+      row.appendChild(linkEl);
+    }
+    return linkEl;
+  }
+
+  function renderUploadRows(target) {
+    if (!target) return;
+    const rows = new Set();
+    if (target.nodeType === 1 && target.hasAttribute('data-note-upload-row')) {
+      rows.add(target);
+    }
+    if (target.querySelectorAll) {
+      target.querySelectorAll('[data-note-upload-row]').forEach((row) => rows.add(row));
+    }
+
+    rows.forEach((row) => {
+      const placeholder = row.querySelector('[data-note-upload]');
+      if (!placeholder) return;
+      const raw = (placeholder.textContent || '').trim();
+      if (row.dataset.noteUploadRaw === raw && row.dataset.noteUploadHydrated === 'true') {
+        return;
+      }
+
+      row.dataset.noteUploadRaw = raw;
+      const info = parseUploadValue(raw);
+      const linkEl = row.querySelector('[data-note-upload-link]');
+
+      if (!info) {
+        if (linkEl) linkEl.remove();
+        placeholder.hidden = false;
+        row.hidden = true;
+        row.classList.add('hidden');
+        row.dataset.noteUploadHydrated = 'false';
+        return;
+      }
+
+      const link = ensureUploadLink(row);
+      link.href = info.link;
+      link.textContent = info.name;
+      link.title = info.name;
+      placeholder.hidden = true;
+      row.hidden = false;
+      row.classList.remove('hidden');
+      row.dataset.noteUploadHydrated = 'true';
+    });
+  }
+
   async function executeMutation(query, variables) {
     if (!API_ENDPOINT || !API_KEY) {
       throw new Error('API endpoint or key not configured.');
@@ -229,4 +403,65 @@
     .catch((err) => {
       console.error('Failed to initialize editor', err);
     });
+
+  const savedNotesList = document.getElementById('clinical-notes-list');
+  if (savedNotesList) {
+    pruneEmptyScriptCards(savedNotesList);
+    renderUploadRows(savedNotesList);
+    if ('MutationObserver' in window) {
+      let isProcessing = false;
+      const observer = new MutationObserver((mutations) => {
+        if (isProcessing) return;
+        isProcessing = true;
+        try {
+          const candidates = new Set();
+          mutations.forEach((mutation) => {
+            if (mutation.type === 'childList') {
+              mutation.addedNodes.forEach((node) => {
+                if (node.nodeType === 1) {
+                  candidates.add(node);
+                  const uploadRow = node.closest && node.closest('[data-note-upload-row]');
+                  if (uploadRow) {
+                    candidates.add(uploadRow);
+                  }
+                }
+              });
+              if (mutation.target && mutation.target.nodeType === 1) {
+                candidates.add(mutation.target);
+                const uploadRow = mutation.target.closest('[data-note-upload-row]');
+                if (uploadRow) {
+                  candidates.add(uploadRow);
+                }
+              }
+            } else if (mutation.type === 'characterData') {
+              const parent = mutation.target && mutation.target.parentElement;
+              if (parent) {
+                const card = parent.closest('.js-script-card');
+                if (card) {
+                  candidates.add(card);
+                }
+                const uploadRow = parent.closest('[data-note-upload-row]');
+                if (uploadRow) {
+                  candidates.add(uploadRow);
+                }
+              }
+            }
+          });
+          if (!candidates.size) return;
+          candidates.add(savedNotesList);
+          candidates.forEach((candidate) => {
+            pruneEmptyScriptCards(candidate);
+            renderUploadRows(candidate);
+          });
+        } finally {
+          isProcessing = false;
+        }
+      });
+      observer.observe(savedNotesList, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
+    }
+  }
 })();
