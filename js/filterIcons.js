@@ -3,10 +3,9 @@
     'filter-type',
     'filter-subtype',
     'filter-dominance',
-    'filter-carrier',
-    'filter-plant-species',
-    'favorites-section',
-    'product-type'
+    'filter-lineage',
+    'filter-status',
+    'favorites-section'
   ];
 
   const ICONS = new Map([
@@ -113,5 +112,4 @@
     init();
   }
 })();
-
 

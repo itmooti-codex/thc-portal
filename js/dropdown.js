@@ -48,11 +48,12 @@
 ; (function () {
     const toggleBtn = document.getElementById("toggle-view-more");
     const moreGroup = document.getElementById("more-product-type");
+    if (!toggleBtn || !moreGroup) return;
     const extraGroups = [
         document.getElementById('filter-subtype'),
         document.getElementById('filter-dominance'),
-        document.getElementById('filter-carrier'),
-        document.getElementById('filter-plant-species'),
+        document.getElementById('filter-lineage'),
+        document.getElementById('filter-status'),
     ];
 
     toggleBtn.addEventListener("click", () => {
@@ -115,12 +116,11 @@ update();
 
 (function () {
     var ids = [
-        'product-type',
         'filter-type',
         'filter-subtype',
         'filter-dominance',
-        'filter-carrier',
-        'filter-plant-species'
+        'filter-lineage',
+        'filter-status'
     ];
 
     function attach(section) {
@@ -148,11 +148,14 @@ update();
 
 // Reset filters: deactivate all, clear search, reset sliders
 function resetFilters() {
-    // Deactivate buttons in existing section(s)
-    var filterButtons = document.querySelectorAll('#product-type button');
+    // Deactivate filter buttons
+    var filterButtons = document.querySelectorAll('button[data-filter-field]');
     for (var i = 0; i < filterButtons.length; i++) {
         filterButtons[i].setAttribute('data-active', 'false');
     }
+
+    var favBtn = document.querySelector('#favorites-section .my-favorite');
+    if (favBtn) favBtn.setAttribute('data-active', 'false');
 
     // Clear search input
     var search = document.querySelector('input[placeholder="Search products"]');
@@ -179,8 +182,8 @@ function resetFilters() {
     'filter-type',
     'filter-subtype',
     'filter-dominance',
-    'filter-carrier',
-    'filter-plant-species'
+    'filter-lineage',
+    'filter-status'
   ];
   for (var g = 0; g < buttonGroups.length; g++) {
     var grp = document.getElementById(buttonGroups[g]);

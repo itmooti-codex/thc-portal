@@ -152,7 +152,7 @@
           </div>
 
           <!-- Page header -->
-          <header class="mt-4">
+          <header class="mt-4 search-header">
             <h2 class="text-2xl font-bold tracking-tight">
               Medicines Database
             </h2>
@@ -165,6 +165,7 @@
               class="block w-max mt-2 px-4 py-2 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition text-nowrap">
               Search Catalyst
             </a>
+            <div class ="json-search-notes mt-4"></div>
           </header>
 
           <div class="flex items-center space-x-2 my-6">
@@ -180,203 +181,138 @@
           </div>
 
           <!-- Product details -->
-          <section class="mt-8 filter-buttons">
+          <section class="mt-8 filter-buttons space-y-4">
             <!-- Favorites (kept) -->
-            <div id="favorites-section" class="filter-group mt-3 flex flex-wrap gap-3">
+            <div id="favorites-section" class="filter-group flex flex-wrap gap-3">
               <button data-active="false" type="button"
                 class="my-favorite relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
                 <span class="font-medium">My Favourites</span>
               </button>
             </div>
 
-
-            <!-- New button filters -->
-            <div id="filter-type" class="filter-group mt-3 flex flex-wrap gap-3">
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Accessory</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Edible</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Flower</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Vape</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Oil</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Extract</span>
-              </button>
-            </div>
-
-            <div id="filter-subtype" class="filter-group mt-3 flex flex-wrap gap-3 hidden">
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Vaporiser</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Budget</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Core</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Craft</span>
-              </button>
-            </div>
-
-            <div id="filter-dominance" class="filter-group mt-3 flex flex-wrap gap-3 hidden">
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">THC-dominant</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">CBD-dominant</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">CBG-dominant</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">CBN-dominant</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">THCV-dominant</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Broad-spectrum</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Full-spectrum</span>
-              </button>
-            </div>
-
-            <div id="filter-carrier" class="filter-group mt-3 flex flex-wrap gap-3 hidden">
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Coconut Oil</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">MCT Oil</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Olive Oil</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Hemp Seed Oil</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Hemp Oil</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Other</span>
-              </button>
-            </div>
-
-            <div id="filter-plant-species" class="filter-group mt-3 flex flex-wrap gap-3 hidden">
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Sativa dominant</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Indica dominant</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Sativa 70/30</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Indica 70/30</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Indica 80/20</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Indica</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Balanced Hybrid</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Sativa 80/20</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Indica 60/40</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Sativa</span>
-              </button>
-              <button data-active="false" type="button"
-                class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
-                <span class="font-medium">Sativa 60/40</span>
-              </button>
-            </div>
-            <!-- Stock/other controls only -->
-            <div id="product-type" class="filter-group mt-3 flex flex-wrap gap-3">
-              <div id="more-product-type" class="filter-subgroup hidden flex flex-wrap gap-2">
-                <button data-active="false" type="button"
-                  class="relative flex items-center gap-2 rounded-2xl border bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none">
-                  <span class="font-medium">In stock</span>
+            <div id="filter-type" class="filter-group">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Type</p>
+              <div class="flex flex-wrap gap-3">
+                <button data-active="false" type="button" data-filter-field="type" data-filter-value="Accessory"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                  <span class="font-medium">Accessory</span>
                 </button>
-
-                <!-- Out of stock -->
-                <button data-active="false" type="button"
-                  class="relative flex items-center gap-2 rounded-2xl border bg-white px-3 py-2 shadow-sm hover:shadow transition focus:outline-none">
-                  <span class="font-medium">Out of stock</span>
+                <button data-active="false" type="button" data-filter-field="type" data-filter-value="Edible"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                  <span class="font-medium">Edible</span>
                 </button>
-
-                <div class="w-full">
-                  <div class="relative pb-6">
-                    <output id="activeBubble"
-                      class="bubble hidden absolute -top-[1px] -translate-x-1/2 rounded-full bg-indigo-700 px-4 py-3 text-xs font-semibold text-white shadow"></output>
-                    <div class="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-indigo-200"></div>
-                    <div id="progress" class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-indigo-500"></div>
-                    <input id="min" type="range" min="0" max="650" step="10" value="0" class="range-input z-30" />
-                    <input id="max" type="range" min="0" max="650" step="10" value="650" class="range-input z-30" />
-                    <div class="mt-6 flex justify-between text-sm text-gray-500">
-                      <span>$0</span>
-                      <span>$650</span>
-                    </div>
-                  </div>
-                </div>
+                <button data-active="false" type="button" data-filter-field="type" data-filter-value="Flower"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                  <span class="font-medium">Flower</span>
+                </button>
+                <button data-active="false" type="button" data-filter-field="type" data-filter-value="Vape"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                  <span class="font-medium">Vape</span>
+                </button>
+                <button data-active="false" type="button" data-filter-field="type" data-filter-value="Oil"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                  <span class="font-medium">Oil</span>
+                </button>
+                <button data-active="false" type="button" data-filter-field="type" data-filter-value="Extract"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                  <span class="font-medium">Extract</span>
+                </button>
               </div>
             </div>
 
-            <button data-active="false" type="button" id="toggle-view-more"
-              class="self-center mt-2 inline-flex px-1 text-indigo-700 font-medium hover:underline bg-white text-black">
-              view more
-            </button>
+            <div id="filter-subtype" class="filter-group">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Sub Type</p>
+              <div class="flex flex-wrap gap-3">
+                <button data-active="false" type="button" data-filter-field="sub_type" data-filter-value="Budget"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                  <span class="font-medium">Budget</span>
+                </button>
+              </div>
+            </div>
+
+            <div id="filter-dominance" class="filter-group">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Dominance</p>
+              <div class="flex flex-wrap gap-3">
+                <button data-active="false" type="button" data-filter-field="dominance" data-filter-value="THC-dominant"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                  <span class="font-medium">THC-dominant</span>
+                </button>
+                <button data-active="false" type="button" data-filter-field="dominance" data-filter-value="CBD-dominant"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                  <span class="font-medium">CBD-dominant</span>
+                </button>
+                <button data-active="false" type="button" data-filter-field="dominance" data-filter-value="CBG-dominant"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                  <span class="font-medium">CBG-dominant</span>
+                </button>
+                <button data-active="false" type="button" data-filter-field="dominance" data-filter-value="CBN-dominant"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                  <span class="font-medium">CBN-dominant</span>
+                </button>
+                <button data-active="false" type="button" data-filter-field="dominance" data-filter-value="THCV-dominant"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                  <span class="font-medium">THCV-dominant</span>
+                </button>
+                <button data-active="false" type="button" data-filter-field="dominance" data-filter-value="Broad-spectrum"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                  <span class="font-medium">Broad-spectrum</span>
+                </button>
+                <button data-active="false" type="button" data-filter-field="dominance" data-filter-value="Full-spectrum"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                  <span class="font-medium">Full-spectrum</span>
+                </button>
+              </div>
+            </div>
+
+            <div id="filter-lineage" class="filter-group">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Client Preference Lineage</p>
+              <div class="flex flex-wrap gap-3">
+                <button data-active="false" type="button" data-filter-field="lineage" data-filter-value="Balanced"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                  <span class="font-medium">Balanced</span>
+                </button>
+                <button data-active="false" type="button" data-filter-field="lineage" data-filter-value="Sativa"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                  <span class="font-medium">Sativa</span>
+                </button>
+                <button data-active="false" type="button" data-filter-field="lineage" data-filter-value="Indica"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                  <span class="font-medium">Indica</span>
+                </button>
+              </div>
+            </div>
+
+            <div id="filter-status" class="filter-group">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Status</p>
+              <div class="flex flex-wrap gap-3">
+                <button data-active="false" type="button" data-filter-field="status" data-filter-value="In Stock"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                  <span class="font-medium">In stock</span>
+                </button>
+                <button data-active="false" type="button" data-filter-field="status" data-filter-value="Not Available"
+                  class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
+                  <span class="font-medium">Out of stock</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Price range</p>
+              <div class="relative pb-6">
+                <output id="activeBubble"
+                  class="bubble hidden absolute -top-[1px] -translate-x-1/2 rounded-full bg-indigo-700 px-4 py-3 text-xs font-semibold text-white shadow"></output>
+                <div class="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-indigo-200"></div>
+                <div id="progress" class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-indigo-500"></div>
+                <input id="min" type="range" min="0" max="1000" step="10" value="0" class="range-input z-30" />
+                <input id="max" type="range" min="0" max="1000" step="10" value="1000" class="range-input z-30" />
+                <div class="mt-6 flex justify-between text-sm text-gray-500">
+                  <span>$0</span>
+                  <span>$1000</span>
+                </div>
+              </div>
+            </div>
           </section>
+
           <!-- Reset button -->
           <button id="reset-button" data-active="false" type="button"
             class="mt-6 inline-flex items-center gap-2 border-2 rounded-lg px-3 py-2 shadow-sm hover:shadow transition">
@@ -533,15 +469,13 @@
             </div>
           </div>
           <!-- Hidden data for search indexing -->
-          <div class="search-index hidden" data-active_ingredient_1="[Active_Ingredient_1]"
-            data-active_ingredient_2="[Active_Ingredient_2]" data-active_ingredient_3="[Active_Ingredient_3]"
-            data-brand="[Brand]" data-client_preference_effect="[Client_Preference_Effect]"
-            data-client_preference_lineage="[Client_Preference_Lineage]"
-            data-client_preference_thc_cbd="[Client_Preference_THC_CBD]" data-cultivar="[Cultivar]"
-            data-description="[Description]" data-dominance="[Dominance]" data-dosage_form="[Dosage_Form]"
-            data-dosage_instructions="[Dosage_Instructions]" data-item_name="[Item_Name]" data-type="[Type]"
-            data-carrier="[Carrier]" data-plant_species="[Plant_Species]" data-route="[Route]" data-status="[Status]"
-            data-sub_type="[Sub_Type]" data-typical_use="[Typical_Use]"></div>
+          <div class="search-index hidden" data-item-name="[Item_Name]" data-brand="[Brand]" data-type="[Type]"
+            data-sub-type="[Sub_Type]" data-dominance="[Dominance]"
+            data-client-preference-lineage="[Client_Preference_Lineage]" data-status="[Status]"
+            data-origin-country="[Origin_Country]" data-organic="[Organic]"
+            data-benefits="[Benefits_Options_As_Text]" data-conditions="[Conditions_Options_As_Text]"
+            data-dominant-terpenes="[Dominant_Terpenes_Options_As_Text]">
+          </div>
           <!-- Meta row: type/price/status/count -->
           <div class="px-5 pb-4">
             <div class="flex flex-wrap items-center gap-4 text-sm text-slate-700">
