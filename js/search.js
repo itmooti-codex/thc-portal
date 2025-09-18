@@ -226,7 +226,7 @@
   }
 
   function loadSearchTerms() {
-    fetch('searchTerm.json')
+    fetch('https://itmooti-codex.github.io/thc-portal/searchTerm.json')
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => {
         if (!json) return;
