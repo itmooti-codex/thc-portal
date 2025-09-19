@@ -165,7 +165,7 @@
               class="block w-max mt-2 px-4 py-2 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition text-nowrap">
               Search Catalyst
             </a>
-            <div class ="json-search-notes mt-4"></div>
+            <div class="json-search-notes mt-4"></div>
           </header>
 
           <div class="flex items-center space-x-2 my-6">
@@ -249,15 +249,18 @@
                   class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
                   <span class="font-medium">CBN-dominant</span>
                 </button>
-                <button data-active="false" type="button" data-filter-field="dominance" data-filter-value="THCV-dominant"
+                <button data-active="false" type="button" data-filter-field="dominance"
+                  data-filter-value="THCV-dominant"
                   class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
                   <span class="font-medium">THCV-dominant</span>
                 </button>
-                <button data-active="false" type="button" data-filter-field="dominance" data-filter-value="Broad-spectrum"
+                <button data-active="false" type="button" data-filter-field="dominance"
+                  data-filter-value="Broad-spectrum"
                   class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
                   <span class="font-medium">Broad-spectrum</span>
                 </button>
-                <button data-active="false" type="button" data-filter-field="dominance" data-filter-value="Full-spectrum"
+                <button data-active="false" type="button" data-filter-field="dominance"
+                  data-filter-value="Full-spectrum"
                   class="relative flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-sm hover:shadow transition">
                   <span class="font-medium">Full-spectrum</span>
                 </button>
@@ -472,9 +475,8 @@
           <div class="search-index hidden" data-item-name="[Item_Name]" data-brand="[Brand]" data-type="[Type]"
             data-sub-type="[Sub_Type]" data-dominance="[Dominance]"
             data-client-preference-lineage="[Client_Preference_Lineage]" data-status="[Status]"
-            data-origin-country="[Origin_Country]" data-organic="[Organic]"
-            data-benefits="[Benefits_Options_As_Text]" data-conditions="[Conditions_Options_As_Text]"
-            data-dominant-terpenes="[Dominant_Terpenes_Options_As_Text]">
+            data-origin-country="[Origin_Country]" data-organic="[Organic]" data-benefits="[Benefits_Options_As_Text]"
+            data-conditions="[Conditions_Options_As_Text]" data-dominant-terpenes="[Dominant_Terpenes_Options_As_Text]">
           </div>
           <!-- Meta row: type/price/status/count -->
           <div class="px-5 pb-4">
@@ -487,14 +489,22 @@
               </div>
               <!-- Price per unit (text placeholder to match $/g or $/mg) -->
               <div class="flex items-center gap-2">
-                <span class="text-slate-500">$</span>
-                <span class="font-medium">[Retail_Price]</span>
+                <span class="text-slate-500"></span>
+                <span class="font-medium">$[Retail_Price]</span>
               </div>
               <!-- Status -->
               <div class="flex items-center gap-2">
                 <span class="h-2.5 w-2.5 rounded-full bg-emerald-500 status-dot" data-status="[Status]"></span>
                 <span>[Status]</span>
               </div>
+            </div>
+            <div class="flex items-center gap-2 mt-2">
+              <span class="text-slate-500">Price per mg: </span>
+              <span class="font-medium">$[Price_per_mg]</span>
+            </div>
+            <div class="flex items-center gap-2 mt-2">
+              <span class="text-slate-500">Pack Size: </span>
+              <span class="font-medium">[PackSize] [Quantity_Unit]</span>
             </div>
           </div>
           <!-- Divider -->
@@ -536,7 +546,7 @@
               <div
                 class="out-of-stock-message flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-red-700"
                 data-status="[Status]" style="display: none">
-                <span class="text-sm font-medium">Not Available</span>
+                <span class="text-sm font-medium">Unavailable</span>
               </div>
             </div>
           </div>

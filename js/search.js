@@ -788,12 +788,20 @@
 
     // Ensure/Toggle no-results empty state
     const gridRoot = document.querySelector(GRID_SELECTOR);
-    let noResultsEl = gridRoot ? gridRoot.querySelector('#noResultsMessage') : null;
+    let noResultsEl = null;
+    if (gridRoot) {
+      const existing = gridRoot.querySelectorAll('#noResultsMessage, [data-no-results-placeholder]');
+      if (existing.length > 1) {
+        for (let i = 1; i < existing.length; i++) existing[i].remove();
+      }
+      noResultsEl = existing[0] || null;
+    }
     const ensureNoResultsEl = () => {
       if (!gridRoot) return null;
       if (!noResultsEl) {
         noResultsEl = document.createElement('div');
         noResultsEl.id = 'noResultsMessage';
+        noResultsEl.setAttribute('data-no-results-placeholder', 'true');
         noResultsEl.className = 'col-span-full flex flex-col items-center justify-center text-center rounded-xl border border-dashed border-slate-300 bg-white p-8 my-6';
         noResultsEl.innerHTML = [
           '<div class="text-lg font-semibold text-slate-900">No results found</div>',
@@ -819,6 +827,12 @@
       }
       return noResultsEl;
     };
+    const removeNoResultsEl = () => {
+      if (!gridRoot) return;
+      const nodes = gridRoot.querySelectorAll('#noResultsMessage, [data-no-results-placeholder]');
+      nodes.forEach((node) => node.remove());
+      noResultsEl = null;
+    };
 
     // Hide/show cards
     const allNodes = state.items.map(it => it.node);
@@ -829,8 +843,8 @@
     if (total === 0) {
       const el = ensureNoResultsEl();
       if (el) el.style.display = '';
-    } else if (noResultsEl) {
-      noResultsEl.style.display = 'none';
+    } else {
+      removeNoResultsEl();
     }
 
     updateCounts(pageItems.length, total);
