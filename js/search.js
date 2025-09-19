@@ -116,6 +116,36 @@
     GB: 'United Kingdom',
   };
 
+  const COUNTRY_CODE_SYNONYMS = (() => {
+    const lookup = Object.create(null);
+    const add = (key, code) => {
+      if (!key || !code) return;
+      const normalized = normalizeForSearch(key);
+      if (!normalized) return;
+      if (!lookup[normalized]) lookup[normalized] = code;
+      const condensed = normalized.replace(/\s+/g, '');
+      if (condensed && !lookup[condensed]) lookup[condensed] = code;
+    };
+    Object.entries(COUNTRY_MAP).forEach(([code, name]) => {
+      const canonical = (code.length === 2 ? code : code.slice(0, 2)).toUpperCase();
+      add(code, canonical);
+      add(name, canonical);
+    });
+    // Ensure common alternates map to their expected canonical codes
+    add('great britain', 'UK');
+    return lookup;
+  })();
+
+  function canonicalCountryCode(value) {
+    if (!value) return '';
+    const normalized = normalizeForSearch(value);
+    if (!normalized) return '';
+    if (COUNTRY_CODE_SYNONYMS[normalized]) return COUNTRY_CODE_SYNONYMS[normalized];
+    const condensed = normalized.replace(/\s+/g, '');
+    if (condensed && COUNTRY_CODE_SYNONYMS[condensed]) return COUNTRY_CODE_SYNONYMS[condensed];
+    return '';
+  }
+
   const FILTER_FIELDS = ['type', 'sub_type', 'dominance', 'lineage', 'status'];
 
   let state = {
@@ -487,6 +517,7 @@
       const lineage = ds.clientPreferenceLineage || '';
       const status = ds.status || textOf(card.querySelector('.px-5.pb-4 .flex.items-center.gap-2:last-child span:last-child'));
       const originCountryRaw = ds.originCountry || textOf(card.querySelector('.origin-country'));
+      const originCountryCode = canonicalCountryCode(originCountryRaw || ds.originCountryCode || '');
       const organicRaw = ds.organic;
       const isOrganic = ['true', 'yes', '1'].includes(norm(organicRaw));
 
@@ -526,6 +557,10 @@
         if (cc.length <= 3 && cc !== originCountryRaw) collectTokens(cc, tokens, parts);
       }
 
+      if (originCountryCode) {
+        collectTokens(originCountryCode, tokens, parts);
+      }
+
       benefitNames.forEach((name) => collectTokens(name, tokens, parts));
       conditionNames.forEach((name) => collectTokens(name, tokens, parts));
       terpeneNames.forEach((name) => collectTokens(name, tokens, parts));
@@ -553,7 +588,7 @@
       };
 
       const meta = parseCardMeta(card);
-      items.push({ id, node: card, tokens, primaryTokens, searchBlob, filterValues, meta, score: 0, dominanceTokens, terpeneTokens });
+      items.push({ id, node: card, tokens, primaryTokens, searchBlob, filterValues, meta, score: 0, dominanceTokens, terpeneTokens, isOrganic, originCountryCode });
     }
     state.items = items;
     state.items.forEach((it, idx) => { it._ord = idx; });
@@ -639,18 +674,58 @@
     state.tokens = tokens;
     const filters = getActiveFilters();
     const matchedTermEntry = findSearchTermEntry(state.query || '');
+    const containsOrganicToken = tokens.includes('organic');
+
+    const countryCodeFilters = (() => {
+      const codes = new Set();
+      const addCode = (value) => {
+        const code = canonicalCountryCode(value);
+        if (code) codes.add(code);
+      };
+      addCode(state.query || '');
+      tokens.forEach(addCode);
+      return Array.from(codes);
+    })();
+
+    const countryCodeSet = countryCodeFilters.length ? new Set(countryCodeFilters) : null;
+
+    state.items.forEach((item) => { item._matchesTerm = false; });
 
     const filteredByQuery = state.items.filter((it) => matchesQuery(it, tokens));
     filteredByQuery.forEach((item) => {
       item.score = scoreItem(item, tokens);
     });
 
-    let filtered = filteredByQuery;
+    let termMatchesCount = 0;
     if (matchedTermEntry) {
-      filtered = filtered.filter((item) => itemMatchesSearchTerm(item, matchedTermEntry));
+      filteredByQuery.forEach((item) => {
+        const matches = itemMatchesSearchTerm(item, matchedTermEntry);
+        item._matchesTerm = matches;
+        if (matches) termMatchesCount += 1;
+      });
+    }
+
+    let filtered = filteredByQuery;
+    if (matchedTermEntry && termMatchesCount > 0 && !containsOrganicToken) {
+      filtered = filtered.filter((item) => item._matchesTerm);
     }
 
     filtered = filtered.filter((item) => itemMatchesFilters(item, filters));
+
+    if (countryCodeSet) {
+      filtered = filtered.filter((item) => {
+        if (!item.originCountryCode) return false;
+        return countryCodeSet.has(item.originCountryCode);
+      });
+    }
+
+    filtered.forEach((item) => {
+      let boost = 0;
+      if (containsOrganicToken && item.isOrganic) boost += 500;
+      if (matchedTermEntry && item._matchesTerm) boost += containsOrganicToken ? 200 : 120;
+      item.score += boost;
+    });
+
     filtered.sort((a, b) => (b.score - a.score) || (a._ord - b._ord));
     state.filtered = filtered;
     state.page = 1;
