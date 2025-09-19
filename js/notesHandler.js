@@ -277,14 +277,21 @@ grid-template-columns: repeat(4, minmax(0, 1fr));
     return "";
   }
 
+  function canonicalAppointmentUidValue(value) {
+    if (value == null) return "";
+    const trimmed = String(value).trim();
+    if (!trimmed) return "";
+    if (/^(null|undefined|n\/?.?a|none|no|false|0)$/i.test(trimmed)) return "";
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) return "";
+    return trimmed.toLowerCase();
+  }
+
   function hasAppointmentUid(node) {
-    const raw = getAppointmentUidRaw(node);
-    if (raw == null) return false;
-    const trimmed = String(raw).trim();
-    if (!trimmed) return false;
-    if (/^(null|undefined|n\/?.?a|none|no|false|0)$/i.test(trimmed)) return false;
-    if (trimmed.startsWith("[") && trimmed.endsWith("]")) return false;
-    return true;
+    const allowedUid = canonicalAppointmentUidValue(defaults.appointmentUid);
+    if (!allowedUid) return false;
+    const noteUid = canonicalAppointmentUidValue(getAppointmentUidRaw(node));
+    if (!noteUid) return false;
+    return noteUid === allowedUid;
   }
 
   function toIdMaybeNum(v) {

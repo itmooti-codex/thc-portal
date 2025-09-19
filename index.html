@@ -23,6 +23,7 @@
       doctorId: Number('1'),
       patientId: Number('249'),
       appointmentId: Number('367'),
+      appointmentUid: '3UYZ7PT',
       loggednInUserId: Number('1')
     };
   </script>
@@ -421,8 +422,17 @@
                 </svg>
               </li>
               <li class="flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer"
-                role="option" data-value="price_asc">
-                <span>Price</span>
+                role="option" data-value="price-asc">
+                <span>Price: Low to High</span>
+                <svg class="h-4 w-4 text-indigo-600 opacity-0" data-check viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-7.364 7.364a1 1 0 01-1.414 0L3.293 9.435a1 1 0 111.414-1.414l3.222 3.222 6.657-6.657a1 1 0 011.414 0z"
+                    clip-rule="evenodd" />
+                </svg>
+              </li>
+              <li class="flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer"
+                role="option" data-value="price-desc">
+                <span>Price: High to Low</span>
                 <svg class="h-4 w-4 text-indigo-600 opacity-0" data-check viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd"
                     d="M16.707 5.293a1 1 0 010 1.414l-7.364 7.364a1 1 0 01-1.414 0L3.293 9.435a1 1 0 111.414-1.414l3.222 3.222 6.657-6.657a1 1 0 011.414 0z"

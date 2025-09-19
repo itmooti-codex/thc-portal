@@ -153,13 +153,19 @@
     filtered: [],
     page: 1,
     query: '',
-    tokens: []
+    tokens: [],
+    sort: 'relevance'
   };
   let refreshScheduled = false;
+  let suppressGridObserverCount = 0;
 
   function norm(v) {
     if (v == null) return '';
     return String(v).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  }
+
+  function isValidNumber(value) {
+    return typeof value === 'number' && Number.isFinite(value);
   }
 
   function normalizeForSearch(value) {
@@ -497,6 +503,53 @@
     return true;
   }
 
+  function baseSortCompare(a, b) {
+    return (b.score - a.score) || (a._ord - b._ord);
+  }
+
+  function withGridObserverSuppressed(fn) {
+    suppressGridObserverCount += 1;
+    const release = () => {
+      suppressGridObserverCount = Math.max(0, suppressGridObserverCount - 1);
+    };
+    try {
+      fn();
+    } finally {
+      setTimeout(release, 0);
+    }
+  }
+
+  function getSortablePrice(item) {
+    if (!item) return null;
+    const metaPrice = item.meta ? item.meta.price : null;
+    if (isValidNumber(metaPrice)) return metaPrice;
+    const runtimeMeta = readRuntimeMeta(item.node);
+    if (runtimeMeta && isValidNumber(runtimeMeta.price)) return runtimeMeta.price;
+    return null;
+  }
+
+  function sortFilteredItems(items) {
+    const mode = state.sort || 'relevance';
+    if (mode === 'price-asc' || mode === 'price-desc') {
+      const direction = mode === 'price-asc' ? 1 : -1;
+      items.sort((a, b) => {
+        const priceA = getSortablePrice(a);
+        const priceB = getSortablePrice(b);
+        const hasA = isValidNumber(priceA);
+        const hasB = isValidNumber(priceB);
+        if (hasA && hasB) {
+          if (priceA !== priceB) return (priceA - priceB) * direction;
+          return baseSortCompare(a, b);
+        }
+        if (hasA) return -1;
+        if (hasB) return 1;
+        return baseSortCompare(a, b);
+      });
+      return;
+    }
+    items.sort(baseSortCompare);
+  }
+
   function buildIndex() {
     const grid = document.querySelector(GRID_SELECTOR);
     if (!grid) return;
@@ -726,7 +779,7 @@
       item.score += boost;
     });
 
-    filtered.sort((a, b) => (b.score - a.score) || (a._ord - b._ord));
+    sortFilteredItems(filtered);
     state.filtered = filtered;
     state.page = 1;
 
@@ -837,7 +890,19 @@
     // Hide/show cards
     const allNodes = state.items.map(it => it.node);
     allNodes.forEach(n => { n.style.display = 'none'; });
-    pageItems.forEach(it => { it.node.style.display = ''; });
+
+    if (gridRoot && pageItems.length) {
+      withGridObserverSuppressed(() => {
+        const frag = document.createDocumentFragment();
+        pageItems.forEach((it) => {
+          it.node.style.display = '';
+          frag.appendChild(it.node);
+        });
+        gridRoot.appendChild(frag);
+      });
+    } else {
+      pageItems.forEach(it => { it.node.style.display = ''; });
+    }
 
     // Toggle empty state visibility based on total
     if (total === 0) {
@@ -990,6 +1055,45 @@
       }
     }
 
+    const sortRoot = document.querySelector('[data-dd="sort"]');
+    if (sortRoot) {
+      const labelEl = sortRoot.querySelector('[data-dd-label]');
+      const updateSortUI = (value) => {
+        const checks = sortRoot.querySelectorAll('[data-dd-menu] [data-check]');
+        checks.forEach((icon) => icon.classList.add('opacity-0'));
+        const activeOption = sortRoot.querySelector(`[data-dd-menu] li[role="option"][data-value="${value}"]`);
+        if (activeOption) {
+          const activeCheck = activeOption.querySelector('[data-check]');
+          if (activeCheck) activeCheck.classList.remove('opacity-0');
+          if (labelEl) {
+            const textNode = activeOption.querySelector('span');
+            const text = textNode ? textNode.textContent : activeOption.textContent;
+            labelEl.textContent = (text || '').trim() || 'Sort';
+          }
+        } else if (labelEl) {
+          labelEl.textContent = 'Sort';
+        }
+      };
+
+      updateSortUI(state.sort);
+
+      const menu = sortRoot.querySelector('[data-dd-menu]');
+      if (menu) {
+        menu.addEventListener('click', (e) => {
+          const li = e.target.closest('li[role="option"][data-value]');
+          if (!li) return;
+          const value = li.getAttribute('data-value') || 'relevance';
+          const previous = state.sort;
+          state.sort = value;
+          updateSortUI(value);
+          if (previous !== value) {
+            applyQuery();
+            renderPage();
+          }
+        });
+      }
+    }
+
     // React to filter button clicks instantly
     const filterRoot = document.querySelector('.filter-buttons');
     if (filterRoot) {
@@ -1060,6 +1164,7 @@
 
   function startContinuousObserver(grid) {
     const continuousObserver = new MutationObserver((mutations) => {
+      if (suppressGridObserverCount > 0) return;
       let needsRefresh = false;
       for (const m of mutations) {
         if (m.type === 'childList' && (m.addedNodes.length || m.removedNodes.length)) {
