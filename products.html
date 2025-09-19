@@ -45,24 +45,32 @@
                 <!-- Row 2: THC / CBD -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <!-- THC -->
-                    <div class="flex-1" data-hero-metric="THC" data-scale="0.01">
+                    <div class="hero-metric" data-hero-metric="THC">
                         <div class="flex items-center gap-2">
                             <div class="text-slate-900 font-semibold">THC</div>
                         </div>
-                        <div class="text-slate-700 metric-value">[Page//THC]%</div>
-                        <div class="mt-2 h-1.5 w-full rounded-full bg-purple-100">
-                            <div class="h-1.5 rounded-full bg-purple-400 metric-bar" style="width: [Page//THC]%;"></div>
+
+                        <!-- JS fills this: either "X%" or a pill like "112mg per pastille THC" -->
+                        <div class="text-slate-700 metric-value" aria-live="polite"></div>
+
+                        <!-- Bar track (shown only when unit is %) -->
+                        <div class="metric-track mt-2 h-1.5 w-full rounded-full bg-purple-100">
+                            <div class="metric-bar h-1.5 rounded-full bg-purple-400" style="width:0%"></div>
                         </div>
                     </div>
 
                     <!-- CBD -->
-                    <div class="flex-1" data-hero-metric="CBD" data-scale="0.01">
+                    <div class="hero-metric" data-hero-metric="CBD">
                         <div class="flex items-center gap-2">
                             <div class="text-slate-900 font-semibold">CBD</div>
                         </div>
-                        <div class="text-slate-700 metric-value">[Page//CBD]%</div>
-                        <div class="mt-2 h-1.5 w-full rounded-full bg-amber-100">
-                            <div class="h-1.5 rounded-full bg-amber-400 metric-bar" style="width: [Page//CBD]%;"></div>
+
+                        <!-- JS fills this: either "X%" or a pill like "1mg per gummy CBD" -->
+                        <div class="text-slate-700 metric-value" aria-live="polite"></div>
+
+                        <!-- Bar track (shown only when unit is %) -->
+                        <div class="metric-track mt-2 h-1.5 w-full rounded-full bg-amber-100">
+                            <div class="metric-bar h-1.5 rounded-full bg-amber-400" style="width:0%"></div>
                         </div>
                     </div>
                 </div>
