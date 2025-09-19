@@ -200,3 +200,47 @@ document.addEventListener("DOMContentLoaded", async () => {
     const code = await resolveCountryCode(country);
     setFlag(img, code, country);
 });
+
+
+
+
+
+
+const n1 = v => {
+    const x = parseFloat(v);
+    return Number.isFinite(x) ? x : 0;
+};
+const clamp01 = v => Math.max(0, Math.min(100, v));
+const isPercentUnit = (strengthUnit || "").trim().toLowerCase() === "%";
+
+const pillClass = {
+    THC: "mt-2 inline-flex items-center rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-medium text-purple-800",
+    CBD: "mt-2 inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800",
+};
+
+function updateHeroMetric(key, value) {
+    const root = document.querySelector(`[data-hero-metric="${key}"]`);
+    if (!root) return;
+
+    const valEl = root.querySelector(".metric-value");
+    const barEl = root.querySelector(".metric-bar");
+    const trackEl = barEl ? barEl.parentElement : null;
+
+    const raw = n1(value);
+
+    if (isPercentUnit) {
+        if (valEl) valEl.textContent = `${raw}%`;
+        if (trackEl) trackEl.classList.remove("hidden");
+        if (barEl) barEl.style.width = `${clamp01(raw)}%`;
+    } else {
+        if (valEl) {
+            valEl.innerHTML = `<span class="${pillClass[key]}">${value}${strengthUnit} ${key}</span>`;
+        }
+        if (trackEl) trackEl.classList.add("hidden");
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    updateHeroMetric("THC", thcValue);
+    updateHeroMetric("CBD", cbdValue);
+});
