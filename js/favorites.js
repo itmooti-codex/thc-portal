@@ -8,6 +8,7 @@
     };
     // Simple lock per item to prevent rapid double-clicks
     var locks = new Set();
+    var lastDispatchSignature = '';
 
     function getCfg() {
         var d = window.THCPortalDefaults || {};
@@ -123,15 +124,22 @@
         if (json.errors) throw new Error(json.errors[0]?.message || 'GraphQL error');
     }
 
-    function applyHearts() {
+    function applyHearts(options) {
+        var notify = !options || options.notify !== false;
         var nodes = document.querySelectorAll('.js-heart');
+        var activeIds = [];
         for (var i = 0; i < nodes.length; i++) {
             var b = nodes[i];
             var id = normalizeKey(b.getAttribute('data-item-id'));
             var has = id ? favState.map.has(id) : false;
             b.classList.toggle('active', !!has);
             b.setAttribute('aria-pressed', has ? 'true' : 'false');
+            if (has && id) activeIds.push(id);
         }
+        var signature = activeIds.sort().join('|');
+        var changed = signature !== lastDispatchSignature;
+        lastDispatchSignature = signature;
+        if (!notify || !changed) return;
         try {
             document.dispatchEvent(new CustomEvent('thc:favorites-sync'));
         } catch (_) { }
@@ -172,7 +180,7 @@
             locks.delete(key);
             btn.disabled = false;
             try { btn.removeAttribute('aria-busy'); } catch (_) { }
-            applyHearts();
+            applyHearts({ notify: false });
         }
     }
 
@@ -188,7 +196,7 @@
             fetchFavorites();
             var host = document.querySelector('.items-grid');
             if (!host) return;
-            var mo = new MutationObserver(function () { applyHearts(); });
+            var mo = new MutationObserver(function () { applyHearts({ notify: false }); });
             mo.observe(host, { childList: true, subtree: true });
         }, 100);
     });
