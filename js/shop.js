@@ -330,7 +330,9 @@ const filterProducts = (query) => {
 
     document.querySelectorAll('.product-card').forEach((card) => {
         const name = card.querySelector('.product-name')?.textContent?.toLowerCase() || '';
-        const show = !q || name.includes(q);
+        const brand = card.querySelector('.product-brand')?.textContent?.toLowerCase() || '';
+
+        const show = !q || name.includes(q) || brand.includes(q);
         card.classList.toggle('hidden', !show);
         if (show) matches++;
     });
