@@ -1,3 +1,4 @@
+/* ========= utils ========= */
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 const byId = (id) => document.getElementById(id);
@@ -8,6 +9,7 @@ const money = (n) =>
   }).format(n || 0);
 const toNum = (s) => Number(String(s || "").replace(/[^0-9.\-]/g, "")) || 0;
 
+/* ========= storage & state ========= */
 const CART_KEY = "tailwind_demo_cart_v1";
 const loadCart = () => {
   try {
@@ -17,14 +19,13 @@ const loadCart = () => {
   }
 };
 const saveCart = (cart) => localStorage.setItem(CART_KEY, JSON.stringify(cart));
-
 const state = {
   cart: loadCart(),
   steps: ["cart", "details", "payment", "review"],
   stepIndex: 0,
 };
 
-// Drawer
+/* ========= drawer ========= */
 const openCart = () => {
   $(".cart-overlay").classList.remove("pointer-events-none");
   $(".cart-overlay").classList.add("opacity-100");
@@ -40,7 +41,7 @@ const closeCart = () => {
   $(".cart-drawer").classList.add("translate-x-full");
 };
 
-// Cart logic
+/* ========= cart logic ========= */
 const upsertItem = (product, qty = 1) => {
   const i = state.cart.items.findIndex((x) => x.id === product.id);
   if (i >= 0) state.cart.items[i].qty += qty;
@@ -91,30 +92,33 @@ const renderCart = () => {
       const row = document.createElement("div");
       row.className = "p-4 flex gap-3 items-center";
       row.innerHTML = `
-            <img src="${item.image}" alt="${
+        <img src="${item.image}" alt="${
         item.name
       }" class="w-16 h-16 rounded-lg object-cover"/>
-            <div class="flex-1 min-w-0">
-              <div class="font-semibold truncate">${item.name}</div>
-              <div class="text-sm text-gray-600">${item.brand || ""}</div>
-              <div class="text-sm font-medium">${money(item.price)}</div>
-              <div class="mt-2 inline-flex items-center gap-2">
-                <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${
-                  item.id
-                }">−</button>
-                <input class="qty-input w-12 text-center rounded-lg border px-2 py-1" value="${
-                  item.qty
-                }" data-id="${item.id}" inputmode="numeric"/>
-                <button class="qty-incr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${
-                  item.id
-                }">+</button>
-              </div>
-            </div>
-            <button class="remove-item w-9 h-9 rounded-lg hover:bg-gray-100" data-id="${
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold truncate">${item.name}</div>
+          <div class="text-sm text-gray-600">${item.brand || ""}</div>
+          <div class="text-sm font-medium">${money(item.price)}</div>
+          <div class="mt-2 inline-flex items-center gap-2">
+            <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${
               item.id
-            }">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-            </button>`;
+            }">−</button>
+            <input class="qty-input w-12 text-center rounded-lg border px-2 py-1" value="${
+              item.qty
+            }" data-id="${item.id}" inputmode="numeric"/>
+            <button class="qty-incr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${
+              item.id
+            }">+</button>
+          </div>
+        </div>
+        <button class="remove-item w-9 h-9 rounded-lg hover:bg-gray-100" data-id="${
+          item.id
+        }">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5">
+            <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+            <path d="M10 11v6M14 11v6"/>
+          </svg>
+        </button>`;
       wrap.appendChild(row);
     });
   }
@@ -122,10 +126,10 @@ const renderCart = () => {
   $(".cart-total").textContent = money(subtotal());
 };
 
-// Build a unique, stable id for a product card when data-product-id is missing/placeholder
+/* ========= product id safety ========= */
 const safeId = (btn) => {
   let id = (btn.dataset.productId || "").trim();
-  // If it's blank or still a placeholder like "[uid]", derive one from card content
+  // if blank or placeholder, derive one from content
   if (!id || id.startsWith("[")) {
     const card = btn.closest(".product-card") || btn.closest(".p-4.bg-white");
     const name =
@@ -133,44 +137,33 @@ const safeId = (btn) => {
     const brand =
       card?.querySelector(".product-brand")?.textContent?.trim() || "";
     const url = card?.querySelector("a[href]")?.getAttribute("href") || "";
-    // Compose & normalize
     id = `n:${name}|b:${brand}|u:${url}`
       .toLowerCase()
       .replace(/\s+/g, "-")
       .slice(0, 140);
-    btn.dataset.productId = id; // persist so later syncs see the same id
+    btn.dataset.productId = id; // persist
   }
   return id;
 };
 
-// Sync add buttons
+/* ========= sync add buttons ========= */
 const syncAddButtons = () => {
-  const inCart = new Set(state.cart.items.map((i) => i.id));
+  const inCart = new Set(state.cart.items.map((i) => String(i.id)));
   $$(".add-to-cart-btn").forEach((btn) => {
-    const id = btn.dataset.productId;
-    if (inCart.has(id)) {
-      btn.disabled = true;
-      btn.textContent = "Added ✓";
-      btn.classList.add("bg-gray-300", "text-gray-700", "cursor-not-allowed");
-      btn.classList.remove(
-        "bg-neutral-900",
-        "hover:bg-neutral-700",
-        "text-white"
-      );
-    } else {
-      btn.disabled = false;
-      btn.textContent = "Add to Cart";
-      btn.classList.remove(
-        "bg-gray-300",
-        "text-gray-700",
-        "cursor-not-allowed"
-      );
-      btn.classList.add("bg-neutral-900", "hover:bg-neutral-700", "text-white");
-    }
+    const id = safeId(btn);
+    const on = inCart.has(String(id));
+    btn.disabled = on;
+    btn.textContent = on ? "Added ✓" : "Add to Cart";
+    btn.classList.toggle("bg-gray-300", on);
+    btn.classList.toggle("text-gray-700", on);
+    btn.classList.toggle("cursor-not-allowed", on);
+    btn.classList.toggle("bg-neutral-900", !on);
+    btn.classList.toggle("hover:bg-neutral-700", !on);
+    btn.classList.toggle("text-white", !on);
   });
 };
 
-// Stepper
+/* ========= stepper ========= */
 const renderStepper = () => {
   const ol = $(".stepper");
   ol.innerHTML = "";
@@ -181,22 +174,22 @@ const renderStepper = () => {
     const label = s.replace("_", " ");
     li.className = "flex items-center gap-2";
     li.innerHTML = `
-          <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
-            done
-              ? "bg-green-600 text-white"
-              : active
-              ? "bg-blue-600 text-white"
-              : "bg-gray-200 text-gray-700"
-          }">${done ? "✓" : idx + 1}</span>
-          <span class="hidden sm:inline ${
-            active ? "text-gray-900 font-semibold" : "text-gray-500"
-          } capitalize">${label}</span>
-          ${
-            idx < state.steps.length - 1
-              ? '<span class="w-6 h-px bg-gray-300 mx-1"></span>'
-              : ""
-          }
-        `;
+      <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+        done
+          ? "bg-green-600 text-white"
+          : active
+          ? "bg-blue-600 text-white"
+          : "bg-gray-200 text-gray-700"
+      }">${done ? "✓" : idx + 1}</span>
+      <span class="hidden sm:inline ${
+        active ? "text-gray-900 font-semibold" : "text-gray-500"
+      } capitalize">${label}</span>
+      ${
+        idx < state.steps.length - 1
+          ? '<span class="w-6 h-px bg-gray-300 mx-1"></span>'
+          : ""
+      }
+    `;
     ol.appendChild(li);
   });
   $(".step-prev").disabled = state.stepIndex === 0;
@@ -223,22 +216,14 @@ const renderStep = () => {
   }
 };
 
-// --- NEW: tiny utils so wrappers/selects "just work"
-const getFieldContainer = (el) => el.closest(".input-wrapper") ?? el; // select won't have wrapper
+/* ========= validation (wrapper-first) ========= */
+const getFieldContainer = (el) => el.closest(".input-wrapper") ?? el;
 const getErrorEl = (el) => {
   const wrapper = el.closest(".input-wrapper");
-  // Case A: <div.input-wrapper>...</div><p.form-error>...</p>
-  if (
-    wrapper &&
-    wrapper.nextElementSibling?.classList?.contains("form-error")
-  ) {
+  if (wrapper && wrapper.nextElementSibling?.classList?.contains("form-error"))
     return wrapper.nextElementSibling;
-  }
-  // Case B: <p.form-error> immediately after input/select (no wrapper)
-  if (el.nextElementSibling?.classList?.contains("form-error")) {
+  if (el.nextElementSibling?.classList?.contains("form-error"))
     return el.nextElementSibling;
-  }
-  // Case C: (edge) error placed inside wrapper
   if (wrapper) {
     const inner = wrapper.querySelector(".form-error");
     if (inner) return inner;
@@ -246,14 +231,11 @@ const getErrorEl = (el) => {
   return null;
 };
 
-// --- REPLACE: clearErrors (works for inputs/selects + their wrappers)
 const clearErrors = (container) => {
-  // hide all error texts in this container
   Array.from(container.querySelectorAll(".form-error")).forEach((e) => {
     e.textContent = "";
     e.classList.add("hidden");
   });
-  // remove error styles from wrappers or fields (for selects)
   Array.from(
     container.querySelectorAll("input[data-req], select[data-req]")
   ).forEach((el) => {
@@ -262,11 +244,9 @@ const clearErrors = (container) => {
   });
 };
 
-// --- REPLACE: showError (applies style on wrapper, not the input)
 const showError = (el, message) => {
   const c = getFieldContainer(el);
   c.classList?.add("ring-2", "ring-red-500", "border-red-500");
-
   const err = getErrorEl(el);
   if (err) {
     err.textContent = message;
@@ -274,12 +254,10 @@ const showError = (el, message) => {
   }
 };
 
-// --- REPLACE: validateContainer (respects wrappers, handles card expiry future)
 const validateContainer = (container) => {
   clearErrors(container);
-
-  let firstBad = null;
-  let ok = true;
+  let firstBad = null,
+    ok = true;
 
   const required = Array.from(
     container.querySelectorAll("input[data-req], select[data-req]")
@@ -293,9 +271,9 @@ const validateContainer = (container) => {
     }
   });
 
-  // Extra: credit card expiry must be in the future (only when on payment form)
+  // Card expiry future check
   if (container.id === "payment_form") {
-    const exp = document.getElementById("cc_exp");
+    const exp = byId("cc_exp");
     if (exp) {
       const v = (exp.value || "").trim();
       const m = v.match(/^(0[1-9]|1[0-2])\/(\d{2})$/);
@@ -315,9 +293,8 @@ const validateContainer = (container) => {
     }
   }
 
-  if (firstBad) {
+  if (firstBad)
     firstBad.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
   return ok;
 };
 
@@ -334,22 +311,22 @@ const buildReview = () => {
   )}, ${t("bill_state")} ${t("bill_postal")}, ${t("bill_country")}`;
 };
 
-// Reset all (cart + forms + UI)
+/* ========= reset all ========= */
 const resetAll = () => {
-  // Cart
+  // cart
   state.cart.items = [];
   saveCart(state.cart);
   updateCount();
   renderCart();
   syncAddButtons();
-  // Forms
+
+  // forms
   $$("input").forEach((i) => {
     if (i.type === "checkbox") i.checked = false;
     else i.value = "";
     i.disabled = false;
     i.classList.remove("bg-gray-100");
   });
-  // Defaults: countries to Australia; states to placeholder
   ["ship_country", "bill_country"].forEach((id) => {
     const el = byId(id);
     if (el) el.value = "Australia";
@@ -358,29 +335,52 @@ const resetAll = () => {
     const el = byId(id);
     if (el) el.value = "";
   });
-  // Clear errors and review
-  clearErrors(document);
+
+  // clear wrapper errors + texts
+  document
+    .querySelectorAll(".input-wrapper")
+    .forEach((w) =>
+      w.classList.remove("ring-2", "ring-red-500", "border-red-500")
+    );
+  document.querySelectorAll(".form-error").forEach((e) => {
+    e.textContent = "";
+    e.classList.add("hidden");
+  });
+
+  // review & stepper
   $("#review_contact").textContent = "";
   $("#review_shipping").textContent = "";
   $("#review_billing").textContent = "";
-  // Stepper back to Cart
   state.stepIndex = 0;
   renderStepper();
   renderStep();
 };
 
-// Events
+/* ========= events ========= */
 document.addEventListener("click", (e) => {
   const addBtn = e.target.closest(".add-to-cart-btn");
   if (addBtn) {
     if (addBtn.disabled) return;
-    const card = addBtn.closest(".p-4.bg-white");
+    const card =
+      addBtn.closest(".product-card") || addBtn.closest(".p-4.bg-white");
     const name = $(".product-name", card)?.textContent?.trim() || "Item";
     const price = toNum($(".product-price", card)?.textContent || "$0");
     const image = $("img", card)?.getAttribute("src") || "";
     const brand = $(".product-brand", card)?.textContent?.trim() || "";
-    const id = addBtn.dataset.productId || name;
+    const id = safeId(addBtn); // <-- critical
+
     upsertItem({ id, name, price, image, brand }, 1);
+
+    // flip ONLY this button immediately
+    addBtn.disabled = true;
+    addBtn.textContent = "Added ✓";
+    addBtn.classList.add("bg-gray-300", "text-gray-700", "cursor-not-allowed");
+    addBtn.classList.remove(
+      "bg-neutral-900",
+      "hover:bg-neutral-700",
+      "text-white"
+    );
+
     openCart();
     return;
   }
@@ -412,29 +412,24 @@ document.addEventListener("click", (e) => {
     removeItem(remove.dataset.id);
   }
 
-  // Clear all
   if (e.target.closest(".clear-cart")) {
     resetAll();
     return;
   }
 
-  // Stepper nav
+  // stepper
   if (e.target.closest(".step-prev")) {
     state.stepIndex = Math.max(0, state.stepIndex - 1);
     renderStepper();
     renderStep();
   }
   if (e.target.closest(".step-next")) {
-    if (state.steps[state.stepIndex] === "cart" && !state.cart.items.length) {
+    if (state.steps[state.stepIndex] === "cart" && !state.cart.items.length)
       return;
-    }
     const current = state.steps[state.stepIndex];
-    if (current === "details") {
-      if (!validateContainer($('[data-step="details"]'))) return;
-    }
-    if (current === "payment") {
-      if (!validateContainer($("#payment_form"))) return;
-    }
+    if (current === "details" && !validateContainer($('[data-step="details"]')))
+      return;
+    if (current === "payment" && !validateContainer($("#payment_form"))) return;
     state.stepIndex = Math.min(state.steps.length - 1, state.stepIndex + 1);
     renderStepper();
     renderStep();
@@ -451,25 +446,24 @@ document.addEventListener("click", (e) => {
 });
 
 document.addEventListener("input", (e) => {
-  const inp = e.target.closest(".qty-input");
-  if (inp) {
-    const id = inp.dataset.id;
-    const v = Math.max(0, parseInt(inp.value || "0", 10) || 0);
+  const qty = e.target.closest(".qty-input");
+  if (qty) {
+    const id = qty.dataset.id;
+    const v = Math.max(0, parseInt(qty.value || "0", 10) || 0);
     setQty(id, v);
+    return;
   }
   const finput = e.target.closest("input, select");
   if (finput && finput.matches("[data-req]")) {
     if ((finput.value || "").trim()) {
-      finput.classList.remove("border-red-500", "ring-2", "ring-red-500");
-      const err = finput.nextElementSibling?.classList.contains("form-error")
-        ? finput.nextElementSibling
-        : null;
+      const c = getFieldContainer(finput);
+      c.classList?.remove("ring-2", "ring-red-500", "border-red-500");
+      const err = getErrorEl(finput);
       if (err) err.classList.add("hidden");
     }
   }
 });
 
-// Same-as-shipping for billing
 document.addEventListener("change", (e) => {
   if (e.target.id === "bill_same") {
     const on = e.target.checked;
@@ -484,7 +478,6 @@ document.addEventListener("change", (e) => {
       }
     });
     if (on) {
-      // clear errors
       [
         "bill_addr1",
         "bill_city",
@@ -492,56 +485,27 @@ document.addEventListener("change", (e) => {
         "bill_postal",
         "bill_country",
       ].forEach((id) => {
-        const i = byId(id);
-        if (!i) return;
-        i.classList.remove("border-red-500", "ring-2", "ring-red-500");
-        const err = i.nextElementSibling?.classList.contains("form-error")
-          ? i.nextElementSibling
-          : null;
+        const el = byId(id);
+        if (!el) return;
+        const c = getFieldContainer(el);
+        c.classList?.remove("ring-2", "ring-red-500", "border-red-500");
+        const err = getErrorEl(el);
         if (err) err.classList.add("hidden");
       });
     }
   }
 });
 
-// Init defaults
+/* ========= defaults ========= */
 ["ship_country", "bill_country"].forEach((id) => {
   const el = byId(id);
   if (el) el.value = "Australia";
 });
-updateCount();
-renderCart();
-renderStepper();
-renderStep();
-syncAddButtons();
 
-document.addEventListener("input", (e) => {
-  // qty input logic (unchanged) ...
-  const finput = e.target.closest("input, select");
-  if (finput && finput.matches("[data-req]")) {
-    if ((finput.value || "").trim()) {
-      const c = getFieldContainer(finput);
-      c.classList?.remove("ring-2", "ring-red-500", "border-red-500");
-      const err = getErrorEl(finput);
-      if (err) err.classList.add("hidden");
-    }
-  }
-});
-
-// after you reset values/disabled flags:
-document.querySelectorAll(".input-wrapper").forEach((w) => {
-  w.classList.remove("ring-2", "ring-red-500", "border-red-500");
-});
-
-document.querySelectorAll(".form-error").forEach((e) => {
-  e.textContent = "";
-  e.classList.add("hidden");
-});
-
-// --- Search (frontend, name only) ------------------------------------------
-const searchEl = document.getElementById("product_search");
-const clearEl = document.getElementById("product_search_clear");
-const emptyEl = document.getElementById("search_empty");
+/* ========= search ========= */
+const searchEl = byId("product_search");
+const clearEl = byId("product_search_clear");
+const emptyEl = byId("search_empty");
 
 const debounce = (fn, ms = 150) => {
   let t;
@@ -554,45 +518,43 @@ const debounce = (fn, ms = 150) => {
 const filterProducts = (query) => {
   const q = (query || "").trim().toLowerCase();
   let matches = 0;
-
   document.querySelectorAll(".product-card").forEach((card) => {
     const name =
       card.querySelector(".product-name")?.textContent?.toLowerCase() || "";
     const brand =
       card.querySelector(".product-brand")?.textContent?.toLowerCase() || "";
-
     const show = !q || name.includes(q) || brand.includes(q);
     card.classList.toggle("hidden", !show);
     if (show) matches++;
   });
-
-  // UI niceties
   if (clearEl) clearEl.classList.toggle("hidden", !q);
   if (emptyEl) emptyEl.classList.toggle("hidden", !!matches || !q);
 };
 
-// Bind listeners (input + clear)
-if (searchEl) {
+if (searchEl)
   searchEl.addEventListener(
     "input",
     debounce((e) => filterProducts(e.target.value), 120)
   );
-}
-if (clearEl) {
+if (clearEl)
   clearEl.addEventListener("click", () => {
     searchEl.value = "";
     filterProducts("");
     searchEl.focus();
   });
-}
 
-// In case the dynamic list hydrates after load, re-run filter once on DOM ready
 document.addEventListener("DOMContentLoaded", () =>
   filterProducts(searchEl?.value || "")
 );
-
 const grid = document.querySelector("[data-dynamic-list]");
 if (grid && searchEl) {
   const mo = new MutationObserver(() => filterProducts(searchEl.value));
   mo.observe(grid, { childList: true, subtree: true });
 }
+
+/* ========= boot ========= */
+updateCount();
+renderCart();
+renderStepper();
+renderStep();
+syncAddButtons();
