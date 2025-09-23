@@ -8,17 +8,41 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script async src="https://static-au03.vitalstats.app/static/dynamic-list/v1/latest.js"
         crossorigin="anonymous"></script>
+    <style>
+        .input-wrapper {
+            margin-top: 0.25rem;
+            border-radius: 0.75rem;
+            border-width: 1px;
+            border-color: rgb(209 213 219);
+            padding: 8px;
+            width: 100%;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            outline: none;
+        }
+
+        .input-wrapper input {
+            border: none !important;
+            box-shadow: none !important;
+            height: unset !important;
+            outline: none !important;
+            margin: 0 !important;
+        }
+
+        .input-wrapper:focus-within {
+            box-shadow: 0 0 0 2px rgb(59 130 246 / 0.5);
+            border-color: rgb(59 130 246);
+        }
+    </style>
 </head>
 
 <body>
     <div class="bg-gray-50 text-gray-900">
 
         <!-- Header -->
-        <header class="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-gray-200">
+        <div class="bg-white/80 backdrop-blur border-b border-gray-200">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                <h1 class="text-xl font-bold tracking-tight">Products</h1>
                 <button type="button"
-                    class="cart-btn relative inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 transition">
+                    class="cart-btn relative inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 transition ml-auto">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
                         <path
                             d="M2.25 3a.75.75 0 000 1.5h1.386l2.74 10.964A2.25 2.25 0 008.563 17.5h8.874a2.25 2.25 0 002.188-1.681l1.6-6.4a.75.75 0 10-1.453-.364l-1.6 6.4a.75.75 0 01-.735.545H8.563a.75.75 0 01-.727-.555L5.2 5.5h13.05a.75.75 0 000-1.5H4.5l-.318-1.273A1.5 1.5 0 002.718 1.5H2.25A.75.75 0 001.5 3h.75z" />
@@ -30,7 +54,7 @@
                         class="cart-count absolute -top-2 -right-2 translate-x-full inline-flex items-center justify-center text-xs font-bold bg-blue-600 text-white rounded-full w-5 h-5">0</span>
                 </button>
             </div>
-        </header>
+        </div>
 
         <!-- Product Grid -->
         <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -99,41 +123,46 @@
                             <div class="sm:col-span-2 text-sm text-gray-500">Contact</div>
                             <div>
                                 <label for="cust_first" class="block text-sm font-medium">First name</label>
-                                <input id="cust_first" data-req data-label="First name"
-                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <div class="input-wrapper">
+                                    <input id="cust_first" data-req data-label="First name" />
+                                </div>
                                 <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
                             </div>
                             <div>
                                 <label for="cust_last" class="block text-sm font-medium">Last name</label>
-                                <input id="cust_last" data-req data-label="Last name"
-                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <div class="input-wrapper">
+                                    <input id="cust_last" data-req data-label="Last name" />
+                                </div>
                                 <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
                             </div>
                             <div class="sm:col-span-2">
                                 <label for="cust_email" class="block text-sm font-medium">Email</label>
-                                <input id="cust_email" type="email" data-req data-label="Email"
-                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="you@example.com" />
+                                <div class="input-wrapper">
+                                    <input id="cust_email" type="email" data-req data-label="Email"
+                                        placeholder="you@example.com" />
+                                </div>
                                 <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
                             </div>
 
                             <div class="sm:col-span-2 mt-2 text-sm text-gray-500">Shipping address</div>
                             <div class="sm:col-span-2">
                                 <label for="ship_addr1" class="block text-sm font-medium">Address line 1</label>
-                                <input id="ship_addr1" data-req data-label="Address line 1"
-                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <div class="input-wrapper">
+                                    <input id="ship_addr1" data-req data-label="Address line 1" />
+                                </div>
                                 <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
                             </div>
                             <div>
                                 <label for="ship_city" class="block text-sm font-medium">City</label>
-                                <input id="ship_city" data-req data-label="City"
-                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <div class="input-wrapper">
+                                    <input id="ship_city" data-req data-label="City" />
+                                </div>
                                 <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
                             </div>
                             <div>
                                 <label for="ship_state" class="block text-sm font-medium">State</label>
                                 <select id="ship_state" data-req data-label="State"
-                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    class="!block mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     <option value="">Select state</option>
                                     <option>NSW</option>
                                     <option>VIC</option>
@@ -148,14 +177,15 @@
                             </div>
                             <div>
                                 <label for="ship_postal" class="block text-sm font-medium">Postal code</label>
-                                <input id="ship_postal" data-req data-label="Postal code"
-                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <div class="input-wrapper">
+                                    <input id="ship_postal" data-req data-label="Postal code" />
+                                </div>
                                 <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
                             </div>
                             <div>
                                 <label for="ship_country" class="block text-sm font-medium">Country</label>
                                 <select id="ship_country" data-req data-label="Country"
-                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    class="!block mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     <option>Australia</option>
                                 </select>
                                 <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
@@ -165,26 +195,28 @@
                                 <span class="text-sm text-gray-500">Billing address</span>
                                 <label class="inline-flex items-center gap-2 text-xs">
                                     <input type="checkbox" id="bill_same"
-                                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                        class="!block rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                                     Same as shipping
                                 </label>
                             </div>
                             <div class="sm:col-span-2">
                                 <label for="bill_addr1" class="block text-sm font-medium">Address line 1</label>
-                                <input id="bill_addr1" data-req data-label="Billing address line 1"
-                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <div class="input-wrapper">
+                                    <input id="bill_addr1" data-req data-label="Billing address line 1" />
+                                </div>
                                 <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
                             </div>
                             <div>
                                 <label for="bill_city" class="block text-sm font-medium">City</label>
-                                <input id="bill_city" data-req data-label="Billing city"
-                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <div class="input-wrapper">
+                                    <input id="bill_city" data-req data-label="Billing city" />
+                                </div>
                                 <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
                             </div>
                             <div>
                                 <label for="bill_state" class="block text-sm font-medium">State</label>
                                 <select id="bill_state" data-req data-label="Billing state"
-                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    class="!block mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     <option value="">Select state</option>
                                     <option>NSW</option>
                                     <option>VIC</option>
@@ -199,14 +231,15 @@
                             </div>
                             <div>
                                 <label for="bill_postal" class="block text-sm font-medium">Postal code</label>
-                                <input id="bill_postal" data-req data-label="Billing postal code"
-                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                                <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                <div class="input-wrapper">
+                                    <input id="bill_postal" data-req data-label="Billing postal code" />
+                                    <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                </div>
                             </div>
                             <div>
                                 <label for="bill_country" class="block text-sm font-medium">Country</label>
                                 <select id="bill_country" data-req data-label="Billing country"
-                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    class="!block mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     <option>Australia</option>
                                 </select>
                                 <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
@@ -217,31 +250,35 @@
                         <form data-step="payment" class="step space-y-3" id="payment_form">
                             <div>
                                 <label for="cc_number" class="block text-sm font-medium">Card number</label>
-                                <input id="cc_number" data-req data-label="Card number" inputmode="numeric"
-                                    maxlength="19" placeholder="1234 1234 1234 1234"
-                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 tracking-widest" />
+                                <div class="input-wrapper">
+                                    <input id="cc_number" data-req data-label="Card number" inputmode="numeric"
+                                        maxlength="19" placeholder="1234 1234 1234 1234" class="tracking-widest" />
+                                </div>
                                 <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
                                     <label for="cc_exp" class="block text-sm font-medium">Expiry</label>
-                                    <input id="cc_exp" data-req data-label="Expiry" inputmode="numeric" maxlength="5"
-                                        placeholder="MM/YY"
-                                        class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                    <div class="input-wrapper">
+                                        <input id="cc_exp" data-req data-label="Expiry" inputmode="numeric"
+                                            maxlength="5" placeholder="MM/YY" />
+                                    </div>
                                     <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
                                 </div>
                                 <div>
                                     <label for="cc_cvc" class="block text-sm font-medium">CVC</label>
-                                    <input id="cc_cvc" data-req data-label="CVC" inputmode="numeric" maxlength="4"
-                                        placeholder="123"
-                                        class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                    <div class="input-wrapper">
+                                        <input id="cc_cvc" data-req data-label="CVC" inputmode="numeric" maxlength="4"
+                                            placeholder="123" />
+                                    </div>
                                     <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
                                 </div>
                             </div>
                             <div>
                                 <label for="cc_name" class="block text-sm font-medium">Name on card</label>
-                                <input id="cc_name" data-req data-label="Name on card"
-                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <div class="input-wrapper">
+                                    <input id="cc_name" data-req data-label="Name on card" />
+                                </div>
                                 <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
                             </div>
                         </form>
@@ -281,7 +318,7 @@
             </div>
         </aside>
     </div>
-    <script src = "js/shop.js"></script>
+    <script src="js/shop.js"></script>
 </body>
 
 </html>

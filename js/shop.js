@@ -95,42 +95,97 @@ const renderStep = () => {
     if (current === 'review') { buildReview(); }
 };
 
-// Validation helpers
+// --- NEW: tiny utils so wrappers/selects "just work"
+const getFieldContainer = (el) => el.closest('.input-wrapper') ?? el; // select won't have wrapper
+const getErrorEl = (el) => {
+    const wrapper = el.closest('.input-wrapper');
+    // Case A: <div.input-wrapper>...</div><p.form-error>...</p>
+    if (wrapper && wrapper.nextElementSibling?.classList?.contains('form-error')) {
+        return wrapper.nextElementSibling;
+    }
+    // Case B: <p.form-error> immediately after input/select (no wrapper)
+    if (el.nextElementSibling?.classList?.contains('form-error')) {
+        return el.nextElementSibling;
+    }
+    // Case C: (edge) error placed inside wrapper
+    if (wrapper) {
+        const inner = wrapper.querySelector('.form-error');
+        if (inner) return inner;
+    }
+    return null;
+};
+
+// --- REPLACE: clearErrors (works for inputs/selects + their wrappers)
 const clearErrors = (container) => {
-    $$('.form-error', container).forEach(e => { e.textContent = ''; e.classList.add('hidden'); });
-    $$('input, select', container).forEach(i => i.classList.remove('border-red-500', 'ring-2', 'ring-red-500'));
+    // hide all error texts in this container
+    Array.from(container.querySelectorAll('.form-error')).forEach((e) => {
+        e.textContent = '';
+        e.classList.add('hidden');
+    });
+    // remove error styles from wrappers or fields (for selects)
+    Array.from(container.querySelectorAll('input[data-req], select[data-req]')).forEach((el) => {
+        const c = getFieldContainer(el);
+        c.classList?.remove('ring-2', 'ring-red-500', 'border-red-500');
+    });
 };
-const showError = (input, message) => {
-    input.classList.add('border-red-500', 'ring-2', 'ring-red-500');
-    const err = input.nextElementSibling?.classList.contains('form-error') ? input.nextElementSibling : null;
-    if (err) { err.textContent = message; err.classList.remove('hidden'); }
+
+// --- REPLACE: showError (applies style on wrapper, not the input)
+const showError = (el, message) => {
+    const c = getFieldContainer(el);
+    c.classList?.add('ring-2', 'ring-red-500', 'border-red-500');
+
+    const err = getErrorEl(el);
+    if (err) {
+        err.textContent = message;
+        err.classList.remove('hidden');
+    }
 };
+
+// --- REPLACE: validateContainer (respects wrappers, handles card expiry future)
 const validateContainer = (container) => {
     clearErrors(container);
-    const req = $$('input[data-req], select[data-req]', container);
-    let firstBad = null; let ok = true;
-    req.forEach(inp => {
-        const val = (inp.value || '').trim();
-        if (!val) { ok = false; showError(inp, `${inp.dataset.label || 'This field'} is required`); if (!firstBad) firstBad = inp; }
+
+    let firstBad = null;
+    let ok = true;
+
+    const required = Array.from(container.querySelectorAll('input[data-req], select[data-req]'));
+    required.forEach((el) => {
+        const val = (el.value || '').trim();
+        if (!val) {
+            ok = false;
+            showError(el, `${el.dataset.label || 'This field'} is required`);
+            if (!firstBad) firstBad = getFieldContainer(el);
+        }
     });
-    // Extra: credit card expiry must be in the future
+
+    // Extra: credit card expiry must be in the future (only when on payment form)
     if (container.id === 'payment_form') {
-        const exp = byId('cc_exp');
-        const v = (exp.value || '').trim();
-        const m = v.match(/^(0[1-9]|1[0-2])\/(\d{2})$/);
-        if (!m) { ok = false; showError(exp, 'Use MM/YY'); }
-        else {
-            const mm = parseInt(m[1], 10);
-            const yy = 2000 + parseInt(m[2], 10);
-            const lastDay = new Date(yy, mm, 0).getDate();
-            const expDate = new Date(yy, mm - 1, lastDay, 23, 59, 59);
-            const now = new Date();
-            if (expDate <= now) { ok = false; showError(exp, 'Card expired'); }
+        const exp = document.getElementById('cc_exp');
+        if (exp) {
+            const v = (exp.value || '').trim();
+            const m = v.match(/^(0[1-9]|1[0-2])\/(\d{2})$/);
+            if (!m) {
+                ok = false;
+                showError(exp, 'Use MM/YY');
+            } else {
+                const mm = parseInt(m[1], 10);
+                const yy = 2000 + parseInt(m[2], 10);
+                const lastDay = new Date(yy, mm, 0).getDate();
+                const expDate = new Date(yy, mm - 1, lastDay, 23, 59, 59);
+                if (expDate <= new Date()) {
+                    ok = false;
+                    showError(exp, 'Card expired');
+                }
+            }
         }
     }
-    if (firstBad) firstBad.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    if (firstBad) {
+        firstBad.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
     return ok;
 };
+
 
 const buildReview = () => {
     const t = (id) => (byId(id)?.value || '').trim();
@@ -236,3 +291,36 @@ document.addEventListener('change', (e) => {
 // Init defaults
 ['ship_country', 'bill_country'].forEach(id => { const el = byId(id); if (el) el.value = 'Australia'; });
 updateCount(); renderCart(); renderStepper(); renderStep(); syncAddButtons();
+
+document.addEventListener('input', (e) => {
+    // qty input logic (unchanged) ...
+    const finput = e.target.closest('input, select');
+    if (finput && finput.matches('[data-req]')) {
+        if ((finput.value || '').trim()) {
+            const c = getFieldContainer(finput);
+            c.classList?.remove('ring-2', 'ring-red-500', 'border-red-500');
+            const err = getErrorEl(finput);
+            if (err) err.classList.add('hidden');
+        }
+    }
+});
+
+if (on) {
+    ['bill_addr1', 'bill_city', 'bill_state', 'bill_postal', 'bill_country'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const c = getFieldContainer(el);
+        c.classList?.remove('ring-2', 'ring-red-500', 'border-red-500');
+        const err = getErrorEl(el);
+        if (err) err.classList.add('hidden');
+    });
+}
+
+// after you reset values/disabled flags:
+document.querySelectorAll('.input-wrapper').forEach((w) => {
+    w.classList.remove('ring-2', 'ring-red-500', 'border-red-500');
+});
+document.querySelectorAll('.form-error').forEach((e) => {
+    e.textContent = '';
+    e.classList.add('hidden');
+});
