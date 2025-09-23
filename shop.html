@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dynamic List • Tailwind Grid + Cart (AU, Reset, Inline Validation)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script async src="https://static-au03.vitalstats.app/static/dynamic-list/v1/latest.js"
+        crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <div class="bg-gray-50 text-gray-900">
+
+        <!-- Header -->
+        <header class="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-gray-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <h1 class="text-xl font-bold tracking-tight">Products</h1>
+                <button type="button"
+                    class="cart-btn relative inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                        <path
+                            d="M2.25 3a.75.75 0 000 1.5h1.386l2.74 10.964A2.25 2.25 0 008.563 17.5h8.874a2.25 2.25 0 002.188-1.681l1.6-6.4a.75.75 0 10-1.453-.364l-1.6 6.4a.75.75 0 01-.735.545H8.563a.75.75 0 01-.727-.555L5.2 5.5h13.05a.75.75 0 000-1.5H4.5l-.318-1.273A1.5 1.5 0 002.718 1.5H2.25A.75.75 0 001.5 3h.75z" />
+                        <path
+                            d="M8.25 20.25a.75.75 0 100 1.5.75.75 0 000-1.5zM17.25 20.25a.75.75 0 100 1.5.75.75 0 000-1.5z" />
+                    </svg>
+                    <span class="font-semibold">Cart</span>
+                    <span
+                        class="cart-count absolute -top-2 -right-2 translate-x-full inline-flex items-center justify-center text-xs font-bold bg-blue-600 text-white rounded-full w-5 h-5">0</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Product Grid -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="w-full !grid gap-4 sm:gap-5 lg:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 [@supports(display:grid)]:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]"
+                data-dynamic-list="6_rB4C6cWF_UIIiEZuJts" data-entity="thc" data-entity-key="sKALpYiOd9z3eI8GLVaJe">
+                <!-- repeated per record -->
+                <div
+                    class="p-4 bg-white rounded-2xl shadow-md hover:shadow-xl transition-transform duration-150 ease-out hover:-translate-y-0.5 overflow-hidden h-full flex flex-col">
+                    <a href="[url]" class="block">
+                        <img class="block w-full h-auto aspect-[4/3] object-cover" src="[image]" alt="[name]"
+                            loading="lazy" />
+                    </a>
+                    <div class="p-4 flex flex-col gap-2 flex-1">
+                        <div class="text-sm font-semibold text-black/70 product-brand">[brand]</div>
+                        <h3 class="text-lg font-bold leading-snug product-name">[name]</h3>
+                        <div class="text-base font-semibold text-gray-900 product-price">$[price]</div>
+                        <p class="text-sm text-gray-700 overflow-hidden product-desc line-clamp-3">[description]</p>
+                        <button
+                            class="mt-auto inline-flex items-center justify-center px-4 py-3 rounded-xl bg-neutral-900 text-white font-semibold hover:bg-neutral-700 transition-colors add-to-cart-btn"
+                            data-product-id="[uid]">Add to Cart</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Cart Drawer -->
+        <div class="cart-overlay fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity z-40"></div>
+        <aside
+            class="cart-drawer fixed inset-y-0 right-0 w-full max-w-xl bg-white shadow-2xl translate-x-full transition-transform z-50 flex flex-col">
+            <!-- Header -->
+            <div class="p-4 border-b flex items-center justify-between">
+                <h2 class="text-lg font-bold">Checkout</h2>
+                <button class="close-cart inline-flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100"
+                    aria-label="Close cart">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" class="w-5 h-5">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="flex-1 overflow-y-auto">
+                <!-- Items (Cart step only) -->
+                <section id="cart_section">
+                    <div class="cart-items divide-y"><!-- filled by JS --></div>
+                </section>
+
+                <!-- Order summary -->
+                <section class="p-4 border-t space-y-2" id="order_summary">
+                    <div class="flex justify-between text-sm"><span class="text-gray-600">Subtotal</span><span
+                            class="cart-subtotal font-semibold">$0.00</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-gray-600">Shipping</span><span
+                            class="font-medium">Free</span></div>
+                    <div class="flex justify-between text-base font-bold"><span>Total</span><span
+                            class="cart-total">$0.00</span></div>
+                </section>
+
+                <!-- Stepper -->
+                <section class="p-4 border-t">
+                    <ol class="stepper flex items-center gap-2 text-xs font-medium text-gray-600"></ol>
+                    <div class="mt-4 space-y-6" id="steps">
+
+                        <!-- STEP 2: Details (Contact + Shipping + Billing) -->
+                        <form data-step="details" class="step grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="sm:col-span-2 text-sm text-gray-500">Contact</div>
+                            <div>
+                                <label for="cust_first" class="block text-sm font-medium">First name</label>
+                                <input id="cust_first" data-req data-label="First name"
+                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                            </div>
+                            <div>
+                                <label for="cust_last" class="block text-sm font-medium">Last name</label>
+                                <input id="cust_last" data-req data-label="Last name"
+                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label for="cust_email" class="block text-sm font-medium">Email</label>
+                                <input id="cust_email" type="email" data-req data-label="Email"
+                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="you@example.com" />
+                                <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                            </div>
+
+                            <div class="sm:col-span-2 mt-2 text-sm text-gray-500">Shipping address</div>
+                            <div class="sm:col-span-2">
+                                <label for="ship_addr1" class="block text-sm font-medium">Address line 1</label>
+                                <input id="ship_addr1" data-req data-label="Address line 1"
+                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                            </div>
+                            <div>
+                                <label for="ship_city" class="block text-sm font-medium">City</label>
+                                <input id="ship_city" data-req data-label="City"
+                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                            </div>
+                            <div>
+                                <label for="ship_state" class="block text-sm font-medium">State</label>
+                                <select id="ship_state" data-req data-label="State"
+                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Select state</option>
+                                    <option>NSW</option>
+                                    <option>VIC</option>
+                                    <option>QLD</option>
+                                    <option>WA</option>
+                                    <option>SA</option>
+                                    <option>TAS</option>
+                                    <option>ACT</option>
+                                    <option>NT</option>
+                                </select>
+                                <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                            </div>
+                            <div>
+                                <label for="ship_postal" class="block text-sm font-medium">Postal code</label>
+                                <input id="ship_postal" data-req data-label="Postal code"
+                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                            </div>
+                            <div>
+                                <label for="ship_country" class="block text-sm font-medium">Country</label>
+                                <select id="ship_country" data-req data-label="Country"
+                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option>Australia</option>
+                                </select>
+                                <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                            </div>
+
+                            <div class="sm:col-span-2 mt-2 flex items-center justify-between">
+                                <span class="text-sm text-gray-500">Billing address</span>
+                                <label class="inline-flex items-center gap-2 text-xs">
+                                    <input type="checkbox" id="bill_same"
+                                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    Same as shipping
+                                </label>
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label for="bill_addr1" class="block text-sm font-medium">Address line 1</label>
+                                <input id="bill_addr1" data-req data-label="Billing address line 1"
+                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                            </div>
+                            <div>
+                                <label for="bill_city" class="block text-sm font-medium">City</label>
+                                <input id="bill_city" data-req data-label="Billing city"
+                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                            </div>
+                            <div>
+                                <label for="bill_state" class="block text-sm font-medium">State</label>
+                                <select id="bill_state" data-req data-label="Billing state"
+                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Select state</option>
+                                    <option>NSW</option>
+                                    <option>VIC</option>
+                                    <option>QLD</option>
+                                    <option>WA</option>
+                                    <option>SA</option>
+                                    <option>TAS</option>
+                                    <option>ACT</option>
+                                    <option>NT</option>
+                                </select>
+                                <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                            </div>
+                            <div>
+                                <label for="bill_postal" class="block text-sm font-medium">Postal code</label>
+                                <input id="bill_postal" data-req data-label="Billing postal code"
+                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                            </div>
+                            <div>
+                                <label for="bill_country" class="block text-sm font-medium">Country</label>
+                                <select id="bill_country" data-req data-label="Billing country"
+                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option>Australia</option>
+                                </select>
+                                <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                            </div>
+                        </form>
+
+                        <!-- STEP 3: Payment -->
+                        <form data-step="payment" class="step space-y-3" id="payment_form">
+                            <div>
+                                <label for="cc_number" class="block text-sm font-medium">Card number</label>
+                                <input id="cc_number" data-req data-label="Card number" inputmode="numeric"
+                                    maxlength="19" placeholder="1234 1234 1234 1234"
+                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 tracking-widest" />
+                                <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label for="cc_exp" class="block text-sm font-medium">Expiry</label>
+                                    <input id="cc_exp" data-req data-label="Expiry" inputmode="numeric" maxlength="5"
+                                        placeholder="MM/YY"
+                                        class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                    <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                </div>
+                                <div>
+                                    <label for="cc_cvc" class="block text-sm font-medium">CVC</label>
+                                    <input id="cc_cvc" data-req data-label="CVC" inputmode="numeric" maxlength="4"
+                                        placeholder="123"
+                                        class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                    <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="cc_name" class="block text-sm font-medium">Name on card</label>
+                                <input id="cc_name" data-req data-label="Name on card"
+                                    class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                            </div>
+                        </form>
+
+                        <!-- STEP 4: Review -->
+                        <div data-step="review" class="step space-y-3">
+                            <div class="rounded-xl border p-4">
+                                <h3 class="font-semibold mb-2">Contact</h3>
+                                <div class="text-sm text-gray-700" id="review_contact"></div>
+                            </div>
+                            <div class="rounded-xl border p-4">
+                                <h3 class="font-semibold mb-2">Shipping</h3>
+                                <div class="text-sm text-gray-700" id="review_shipping"></div>
+                            </div>
+                            <div class="rounded-xl border p-4">
+                                <h3 class="font-semibold mb-2">Billing</h3>
+                                <div class="text-sm text-gray-700" id="review_billing"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Footer actions -->
+            <div class="border-t p-4 flex items-center justify-between gap-3">
+                <button class="clear-cart px-4 py-2 rounded-xl border border-gray-300 hover:bg-gray-100">Clear
+                    Cart</button>
+                <div class="flex items-center gap-3">
+                    <button
+                        class="step-prev px-4 py-2 rounded-xl border border-gray-300 hover:bg-gray-100">Back</button>
+                    <button
+                        class="step-next px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700">Next</button>
+                    <button
+                        class="place-order hidden px-4 py-2 rounded-xl bg-neutral-900 text-white font-semibold hover:bg-neutral-800">Place
+                        Order</button>
+                </div>
+            </div>
+        </aside>
+    </div>
+    <script src = "js/shop.js"></script>
+</body>
+
+</html>
