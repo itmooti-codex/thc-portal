@@ -305,22 +305,59 @@ document.addEventListener('input', (e) => {
     }
 });
 
-if (on) {
-    ['bill_addr1', 'bill_city', 'bill_state', 'bill_postal', 'bill_country'].forEach((id) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        const c = getFieldContainer(el);
-        c.classList?.remove('ring-2', 'ring-red-500', 'border-red-500');
-        const err = getErrorEl(el);
-        if (err) err.classList.add('hidden');
-    });
-}
-
 // after you reset values/disabled flags:
 document.querySelectorAll('.input-wrapper').forEach((w) => {
     w.classList.remove('ring-2', 'ring-red-500', 'border-red-500');
 });
+
 document.querySelectorAll('.form-error').forEach((e) => {
     e.textContent = '';
     e.classList.add('hidden');
 });
+
+// --- Search (frontend, name only) ------------------------------------------
+const searchEl = document.getElementById('product_search');
+const clearEl = document.getElementById('product_search_clear');
+const emptyEl = document.getElementById('search_empty');
+
+const debounce = (fn, ms = 150) => {
+    let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+};
+
+const filterProducts = (query) => {
+    const q = (query || '').trim().toLowerCase();
+    let matches = 0;
+
+    document.querySelectorAll('.product-card').forEach((card) => {
+        const name = card.querySelector('.product-name')?.textContent?.toLowerCase() || '';
+        const show = !q || name.includes(q);
+        card.classList.toggle('hidden', !show);
+        if (show) matches++;
+    });
+
+    // UI niceties
+    if (clearEl) clearEl.classList.toggle('hidden', !q);
+    if (emptyEl) emptyEl.classList.toggle('hidden', !!matches || !q);
+};
+
+// Bind listeners (input + clear)
+if (searchEl) {
+    searchEl.addEventListener('input', debounce((e) => filterProducts(e.target.value), 120));
+}
+if (clearEl) {
+    clearEl.addEventListener('click', () => {
+        searchEl.value = '';
+        filterProducts('');
+        searchEl.focus();
+    });
+}
+
+// In case the dynamic list hydrates after load, re-run filter once on DOM ready
+document.addEventListener('DOMContentLoaded', () => filterProducts(searchEl?.value || ''));
+
+const grid = document.querySelector('[data-dynamic-list]');
+if (grid && searchEl) {
+    const mo = new MutationObserver(() => filterProducts(searchEl.value));
+    mo.observe(grid, { childList: true, subtree: true });
+}
+

@@ -56,14 +56,31 @@
             </div>
         </div>
 
+
+
         <!-- Product Grid -->
         <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div class="w-full !grid gap-4 sm:gap-5 lg:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 [@supports(display:grid)]:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]"
+            <!-- Search -->
+            <div class="relative w-full max-w-md my-4">
+                <div class="input-wrapper">
+                    <input id="product_search" type="search" placeholder="Search products…"
+                        class="w-full bg-transparent" />
+                </div>
+                <!-- clear -->
+                <button id="product_search_clear"
+                    class="absolute right-2 top-2 hidden rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                    type="button">Clear</button>
+            </div>
+            <!-- repeated per record -->
+            <p id="search_empty" class="mt-6 hidden text-center text-sm text-gray-500">
+                No products match your search.
+            </p>
+            <div class="w-full !grid gap-4 sm:gap-5 lg:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3"
                 data-dynamic-list="6_rB4C6cWF_UIIiEZuJts" data-entity="thc" data-entity-key="sKALpYiOd9z3eI8GLVaJe">
-                <!-- repeated per record -->
+
                 <div
-                    class="p-4 bg-white rounded-2xl shadow-md hover:shadow-xl transition-transform duration-150 ease-out hover:-translate-y-0.5 overflow-hidden h-full flex flex-col">
-                    <a href="[url]" class="block">
+                    class="product-card p-4 bg-white rounded-2xl shadow-md hover:shadow-xl transition-transform duration-150 ease-out hover:-translate-y-0.5 overflow-hidden h-full flex flex-col">
+                    <a href="[url]" class="block w-[200px] m-auto">
                         <img class="block w-full h-auto aspect-[4/3] object-cover" src="[image]" alt="[name]"
                             loading="lazy" />
                     </a>
