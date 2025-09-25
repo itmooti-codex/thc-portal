@@ -317,7 +317,7 @@
         window.location.pathname || ""
       );
       closeCart();
-      if (!alreadyOnCheckout) window.location.href = "checkout.html";
+      if (!alreadyOnCheckout) window.location.href = "https://app.thehappy.clinic/storefront/checkout";
     }
   });
 

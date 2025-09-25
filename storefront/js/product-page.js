@@ -173,7 +173,7 @@
           }
         }
       }
-      window.location.href = "checkout.html";
+      window.location.href = "https://app.thehappy.clinic/storefront/checkout";
     });
   };
 
