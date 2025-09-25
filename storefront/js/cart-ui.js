@@ -1,6 +1,43 @@
 (() => {
   "use strict";
 
+  const CART_TEMPLATE = `
+<div class="storefront-cart-root">
+  <div class="cart-overlay fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity duration-200"></div>
+  <aside
+    class="cart-drawer absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl translate-x-full transition-transform duration-300 flex flex-col">
+    <header class="flex items-center justify-between p-4 border-b">
+      <div>
+        <h2 class="text-xl font-semibold">Shopping cart</h2>
+        <p class="text-sm text-gray-500">Review your items before checkout</p>
+      </div>
+      <button class="close-cart inline-flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100"
+        aria-label="Close cart">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" class="w-5 h-5">
+          <path d="M18 6L6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </header>
+
+    <section class="flex-1 overflow-y-auto">
+      <div class="cart-items divide-y">
+        <div class="p-6 text-center text-gray-500">Your cart is empty.</div>
+      </div>
+    </section>
+
+    <footer class="border-t p-4 space-y-4">
+      <div class="flex justify-between text-sm"><span>Subtotal</span><span class="cart-subtotal">$0.00</span></div>
+      <div class="flex justify-between text-sm"><span>Shipping</span><span class="font-medium">Calculated at checkout</span></div>
+      <div class="flex justify-between text-base font-bold"><span>Total</span><span class="cart-total">$0.00</span></div>
+      <div class="flex items-center justify-between gap-3">
+        <button class="clear-cart px-4 py-2 rounded-xl border border-gray-300 hover:bg-gray-100">Clear Cart</button>
+        <button class="cart-checkout px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700">Proceed to checkout</button>
+      </div>
+    </footer>
+  </aside>
+</div>`;
+
   /* ========= helpers ========= */
   const $ = (sel, ctx = document) => ctx.querySelector(sel);
   const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
@@ -11,11 +48,33 @@
     }).format(n || 0);
   const toNum = (s) => Number(String(s || "").replace(/[^0-9.\-]/g, "")) || 0;
 
-  /* ========= cart overlay ========= */
-  const overlayEl = $(".cart-overlay");
-  const drawerEl = $(".cart-drawer");
+  let overlayEl;
+  let drawerEl;
+  let itemsContainer;
+  let subtotalEl;
+  let totalEl;
+  let checkoutBtn;
+
+  const ensureDrawer = () => {
+    if (overlayEl && drawerEl && itemsContainer) return;
+
+    overlayEl = document.querySelector(".cart-overlay");
+    drawerEl = document.querySelector(".cart-drawer");
+
+    if (!overlayEl || !drawerEl) {
+      document.body.insertAdjacentHTML("beforeend", CART_TEMPLATE);
+      overlayEl = document.querySelector(".cart-overlay");
+      drawerEl = document.querySelector(".cart-drawer");
+    }
+
+    itemsContainer = document.querySelector(".cart-items");
+    subtotalEl = document.querySelector(".cart-subtotal");
+    totalEl = document.querySelector(".cart-total");
+    checkoutBtn = document.querySelector(".cart-checkout");
+  };
 
   const openCart = () => {
+    ensureDrawer();
     if (!overlayEl || !drawerEl) return;
     overlayEl.classList.remove("pointer-events-none");
     overlayEl.classList.add("opacity-100");
@@ -23,6 +82,7 @@
   };
 
   const closeCart = () => {
+    ensureDrawer();
     if (!overlayEl || !drawerEl) return;
     overlayEl.classList.add("pointer-events-none");
     overlayEl.classList.remove("opacity-100");
@@ -91,7 +151,7 @@
   };
 
   const updateCheckoutButton = (state) => {
-    const checkoutBtn = $(".cart-checkout");
+    ensureDrawer();
     if (!checkoutBtn) return;
     const disabled = !state.items.length;
     checkoutBtn.disabled = disabled;
@@ -100,11 +160,11 @@
   };
 
   const renderCart = (state) => {
-    const wrap = $(".cart-items");
-    if (!wrap) return;
-    wrap.innerHTML = "";
+    ensureDrawer();
+    if (!itemsContainer) return;
+    itemsContainer.innerHTML = "";
     if (!state.items.length) {
-      wrap.innerHTML =
+      itemsContainer.innerHTML =
         '<div class="p-6 text-center text-gray-500">Your cart is empty.</div>';
     } else {
       state.items.forEach((item) => {
@@ -138,15 +198,15 @@
             <path d="M10 11v6M14 11v6"/>
           </svg>
         </button>`;
-        wrap.appendChild(row);
+        itemsContainer.appendChild(row);
       });
     }
     const subtotal = state.items.reduce(
       (total, item) => total + (Number(item.price) || 0) * (Number(item.qty) || 0),
       0
     );
-    $(".cart-subtotal").textContent = money(subtotal);
-    $(".cart-total").textContent = money(subtotal);
+    if (subtotalEl) subtotalEl.textContent = money(subtotal);
+    if (totalEl) totalEl.textContent = money(subtotal);
     updateCheckoutButton(state);
   };
 
@@ -175,10 +235,12 @@
     safeId,
     renderCart,
     syncAddButtons,
+    ensureDrawer,
   });
 
   /* ========= events ========= */
   document.addEventListener("click", async (event) => {
+    ensureDrawer();
     const target = event.target;
     const hasCart = typeof Cart !== "undefined";
     const addBtn = target.closest(".add-to-cart-btn");
@@ -260,6 +322,7 @@
   });
 
   document.addEventListener("change", (event) => {
+    ensureDrawer();
     const input = event.target.closest(".qty-input");
     if (!input || typeof Cart === "undefined") return;
     const id = input.dataset.id;
@@ -268,6 +331,7 @@
   });
 
   document.addEventListener("keydown", (event) => {
+    ensureDrawer();
     if (event.key === "Escape" && !overlayEl?.classList.contains("pointer-events-none")) {
       closeCart();
     }
@@ -275,6 +339,7 @@
 
   /* ========= boot ========= */
   const init = async () => {
+    ensureDrawer();
     if (!window.Cart) return;
     await Cart.init();
     const state = Cart.getState();

@@ -152,49 +152,6 @@
                 </div>
             </div>
         </main>
-
-        <!-- Cart Drawer (shared) -->
-        <div class="cart-overlay fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity duration-200">
-            <aside
-                class="cart-drawer absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl translate-x-full transition-transform duration-300 flex flex-col">
-                <header class="flex items-center justify-between p-4 border-b">
-                    <div>
-                        <h2 class="text-xl font-semibold">Shopping cart</h2>
-                        <p class="text-sm text-gray-500">Review your items before checkout</p>
-                    </div>
-                    <button class="close-cart inline-flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100"
-                        aria-label="Close cart">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" class="w-5 h-5">
-                            <path d="M18 6L6 18M6 6l12 12" />
-                        </svg>
-                    </button>
-                </header>
-
-                <section class="flex-1 overflow-y-auto">
-                    <div class="cart-items divide-y">
-                        <div class="p-6 text-center text-gray-500">Your cart is empty.</div>
-                    </div>
-                </section>
-
-                <footer class="border-t p-4 space-y-4">
-                    <div class="flex justify-between text-sm"><span>Subtotal</span><span class="cart-subtotal">$0.00</span>
-                    </div>
-                    <div class="flex justify-between text-sm"><span>Shipping</span><span class="font-medium">Calculated at
-                            checkout</span></div>
-                    <div class="flex justify-between text-base font-bold"><span>Total</span><span
-                            class="cart-total">$0.00</span></div>
-                    <div class="flex items-center justify-between gap-3">
-                        <button
-                            class="clear-cart px-4 py-2 rounded-xl border border-gray-300 hover:bg-gray-100">Clear
-                            Cart</button>
-                        <button
-                            class="cart-checkout px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700">Proceed
-                            to checkout</button>
-                    </div>
-                </footer>
-            </aside>
-        </div>
     </div>
     <script src="js/cart-state.js"></script>
     <script src="js/cart-ui.js"></script>
