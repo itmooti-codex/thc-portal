@@ -408,7 +408,7 @@
     await Cart.init();
     const cartState = Cart.getState();
     if (!cartState.items.length) {
-      window.location.href = "shop.html";
+      window.location.href = "https://app.thehappy.clinic/shop";
       return;
     }
 
