@@ -1,7 +1,12 @@
 (() => {
   "use strict";
 
-  if (document.body?.dataset?.storefrontPage !== "product") return;
+  try {
+    const root = document.querySelector(".get-url");
+    if (root?.dataset?.storefrontPage !== "product") return;
+  } catch {
+    return;
+  }
 
   const { $, byId, money, clamp } = window.StorefrontUtils || {};
   const fallback$ = (sel, ctx = document) => ctx.querySelector(sel);
@@ -19,7 +24,7 @@
     const candidate =
       window.StorefrontCartUI?.getCheckoutUrl?.() ||
       document.querySelector(".checkout-container")?.dataset?.checkoutUrl ||
-      document.body?.dataset?.checkoutUrl ||
+      document.querySelector(".get-url")?.dataset?.checkoutUrl ||
       "checkout.html";
     try {
       return new URL(candidate, window.location.href).toString();

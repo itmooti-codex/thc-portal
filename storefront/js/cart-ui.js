@@ -67,7 +67,12 @@ const config = Object.assign(
       const url = new URL(window.location.href);
       if (url.searchParams.get("sfDebug") === "1") return true;
     } catch {}
-    return document.body?.dataset?.sfDebug === "1";
+    try {
+      const root = document.querySelector(".get-url");
+      return root?.dataset?.sfDebug === "1";
+    } catch {
+      return false;
+    }
   })();
 
   const dlog = (...args) => {

@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const pageHint = document.body?.dataset?.storefrontPage;
+  const pageHint = document.querySelector(".get-url")?.dataset?.storefrontPage;
   const isCheckoutPage =
     pageHint === "checkout" ||
     !!document.querySelector(".checkout-summary") ||

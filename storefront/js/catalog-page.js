@@ -1,5 +1,5 @@
 (function () {
-  const page = document.body?.dataset?.storefrontPage;
+  const page = document.querySelector(".get-url")?.dataset?.storefrontPage;
   if (page !== "catalog") return;
 
   const { $, $$ } = window.StorefrontUtils || {};

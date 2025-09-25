@@ -16,8 +16,15 @@
 
   const isBrowser = typeof window !== "undefined";
 
-  const isAuthenticated = () =>
-    isBrowser && document.body?.dataset?.auth === "true";
+  const isAuthenticated = () => {
+    if (!isBrowser) return false;
+    try {
+      const root = document.querySelector(".get-url");
+      return root?.dataset?.auth === "true";
+    } catch {
+      return false;
+    }
+  };
 
   const cloneState = (src = state) => ({
     currency: src.currency,

@@ -13,8 +13,11 @@
   const clamp = (value, min = 1, max = 99) =>
     Math.max(min, Math.min(max, parseInt(value || String(min), 10) || min));
 
+  const getRootEl = () => document.querySelector(".get-url") || document.body || document.documentElement;
+  const getRootData = () => (getRootEl()?.dataset || {});
+
   window.StorefrontUtils = Object.assign(window.StorefrontUtils || {}, {
-    $, $$, byId, money, toNum, clamp,
+    $, $$, byId, money, toNum, clamp, getRootEl, getRootData,
   });
 })();
 
