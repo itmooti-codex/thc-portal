@@ -3,9 +3,9 @@
 
   const CART_TEMPLATE = `
 <div class="storefront-cart-root">
-  <div class="cart-overlay fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity duration-200"></div>
+  <div class="cart-overlay fixed inset-0 z-[9990] bg-black/40 opacity-0 pointer-events-none transition-opacity duration-200"></div>
   <aside
-    class="cart-drawer absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl translate-x-full transition-transform duration-300 flex flex-col">
+    class="cart-drawer fixed inset-y-0 right-0 h-screen w-full max-w-md bg-white shadow-2xl translate-x-full transition-transform duration-300 flex flex-col z-[9991]">
     <header class="flex items-center justify-between p-4 border-b">
       <div>
         <h2 class="text-xl font-semibold">Shopping cart</h2>
@@ -62,7 +62,7 @@
     drawerEl = document.querySelector(".cart-drawer");
 
     if (!overlayEl || !drawerEl) {
-      document.body.insertAdjacentHTML("beforeend", CART_TEMPLATE);
+      document.body.insertAdjacentHTML("afterbegin", CART_TEMPLATE);
       overlayEl = document.querySelector(".cart-overlay");
       drawerEl = document.querySelector(".cart-drawer");
     }
