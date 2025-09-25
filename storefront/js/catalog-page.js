@@ -57,7 +57,18 @@
 
   const observer = new MutationObserver(scheduleSync);
   const grid = document.querySelector("[data-dynamic-list]");
-  if (grid) observer.observe(grid, { childList: true, subtree: true });
+  if (grid)
+    observer.observe(grid, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      characterData: true,
+    });
+  else
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
 
   const init = () => {
     scheduleSync();
@@ -67,6 +78,13 @@
   if (document.readyState === "loading")
     document.addEventListener("DOMContentLoaded", init);
   else init();
+
+  // Re-sync on late load, visibility restore, and bfcache restore
+  window.addEventListener("load", scheduleSync, { once: true });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") scheduleSync();
+  });
+  window.addEventListener("pageshow", () => scheduleSync());
 
   document.addEventListener("click", (event) => {
     const view = event.target.closest(".view-product-btn, .view-product-link");

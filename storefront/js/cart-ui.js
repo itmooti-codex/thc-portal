@@ -486,6 +486,18 @@ const config = Object.assign(
     setTimeout(syncAddButtons, 300);
     setTimeout(syncAddButtons, 800);
 
+    // Observe dynamic additions of product cards globally
+    const syncObserver = new MutationObserver(() => {
+      window.requestAnimationFrame(() => syncAddButtons());
+    });
+    syncObserver.observe(document.body, { childList: true, subtree: true });
+
+    // Re-sync on bfcache restore and visibility changes
+    window.addEventListener("pageshow", () => syncAddButtons());
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") syncAddButtons();
+    });
+
     Cart.subscribe((next) => {
       renderCart(next);
       updateCount(next);
