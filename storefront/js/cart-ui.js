@@ -261,10 +261,40 @@ const config = Object.assign(
   const syncAddButtons = () => {
     if (!window.Cart) return;
     const items = Cart.getState().items;
-    const inCart = new Set(items.map((item) => String(item.id)));
+    const inCart = new Set();
+    const toSignature = (name = "", brand = "", priceText = "") => {
+      const signature = `${String(name).trim()}|${String(brand).trim()}|${String(priceText).trim()}`;
+      return generateIdFromSignature(signature);
+    };
+    const toSignatureNoPrice = (name = "", brand = "") => {
+      const signature = `${String(name).trim()}|${String(brand).trim()}`;
+      // ensure a consistent prefix even without price
+      return generateIdFromSignature(signature);
+    };
+    items.forEach((item) => {
+      const id = String(item.id);
+      inCart.add(id);
+      // Also add signature-based IDs so catalog cards that generate IDs from text match
+      inCart.add(
+        toSignature(item.name || "", item.brand || "",
+          // Rebuild a price label similar to catalog cards
+          typeof item.price === "number" ? new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(item.price) : String(item.price || "")
+        )
+      );
+      inCart.add(toSignatureNoPrice(item.name || "", item.brand || ""));
+    });
     $$use(".add-to-cart-btn").forEach((btn) => {
       const id = safeId(btn);
-      const on = inCart.has(String(id));
+      let on = inCart.has(String(id));
+      if (!on) {
+        const card = btn.closest(".product-card");
+        const name = card?.querySelector(".product-name")?.textContent?.trim() || "";
+        const brand = card?.querySelector(".product-brand")?.textContent?.trim() || "";
+        const price = card?.querySelector(".product-price")?.textContent?.trim() || "";
+        const sig = toSignature(name, brand, price);
+        const sigNb = toSignatureNoPrice(name, brand);
+        on = inCart.has(sig) || inCart.has(sigNb);
+      }
       btn.disabled = on;
       btn.textContent = on ? "Added ✓" : "Add to Cart";
       btn.classList.toggle("bg-gray-300", on);
