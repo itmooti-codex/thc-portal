@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Product Details · THC Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .input-wrapper {
+            margin-top: 0.25rem;
+            border-radius: 0.75rem;
+            border-width: 1px;
+            border-color: rgb(209 213 219);
+            padding: 8px;
+            width: 100%;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            outline: none;
+        }
+
+        .input-wrapper input {
+            border: none !important;
+            box-shadow: none !important;
+            height: unset !important;
+            outline: none !important;
+            margin: 0 !important;
+            font-size: 16px !important;
+            background: transparent;
+            width: 100%;
+        }
+
+        .input-wrapper:focus-within {
+            box-shadow: 0 0 0 2px rgb(59 130 246 / 0.5);
+            border-color: rgb(59 130 246);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 text-gray-900" data-storefront-page="product">
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-white/80 backdrop-blur border-b border-gray-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+                <a href="../index.html" class="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                    <span>THC Portal</span>
+                </a>
+                <div class="flex items-center gap-3">
+                    <a href="shop.html"
+                        class="hidden sm:inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900">
+                        Back to shop
+                    </a>
+                    <button type="button"
+                        class="cart-btn relative inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                            <path
+                                d="M2.25 3a.75.75 0 000 1.5h1.386l2.74 10.964A2.25 2.25 0 008.563 17.5h8.874a2.25 2.25 0 002.188-1.681l1.6-6.4a.75.75 0 10-1.453-.364l-1.6 6.4a.75.75 0 01-.735.545H8.563a.75.75 0 01-.727-.555L5.2 5.5h13.05a.75.75 0 000-1.5H4.5l-.318-1.273A1.5 1.5 0 002.718 1.5H2.25A.75.75 0 001.5 3h.75z" />
+                            <path
+                                d="M8.25 20.25a.75.75 0 100 1.5.75.75 0 000-1.5zM17.25 20.25a.75.75 0 100 1.5.75.75 0 000-1.5z" />
+                        </svg>
+                        <span class="font-semibold">Cart</span>
+                        <span
+                            class="cart-count absolute -top-2 -right-2 translate-x-full inline-flex items-center justify-center text-xs font-bold bg-blue-600 text-white rounded-full w-5 h-5 hidden">0</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+                <div
+                    class="product-card grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-10"
+                    data-product-id="demo-night-relief-oil" data-product-name="Night Relief Oil 30ml"
+                    data-product-brand="THC Labs" data-product-price="89"
+                    data-product-desc="A calming nighttime cannabis oil formulated for consistent relief." data-product-image="https://via.placeholder.com/600x600/0f172a/ffffff?text=Night+Relief+Oil"
+                    data-product-pack="30 ml bottle · Drop applicator" data-product-category="Oil · Oral"
+                    data-product-schedule="Schedule 8" data-product-thc="28 mg per ml" data-product-cbd="6 mg per ml"
+                    data-product-origin="Australia" data-product-cultivar="Northern Lights"
+                    data-product-terpenes="Myrcene · Limonene · Caryophyllene"
+                    data-product-notice="This is a demo product. Real data will load from the THC Portal API during integration.">
+                    <div class="space-y-4">
+                        <div class="aspect-square rounded-3xl overflow-hidden bg-gray-100 flex items-center justify-center">
+                            <img id="product_image" src="https://via.placeholder.com/600x600/0f172a/ffffff?text=Night+Relief+Oil"
+                                alt="Product image" class="w-full h-full object-cover" />
+                            <div id="product_image_fallback" class="hidden text-gray-400 text-sm">Image loading…</div>
+                        </div>
+                        <div class="rounded-2xl border border-gray-200 p-4 space-y-2">
+                            <h3 class="text-sm font-semibold text-gray-700">Key highlights</h3>
+                            <ul class="text-sm text-gray-600 space-y-1" id="product_highlights">
+                                <li>THC: <span id="product_thc">28 mg per ml</span></li>
+                                <li>CBD: <span id="product_cbd">6 mg per ml</span></li>
+                                <li>Origin: <span id="product_origin">Australia</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-6">
+                        <div class="space-y-2">
+                            <p class="text-sm font-semibold text-gray-500 product-brand">THC Labs</p>
+                            <h1 class="text-3xl font-bold text-gray-900 product-name" id="product_name">Night Relief Oil 30ml</h1>
+                            <div class="flex items-center gap-3 text-gray-600">
+                                <span id="product_category" class="text-sm bg-gray-100 px-3 py-1 rounded-full">Oil · Oral</span>
+                                <span id="product_schedule" class="text-sm">Schedule 8</span>
+                            </div>
+                        </div>
+                        <div class="rounded-2xl border border-gray-200 p-5 space-y-4">
+                            <div class="text-3xl font-bold text-gray-900 product-price" id="product_price">$89.00</div>
+                            <p class="text-sm text-gray-600" id="product_pack">30 ml bottle · Drop applicator</p>
+                            <div class="flex flex-wrap items-center gap-4">
+                                <div class="flex items-center gap-2">
+                                    <button type="button"
+                                        class="product-qty-decr w-9 h-9 rounded-xl border border-gray-300 hover:bg-gray-100 flex items-center justify-center"
+                                        aria-label="Decrease quantity">−</button>
+                                    <div class="input-wrapper w-20">
+                                        <input id="product_qty" class="product-qty-input text-center" inputmode="numeric"
+                                            value="1" aria-label="Quantity" />
+                                    </div>
+                                    <button type="button"
+                                        class="product-qty-incr w-9 h-9 rounded-xl border border-gray-300 hover:bg-gray-100 flex items-center justify-center"
+                                        aria-label="Increase quantity">+</button>
+                                </div>
+                                <button type="button"
+                                    class="add-to-cart-btn inline-flex items-center justify-center px-5 py-3 rounded-xl bg-neutral-900 text-white font-semibold hover:bg-neutral-800 transition">Add to cart</button>
+                            </div>
+                            <button type="button"
+                                class="product-checkout-btn mt-3 inline-flex items-center justify-center px-5 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">
+                                Proceed to checkout
+                            </button>
+                            <p class="text-xs text-gray-500">All prices include GST. Final totals will be confirmed during
+                                checkout.</p>
+                        </div>
+                        <div class="space-y-3">
+                            <h2 class="text-lg font-semibold text-gray-900">Description</h2>
+                            <p class="text-sm text-gray-700 leading-relaxed product-desc" id="product_description">
+                                Night Relief Oil combines carefully balanced THC and CBD for patients needing a gentle,
+                                consistent evening formulation. Each ml delivers predictable dosing, making it simple to
+                                titrate and document.
+                            </p>
+                        </div>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <div class="rounded-2xl border border-gray-200 p-4">
+                                <h3 class="text-sm font-semibold text-gray-600">Cultivar</h3>
+                                <p class="text-sm text-gray-800" id="product_cultivar">Northern Lights</p>
+                            </div>
+                            <div class="rounded-2xl border border-gray-200 p-4">
+                                <h3 class="text-sm font-semibold text-gray-600">Terpene profile</h3>
+                                <p class="text-sm text-gray-800" id="product_terpenes">Myrcene · Limonene · Caryophyllene</p>
+                            </div>
+                        </div>
+                        <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800" id="product_notice">
+                            This is a demo product. Real data will load from the THC Portal API during integration.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Cart Drawer (shared) -->
+        <div class="cart-overlay fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity duration-200">
+            <aside
+                class="cart-drawer absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl translate-x-full transition-transform duration-300 flex flex-col">
+                <header class="flex items-center justify-between p-4 border-b">
+                    <div>
+                        <h2 class="text-xl font-semibold">Shopping cart</h2>
+                        <p class="text-sm text-gray-500">Review your items before checkout</p>
+                    </div>
+                    <button class="close-cart inline-flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100"
+                        aria-label="Close cart">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" class="w-5 h-5">
+                            <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                    </button>
+                </header>
+
+                <section class="flex-1 overflow-y-auto">
+                    <div class="cart-items divide-y">
+                        <div class="p-6 text-center text-gray-500">Your cart is empty.</div>
+                    </div>
+                </section>
+
+                <footer class="border-t p-4 space-y-4">
+                    <div class="flex justify-between text-sm"><span>Subtotal</span><span class="cart-subtotal">$0.00</span>
+                    </div>
+                    <div class="flex justify-between text-sm"><span>Shipping</span><span class="font-medium">Calculated at
+                            checkout</span></div>
+                    <div class="flex justify-between text-base font-bold"><span>Total</span><span
+                            class="cart-total">$0.00</span></div>
+                    <div class="flex items-center justify-between gap-3">
+                        <button
+                            class="clear-cart px-4 py-2 rounded-xl border border-gray-300 hover:bg-gray-100">Clear
+                            Cart</button>
+                        <button
+                            class="cart-checkout px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700">Proceed
+                            to checkout</button>
+                    </div>
+                </footer>
+            </aside>
+        </div>
+    </div>
+    <script src="js/cart-state.js"></script>
+    <script src="js/cart-ui.js"></script>
+    <script src="js/product-page.js"></script>
+</body>
+
+</html>
