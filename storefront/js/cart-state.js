@@ -26,21 +26,56 @@
 
   const loadFromStorage = () => {
     if (!isBrowser) return defaultState();
-    const key = isAuthenticated() ? AUTH_CART_KEY : GUEST_CART_KEY;
-    const storage = isAuthenticated() ? sessionStorage : localStorage;
-
-    try {
-      const parsed = JSON.parse(storage.getItem(key) || "null");
-      if (parsed && Array.isArray(parsed.items)) {
-        return {
-          currency: parsed.currency || "USD",
-          items: parsed.items.map((item) => ({ ...item })),
-        };
+    // Read BOTH storages to guard against mismatched auth flags across pages
+    const readKey = (storage, key) => {
+      try {
+        const parsed = JSON.parse(storage.getItem(key) || "null");
+        if (parsed && Array.isArray(parsed.items)) {
+          return {
+            currency: parsed.currency || "USD",
+            items: parsed.items.map((item) => ({ ...item })),
+          };
+        }
+      } catch (err) {
+        console.warn("Cart storage parse failed", key, err);
       }
-    } catch (err) {
-      console.warn("Cart storage parse failed", err);
-    }
-    return defaultState();
+      return null;
+    };
+
+    const guest = readKey(localStorage, GUEST_CART_KEY);
+    const auth = readKey(sessionStorage, AUTH_CART_KEY);
+
+    // Choose active store based on current auth, but merge items from the other store if present
+    const preferAuth = isAuthenticated();
+    const primary = preferAuth ? auth : guest;
+    const secondary = preferAuth ? guest : auth;
+
+    if (!primary && !secondary) return defaultState();
+
+    const merged = { currency: (primary?.currency || secondary?.currency || "USD"), items: [] };
+    const byId = new Map();
+    const pushAll = (src) => {
+      if (!src) return;
+      src.items.forEach((it) => {
+        const id = String(it.id);
+        const existing = byId.get(id);
+        if (existing) {
+          existing.qty = Math.max(Number(existing.qty) || 0, Number(it.qty) || 0) || 1;
+          existing.price = Number(existing.price) || Number(it.price) || 0;
+          existing.name = existing.name || it.name;
+          existing.brand = existing.brand || it.brand;
+          existing.image = existing.image || it.image;
+          existing.description = existing.description || it.description;
+          existing.url = existing.url || it.url;
+        } else {
+          byId.set(id, { ...it, id });
+        }
+      });
+    };
+    pushAll(primary);
+    pushAll(secondary);
+    merged.items = Array.from(byId.values());
+    return merged;
   };
 
   const persist = () => {
@@ -69,6 +104,8 @@
     if (initialized) return cloneState();
     state = loadFromStorage();
     initialized = true;
+    // Normalize persistence to the current auth store so future reads are consistent
+    persist();
     notify();
     return cloneState();
   };
