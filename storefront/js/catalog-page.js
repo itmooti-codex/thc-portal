@@ -2,6 +2,7 @@
   const page = document.body?.dataset?.storefrontPage;
   if (page !== "catalog") return;
 
+  const { $, $$ } = window.StorefrontUtils || {};
   const searchEl = document.getElementById("product_search");
   const clearEl = document.getElementById("product_search_clear");
   const emptyEl = document.getElementById("search_empty");
@@ -55,7 +56,6 @@
   };
 
   const observer = new MutationObserver(scheduleSync);
-
   const grid = document.querySelector("[data-dynamic-list]");
   if (grid) observer.observe(grid, { childList: true, subtree: true });
 

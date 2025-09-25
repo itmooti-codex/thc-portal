@@ -12,14 +12,11 @@
   window.StorefrontCartUI?.ensureDrawer?.();
 
   /* ========= helpers ========= */
-  const $ = (sel, ctx = document) => ctx.querySelector(sel);
-  const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
-  const byId = (id) => document.getElementById(id);
-  const money = (n) =>
-    new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: "USD",
-    }).format(n || 0);
+  const { $, $$, byId, money } = window.StorefrontUtils || {};
+  const fallback$ = (sel, ctx = document) => ctx.querySelector(sel);
+  const fallback$$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+  const $use = $ || fallback$;
+  const $$use = $$ || fallback$$;
 
   /* ========= checkout state ========= */
   const checkoutState = {
@@ -56,11 +53,11 @@
 
   /* ========= order summary ========= */
   const summaryEls = {
-    list: $(".checkout-summary"),
-    subtotal: $(".summary-subtotal"),
-    shipping: $(".summary-shipping"),
-    discount: $(".summary-discount"),
-    total: $(".summary-total"),
+    list: $use(".checkout-summary"),
+    subtotal: $use(".summary-subtotal"),
+    shipping: $use(".summary-shipping"),
+    discount: $use(".summary-discount"),
+    total: $use(".summary-total"),
   };
 
   const calcTotals = (cartState) => {
@@ -218,7 +215,7 @@
 
   /* ========= stepper ========= */
   const renderStepper = () => {
-    const ol = $(".stepper");
+    const ol = $use(".stepper");
     if (!ol) return;
     ol.innerHTML = "";
     checkoutState.steps.forEach((step, idx) => {
@@ -249,8 +246,8 @@
 
   const renderStep = () => {
     const current = checkoutState.steps[checkoutState.stepIndex];
-    $$(".step").forEach((el) => el.classList.add("hidden"));
-    const active = $(`.step[data-step="${current}"]`);
+    $$use(".step").forEach((el) => el.classList.add("hidden"));
+    const active = $use(`.step[data-step="${current}"]`);
     if (active) active.classList.remove("hidden");
     $(".step-prev").disabled = checkoutState.stepIndex === 0;
     $(".step-next").classList.toggle(

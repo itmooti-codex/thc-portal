@@ -3,22 +3,17 @@
 
   if (document.body?.dataset?.storefrontPage !== "product") return;
 
-  const $ = (sel, ctx = document) => ctx.querySelector(sel);
-  const byId = (id) => document.getElementById(id);
-  const money = (n) =>
-    new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: "USD",
-    }).format(n || 0);
+  const { $, byId, money, clamp } = window.StorefrontUtils || {};
+  const fallback$ = (sel, ctx = document) => ctx.querySelector(sel);
+  const $use = $ || fallback$;
 
-  const clampQty = (value) =>
-    Math.max(1, Math.min(99, parseInt(value || "1", 10) || 1));
+  const clampQty = (value) => (typeof clamp === "function" ? clamp(value, 1, 99) : Math.max(1, Math.min(99, parseInt(value || "1", 10) || 1)));
 
-  const cardEl = $(".product-card");
-  const qtyInput = byId("product_qty");
-  const decBtn = $(".product-qty-decr");
-  const incBtn = $(".product-qty-incr");
-  const checkoutBtn = $(".product-checkout-btn");
+  const cardEl = $use(".product-card");
+  const qtyInput = byId && byId("product_qty");
+  const decBtn = $use(".product-qty-decr");
+  const incBtn = $use(".product-qty-incr");
+  const checkoutBtn = $use(".product-checkout-btn");
 
   const getCheckoutUrl = () =>
     // 1. Check if StorefrontCartUI provides one
@@ -63,7 +58,7 @@
 
     const setText = (selector, value) => {
       if (!value && value !== 0) return;
-      const el = $(selector);
+      const el = $use(selector);
       if (el) el.textContent = value;
     };
 
@@ -83,8 +78,8 @@
     setText("#product_cultivar", cardEl.dataset.productCultivar);
     setText("#product_terpenes", cardEl.dataset.productTerpenes);
 
-    const imgEl = $("#product_image");
-    const fallbackEl = $("#product_image_fallback");
+    const imgEl = $use("#product_image");
+    const fallbackEl = $use("#product_image_fallback");
     if (imgEl) {
       if (cardEl.dataset.productImage) {
         imgEl.src = cardEl.dataset.productImage;
@@ -97,7 +92,7 @@
       }
     }
 
-    const notice = $("#product_notice");
+    const notice = $use("#product_notice");
     if (notice && cardEl.dataset.productNotice)
       notice.textContent = cardEl.dataset.productNotice;
 

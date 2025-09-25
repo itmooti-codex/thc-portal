@@ -39,14 +39,11 @@
 </div>`;
 
   /* ========= helpers ========= */
-  const $ = (sel, ctx = document) => ctx.querySelector(sel);
-  const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
-  const money = (n) =>
-    new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: "USD",
-    }).format(n || 0);
-  const toNum = (s) => Number(String(s || "").replace(/[^0-9.\-]/g, "")) || 0;
+  const { $, $$, money, toNum } = window.StorefrontUtils || {};
+  const fallback$ = (sel, ctx = document) => ctx.querySelector(sel);
+  const fallback$$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+  const $use = $ || fallback$;
+  const $$use = $$ || fallback$$;
 
   const initialConfig =
     (window.StorefrontCartUI && window.StorefrontCartUI.config) ||
@@ -190,7 +187,7 @@ const config = Object.assign(
     const count = state
       ? state.items.reduce((total, item) => total + (Number(item.qty) || 0), 0)
       : Cart?.getCount?.() || 0;
-    const bubble = $(".cart-count");
+    const bubble = $use(".cart-count");
     if (!bubble) return;
     bubble.textContent = count;
     bubble.classList.toggle("hidden", count === 0);
@@ -265,7 +262,7 @@ const config = Object.assign(
     if (!window.Cart) return;
     const items = Cart.getState().items;
     const inCart = new Set(items.map((item) => String(item.id)));
-    $$(".add-to-cart-btn").forEach((btn) => {
+    $$use(".add-to-cart-btn").forEach((btn) => {
       const id = safeId(btn);
       const on = inCart.has(String(id));
       btn.disabled = on;
