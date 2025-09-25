@@ -15,15 +15,18 @@
   const incBtn = $use(".product-qty-incr");
   const checkoutBtn = $use(".product-checkout-btn");
 
-  const getCheckoutUrl = () =>
-    // 1. Check if StorefrontCartUI provides one
-    window.StorefrontCartUI?.getCheckoutUrl?.() ||
-    // 2. Try a div with the class .checkout-container
-    document.querySelector(".checkout-container")?.dataset?.checkoutUrl ||
-    // 3. Fall back to <body data-checkout-url="">
-    document.body?.dataset?.checkoutUrl ||
-    // 4. Final hardcoded fallback
-    "checkout.html";
+  const getCheckoutUrl = () => {
+    const candidate =
+      window.StorefrontCartUI?.getCheckoutUrl?.() ||
+      document.querySelector(".checkout-container")?.dataset?.checkoutUrl ||
+      document.body?.dataset?.checkoutUrl ||
+      "checkout.html";
+    try {
+      return new URL(candidate, window.location.href).toString();
+    } catch {
+      return candidate;
+    }
+  };
 
   const populateProduct = (product) => {
     if (!cardEl || !product) return;
@@ -213,7 +216,12 @@
           }
         }
       }
-      window.location.href = getCheckoutUrl();
+      const url = getCheckoutUrl();
+      try {
+        window.location.assign(url);
+      } catch {
+        window.location.href = url;
+      }
     });
   };
 

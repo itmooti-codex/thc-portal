@@ -326,7 +326,16 @@ const config = Object.assign(
     dlog("syncAddButtons:", { cartItemCount: items.length, buttonCount: buttons.length, matched });
   };
 
-  const getCheckoutUrl = () => config.checkoutUrl || "checkout.html";
+  const getCheckoutUrl = () => {
+    const target = config.checkoutUrl || "checkout.html";
+    try {
+      // Always resolve to absolute URL against current location
+      return new URL(target, window.location.href).toString();
+    } catch (err) {
+      console.warn("checkout url resolve failed", target, err);
+      return target;
+    }
+  };
 
   const isOnCheckout = () => {
     const checkoutUrl = getCheckoutUrl();
@@ -448,7 +457,18 @@ const config = Object.assign(
       if (!Cart.getState().items.length) return;
       const alreadyOnCheckout = isOnCheckout();
       closeCart();
-      if (!alreadyOnCheckout) window.location.href = getCheckoutUrl();
+      if (!alreadyOnCheckout) {
+        const url = getCheckoutUrl();
+        try {
+          event.preventDefault();
+        } catch {}
+        try {
+          window.location.assign(url);
+        } catch (err) {
+          console.error("checkout navigation failed", err);
+          window.location.href = url;
+        }
+      }
       return;
     }
   });
