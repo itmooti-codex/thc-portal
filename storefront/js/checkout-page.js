@@ -349,7 +349,7 @@
       buildReview();
       alert("Demo checkout complete. Implement server-side order placement next.");
       Cart.clear();
-      window.location.href = "shop.html";
+      window.location.href = "https://app.thehappy.clinic/shop";
       return;
     }
     if (target.closest(".apply-coupon")) {
@@ -357,7 +357,7 @@
       return;
     }
     if (target.closest(".return-to-shop")) {
-      window.location.href = "shop.html";
+      window.location.href = "https://app.thehappy.clinic/shop";
       return;
     }
   });
