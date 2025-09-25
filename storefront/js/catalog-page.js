@@ -77,5 +77,13 @@
     if (product && window.Cart?.saveProductSnapshot) {
       Cart.saveProductSnapshot(product);
     }
+
+    // Ensure stable navigation to detail page with a consistent product id in URL
+    if (product && product.id) {
+      event.preventDefault();
+      const url = new URL("product.html", window.location.origin);
+      url.searchParams.set("id", String(product.id));
+      window.location.href = url.toString();
+    }
   });
 })();

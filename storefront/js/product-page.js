@@ -154,6 +154,16 @@
     };
   };
 
+  const productIdFromUrl = () => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get("id");
+      return id ? String(id) : null;
+    } catch (err) {
+      return null;
+    }
+  };
+
   const syncButtonState = () => {
     window.StorefrontCartUI?.syncAddButtons?.();
   };
@@ -161,6 +171,11 @@
   const loadProduct = async () => {
     const cart = await ensureCart();
     let product = cart?.loadProductSnapshot ? cart.loadProductSnapshot() : null;
+    // Prefer URL id if present to avoid id drift across pages
+    const urlId = productIdFromUrl();
+    if (urlId) {
+      product = Object.assign({}, product || {}, { id: urlId });
+    }
     if (!product || !product.id) product = initialProductFromDataset();
     if (product) populateProduct(product);
     if (cart && product?.id && cart.getItem) {
