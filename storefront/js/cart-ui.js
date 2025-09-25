@@ -61,6 +61,22 @@ const config = Object.assign(
   initialConfig
 );
 
+  // Debug flag (enable via ?sfDebug=1 or <body data-sf-debug="1">)
+  const DEBUG = (() => {
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("sfDebug") === "1") return true;
+    } catch {}
+    return document.body?.dataset?.sfDebug === "1";
+  })();
+
+  const dlog = (...args) => {
+    if (!DEBUG) return;
+    try {
+      console.debug("[SF-CartUI]", ...args);
+    } catch {}
+  };
+
   let overlayEl;
   let drawerEl;
   let itemsContainer;
@@ -84,6 +100,7 @@ const config = Object.assign(
     subtotalEl = document.querySelector(".cart-subtotal");
     totalEl = document.querySelector(".cart-total");
     checkoutBtn = document.querySelector(".cart-checkout");
+    dlog("ensureDrawer: elements", { hasOverlay: !!overlayEl, hasDrawer: !!drawerEl });
   };
 
   const openCart = () => {
@@ -191,6 +208,7 @@ const config = Object.assign(
     if (!bubble) return;
     bubble.textContent = count;
     bubble.classList.toggle("hidden", count === 0);
+    dlog("updateCount:", count);
   };
 
   const updateCheckoutButton = (state) => {
@@ -256,6 +274,7 @@ const config = Object.assign(
     if (subtotalEl) subtotalEl.textContent = money(subtotal);
     if (totalEl) totalEl.textContent = money(subtotal);
     updateCheckoutButton(state);
+    dlog("renderCart: items", state.items.length, state.items.map(i => ({ id: i.id, name: i.name, qty: i.qty })));
   };
 
   const syncAddButtons = () => {
@@ -268,22 +287,21 @@ const config = Object.assign(
     };
     const toSignatureNoPrice = (name = "", brand = "") => {
       const signature = `${String(name).trim()}|${String(brand).trim()}`;
-      // ensure a consistent prefix even without price
       return generateIdFromSignature(signature);
     };
     items.forEach((item) => {
       const id = String(item.id);
       inCart.add(id);
-      // Also add signature-based IDs so catalog cards that generate IDs from text match
       inCart.add(
         toSignature(item.name || "", item.brand || "",
-          // Rebuild a price label similar to catalog cards
           typeof item.price === "number" ? new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(item.price) : String(item.price || "")
         )
       );
       inCart.add(toSignatureNoPrice(item.name || "", item.brand || ""));
     });
-    $$use(".add-to-cart-btn").forEach((btn) => {
+    const buttons = $$use(".add-to-cart-btn");
+    let matched = 0;
+    buttons.forEach((btn) => {
       const id = safeId(btn);
       let on = inCart.has(String(id));
       if (!on) {
@@ -303,7 +321,9 @@ const config = Object.assign(
       btn.classList.toggle("bg-neutral-900", !on);
       btn.classList.toggle("hover:bg-neutral-700", !on);
       btn.classList.toggle("text-white", !on);
+      if (on) matched++;
     });
+    dlog("syncAddButtons:", { cartItemCount: items.length, buttonCount: buttons.length, matched });
   };
 
   const getCheckoutUrl = () => config.checkoutUrl || "checkout.html";
@@ -340,6 +360,10 @@ const config = Object.assign(
     config,
     getCheckoutUrl,
     isOnCheckout,
+    forceSync() {
+      dlog("forceSync called");
+      syncAddButtons();
+    },
     setConfig(next) {
       if (!next) return config;
       Object.assign(config, next);
@@ -457,6 +481,10 @@ const config = Object.assign(
     renderCart(state);
     updateCount(state);
     syncAddButtons();
+    // Retry syncing buttons to catch late-rendered product cards
+    setTimeout(syncAddButtons, 120);
+    setTimeout(syncAddButtons, 300);
+    setTimeout(syncAddButtons, 800);
 
     Cart.subscribe((next) => {
       renderCart(next);
