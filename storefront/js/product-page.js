@@ -11,7 +11,8 @@
       currency: "USD",
     }).format(n || 0);
 
-  const clampQty = (value) => Math.max(1, Math.min(99, parseInt(value || "1", 10) || 1));
+  const clampQty = (value) =>
+    Math.max(1, Math.min(99, parseInt(value || "1", 10) || 1));
 
   const cardEl = $(".product-card");
   const qtyInput = byId("product_qty");
@@ -20,28 +21,45 @@
   const checkoutBtn = $(".product-checkout-btn");
 
   const getCheckoutUrl = () =>
+    // 1. Check if StorefrontCartUI provides one
     window.StorefrontCartUI?.getCheckoutUrl?.() ||
+    // 2. Try a div with the class .checkout-container
+    document.querySelector(".checkout-container")?.dataset?.checkoutUrl ||
+    // 3. Fall back to <body data-checkout-url="">
     document.body?.dataset?.checkoutUrl ||
+    // 4. Final hardcoded fallback
     "checkout.html";
 
   const populateProduct = (product) => {
     if (!cardEl || !product) return;
-    cardEl.dataset.productId = product.id || cardEl.dataset.productId || "demo-product";
-    cardEl.dataset.productName = product.name || cardEl.dataset.productName || "Demo product";
-    cardEl.dataset.productBrand = product.brand || cardEl.dataset.productBrand || "Demo brand";
+    cardEl.dataset.productId =
+      product.id || cardEl.dataset.productId || "demo-product";
+    cardEl.dataset.productName =
+      product.name || cardEl.dataset.productName || "Demo product";
+    cardEl.dataset.productBrand =
+      product.brand || cardEl.dataset.productBrand || "Demo brand";
     if (typeof product.price !== "undefined")
       cardEl.dataset.productPrice = String(product.price);
-    cardEl.dataset.productDesc = product.description || cardEl.dataset.productDesc || "";
-    cardEl.dataset.productImage = product.image || cardEl.dataset.productImage || "";
-    cardEl.dataset.productPack = product.pack || cardEl.dataset.productPack || "";
-    cardEl.dataset.productCategory = product.category || cardEl.dataset.productCategory || "";
-    cardEl.dataset.productSchedule = product.schedule || cardEl.dataset.productSchedule || "";
+    cardEl.dataset.productDesc =
+      product.description || cardEl.dataset.productDesc || "";
+    cardEl.dataset.productImage =
+      product.image || cardEl.dataset.productImage || "";
+    cardEl.dataset.productPack =
+      product.pack || cardEl.dataset.productPack || "";
+    cardEl.dataset.productCategory =
+      product.category || cardEl.dataset.productCategory || "";
+    cardEl.dataset.productSchedule =
+      product.schedule || cardEl.dataset.productSchedule || "";
     cardEl.dataset.productThc = product.thc || cardEl.dataset.productThc || "";
     cardEl.dataset.productCbd = product.cbd || cardEl.dataset.productCbd || "";
-    cardEl.dataset.productOrigin = product.origin || cardEl.dataset.productOrigin || "";
-    cardEl.dataset.productCultivar = product.cultivar || cardEl.dataset.productCultivar || "";
-    cardEl.dataset.productTerpenes = product.terpenes || cardEl.dataset.productTerpenes || "";
-    cardEl.dataset.productNotice = product.notice || cardEl.dataset.productNotice || "";
+    cardEl.dataset.productOrigin =
+      product.origin || cardEl.dataset.productOrigin || "";
+    cardEl.dataset.productCultivar =
+      product.cultivar || cardEl.dataset.productCultivar || "";
+    cardEl.dataset.productTerpenes =
+      product.terpenes || cardEl.dataset.productTerpenes || "";
+    cardEl.dataset.productNotice =
+      product.notice || cardEl.dataset.productNotice || "";
 
     const setText = (selector, value) => {
       if (!value && value !== 0) return;
@@ -52,7 +70,10 @@
     setText(".product-brand", cardEl.dataset.productBrand);
     setText("#product_name", cardEl.dataset.productName);
     setText(".product-desc", cardEl.dataset.productDesc);
-    setText("#product_price", money(Number(cardEl.dataset.productPrice) || product.price || 0));
+    setText(
+      "#product_price",
+      money(Number(cardEl.dataset.productPrice) || product.price || 0)
+    );
     setText("#product_pack", cardEl.dataset.productPack);
     setText("#product_category", cardEl.dataset.productCategory);
     setText("#product_schedule", cardEl.dataset.productSchedule);
@@ -171,7 +192,9 @@
       if (cart && cardEl) {
         const product = window.StorefrontCartUI?.extractProduct?.(cardEl);
         if (product && product.id) {
-          const qty = clampAndSyncInput(qtyInput?.value || "1", { syncCart: false });
+          const qty = clampAndSyncInput(qtyInput?.value || "1", {
+            syncCart: false,
+          });
           const existing = cart.getItem ? cart.getItem(product.id) : null;
           if (!existing) {
             await cart.addItem(product, qty);
@@ -189,7 +212,9 @@
     handleProceedToCheckout();
     clampAndSyncInput(qtyInput?.value || "1", { syncCart: false });
     if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", loadProduct, { once: true });
+      document.addEventListener("DOMContentLoaded", loadProduct, {
+        once: true,
+      });
     } else {
       loadProduct();
     }

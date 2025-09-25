@@ -38,7 +38,7 @@
     </style>
   </head>
 
-<body data-storefront-page="catalog" data-checkout-url="checkout.html">
+<body data-storefront-page="catalog" data-checkout-url="checkout.html" class = "get-url">
     <div class="bg-gray-50 text-gray-900">
       <!-- Header -->
       <div class="bg-white/80 backdrop-blur border-b border-gray-200">
@@ -115,7 +115,7 @@
         >
           <div
             class="product-card p-4 bg-white rounded-2xl shadow-md hover:shadow-xl transition-transform duration-150 ease-out hover:-translate-y-0.5 overflow-hidden h-full flex flex-col"
-            data-product-id="[uid]"
+            data-product-id="[product_uid]"
             data-product-name="[item_name]"
             data-product-brand="[brand]"
             data-product-price="[price]"
@@ -125,7 +125,7 @@
             <a
               href="[Storefront_Product_Detail_Page_URL]"
               class="block w-[200px] m-auto view-product-link"
-              data-product-id="[uid]"
+              data-product-id="[product_uid]"
             >
               <img
                 class="block w-full h-auto aspect-[4/3] object-cover"
@@ -152,13 +152,13 @@
               <div class="mt-auto flex items-center gap-2 pt-2">
                 <a
                   href="[Storefront_Product_Detail_Page_URL]"
-                  data-product-id="[uid]"
+                  data-product-id="[product_uid]"
                   class="view-product-btn inline-flex items-center justify-center px-4 py-3 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition"
                   >View</a
                 >
                 <button
                   class="add-to-cart-btn flex-1 inline-flex items-center justify-center px-4 py-3 rounded-xl bg-neutral-900 text-white font-semibold hover:bg-neutral-700 transition-colors"
-                  data-product-id="[uid]"
+                  data-product-id="[product_uid]"
                 >
                   Add to Cart
                 </button>

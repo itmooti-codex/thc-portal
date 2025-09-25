@@ -53,13 +53,16 @@
     window.StorefrontCartConfig ||
     {};
 
-  const config = Object.assign(
-    {
-      checkoutUrl:
-        document.body?.dataset?.checkoutUrl || initialConfig.checkoutUrl || "checkout.html",
-    },
-    initialConfig
-  );
+const config = Object.assign(
+  {
+    checkoutUrl:
+      document.querySelector(".get-url")?.dataset?.checkoutUrl ||
+      document.body?.dataset?.checkoutUrl ||
+      initialConfig.checkoutUrl ||
+      "checkout.html",
+  },
+  initialConfig
+);
 
   let overlayEl;
   let drawerEl;
