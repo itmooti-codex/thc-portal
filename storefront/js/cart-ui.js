@@ -290,10 +290,6 @@ const config = Object.assign(
       const signature = `${String(name).trim()}|${String(brand).trim()}|${String(priceText).trim()}`;
       return generateIdFromSignature(signature);
     };
-    const toSignatureNoPrice = (name = "", brand = "") => {
-      const signature = `${String(name).trim()}|${String(brand).trim()}`;
-      return generateIdFromSignature(signature);
-    };
     items.forEach((item) => {
       const id = String(item.id);
       inCart.add(id);
@@ -302,21 +298,22 @@ const config = Object.assign(
           typeof item.price === "number" ? new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(item.price) : String(item.price || "")
         )
       );
-      inCart.add(toSignatureNoPrice(item.name || "", item.brand || ""));
     });
     const buttons = $$use(".add-to-cart-btn");
     let matched = 0;
     buttons.forEach((btn) => {
-      const id = safeId(btn);
-      let on = inCart.has(String(id));
-      if (!on) {
+      // Prefer explicit dataset id if present; only fallback to signature-derived ids if the id starts with sig:
+      const explicitId = btn.dataset?.productId || btn.closest(".product-card")?.dataset?.productId || "";
+      const computedId = explicitId || safeId(btn);
+      const idStr = String(computedId);
+      let on = inCart.has(idStr);
+      if (!on && idStr.startsWith("sig:")) {
         const card = btn.closest(".product-card");
         const name = card?.querySelector(".product-name")?.textContent?.trim() || "";
         const brand = card?.querySelector(".product-brand")?.textContent?.trim() || "";
         const price = card?.querySelector(".product-price")?.textContent?.trim() || "";
         const sig = toSignature(name, brand, price);
-        const sigNb = toSignatureNoPrice(name, brand);
-        on = inCart.has(sig) || inCart.has(sigNb);
+        on = inCart.has(sig);
       }
       btn.disabled = on;
       btn.textContent = on ? "Added ✓" : "Add to Cart";
