@@ -48,6 +48,19 @@
     }).format(n || 0);
   const toNum = (s) => Number(String(s || "").replace(/[^0-9.\-]/g, "")) || 0;
 
+  const initialConfig =
+    (window.StorefrontCartUI && window.StorefrontCartUI.config) ||
+    window.StorefrontCartConfig ||
+    {};
+
+  const config = Object.assign(
+    {
+      checkoutUrl:
+        document.body?.dataset?.checkoutUrl || initialConfig.checkoutUrl || "checkout.html",
+    },
+    initialConfig
+  );
+
   let overlayEl;
   let drawerEl;
   let itemsContainer;
@@ -90,21 +103,51 @@
   };
 
   /* ========= product helpers ========= */
+  const getProductSignature = (card) => {
+    if (!card) return "";
+    const name = card.querySelector(".product-name")?.textContent?.trim() || "";
+    const brand = card.querySelector(".product-brand")?.textContent?.trim() || "";
+    const price = card.querySelector(".product-price")?.textContent?.trim() || "";
+    return `${name}|${brand}|${price}`.trim();
+  };
+
+  const generateIdFromSignature = (signature) => {
+    const cleaned = signature
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 140);
+    return cleaned ? `sig:${cleaned}` : `sig:${Math.random().toString(36).slice(2, 10)}`;
+  };
+
   const safeId = (el) => {
     if (!el) return "";
-    const datasetId = el.dataset?.productId || el.closest(".product-card")?.dataset?.productId;
-    if (datasetId && !datasetId.startsWith("[")) return String(datasetId);
-    const card = el.closest(".product-card");
-    const name = card?.querySelector(".product-name")?.textContent?.trim() || "";
-    const brand = card?.querySelector(".product-brand")?.textContent?.trim() || "";
-    const url = card?.querySelector(".view-product-link")?.getAttribute("href") || "";
-    const generated = `n:${name}|b:${brand}|u:${url}`
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .slice(0, 140);
-    if (card) card.dataset.productId = generated;
-    if (el.dataset) el.dataset.productId = generated;
-    return generated;
+    const card = el.classList?.contains("product-card") ? el : el.closest(".product-card");
+    const currentSignature = getProductSignature(card);
+    let datasetId = el.dataset?.productId || card?.dataset?.productId;
+    const previousSignature = card?.dataset?.productSignature || "";
+
+    const placeholderId = datasetId && datasetId.startsWith("[");
+    const signatureChanged =
+      currentSignature && previousSignature && previousSignature !== currentSignature;
+    const signatureUnavailable = currentSignature && currentSignature.includes("[");
+    const missingId = !datasetId;
+
+    if (missingId || placeholderId || signatureChanged || signatureUnavailable) {
+      const generated = generateIdFromSignature(currentSignature || datasetId || "");
+      if (card) {
+        card.dataset.productId = generated;
+        if (currentSignature) {
+          card.dataset.productSignature = currentSignature;
+        }
+      }
+      if (el.dataset) el.dataset.productId = generated;
+      datasetId = generated;
+    } else if (card && currentSignature) {
+      card.dataset.productSignature = currentSignature;
+    }
+
+    return String(datasetId || "");
   };
 
   const extractProduct = (card) => {
@@ -172,11 +215,15 @@
         row.className = "p-4 flex gap-3 items-center";
         row.innerHTML = `
         <img src="${item.image}" alt="${
-        item.name
-      }" class="w-16 h-16 rounded-lg object-cover"/>
+          item.name
+        }" class="w-16 h-16 rounded-lg object-cover"/>
         <div class="flex-1 min-w-0">
           <div class="font-semibold truncate">${item.name}</div>
-          ${item.brand ? `<div class="text-sm text-gray-600">${item.brand}</div>` : ""}
+          ${
+            item.brand
+              ? `<div class="text-sm text-gray-600">${item.brand}</div>`
+              : ""
+          }
           <div class="text-sm font-medium">${money(item.price)}</div>
           <div class="mt-2 inline-flex items-center gap-2">
             <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${
@@ -202,7 +249,8 @@
       });
     }
     const subtotal = state.items.reduce(
-      (total, item) => total + (Number(item.price) || 0) * (Number(item.qty) || 0),
+      (total, item) =>
+        total + (Number(item.price) || 0) * (Number(item.qty) || 0),
       0
     );
     if (subtotalEl) subtotalEl.textContent = money(subtotal);
@@ -228,6 +276,29 @@
     });
   };
 
+  const getCheckoutUrl = () => config.checkoutUrl || "checkout.html";
+
+  const isOnCheckout = () => {
+    const checkoutUrl = getCheckoutUrl();
+    if (!checkoutUrl) return false;
+    if (/^https?:/i.test(checkoutUrl)) {
+      try {
+        const target = new URL(checkoutUrl, window.location.origin);
+        return (
+          window.location.origin === target.origin &&
+          window.location.pathname.replace(/\/+$/, "") ===
+            target.pathname.replace(/\/+$/, "")
+        );
+      } catch (err) {
+        console.warn("Invalid checkout URL", checkoutUrl, err);
+        return false;
+      }
+    }
+    const normalized = checkoutUrl.replace(/^\//, "");
+    const currentPath = window.location.pathname.replace(/^\//, "");
+    return currentPath === normalized || currentPath.endsWith(`/${normalized}`);
+  };
+
   window.StorefrontCartUI = Object.assign(window.StorefrontCartUI || {}, {
     openCart,
     closeCart,
@@ -236,6 +307,14 @@
     renderCart,
     syncAddButtons,
     ensureDrawer,
+    config,
+    getCheckoutUrl,
+    isOnCheckout,
+    setConfig(next) {
+      if (!next) return config;
+      Object.assign(config, next);
+      return config;
+    },
   });
 
   /* ========= events ========= */
@@ -313,11 +392,10 @@
     if (target.closest(".cart-checkout")) {
       if (!hasCart) return;
       if (!Cart.getState().items.length) return;
-      const alreadyOnCheckout = /checkout\.html$/i.test(
-        window.location.pathname || ""
-      );
+      const alreadyOnCheckout = isOnCheckout();
       closeCart();
-      if (!alreadyOnCheckout) window.location.href = "https://app.thehappy.clinic/storefront/checkout";
+      if (!alreadyOnCheckout) window.location.href = getCheckoutUrl();
+      return;
     }
   });
 
@@ -332,7 +410,10 @@
 
   document.addEventListener("keydown", (event) => {
     ensureDrawer();
-    if (event.key === "Escape" && !overlayEl?.classList.contains("pointer-events-none")) {
+    if (
+      event.key === "Escape" &&
+      !overlayEl?.classList.contains("pointer-events-none")
+    ) {
       closeCart();
     }
   });

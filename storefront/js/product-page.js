@@ -19,6 +19,11 @@
   const incBtn = $(".product-qty-incr");
   const checkoutBtn = $(".product-checkout-btn");
 
+  const getCheckoutUrl = () =>
+    window.StorefrontCartUI?.getCheckoutUrl?.() ||
+    document.body?.dataset?.checkoutUrl ||
+    "checkout.html";
+
   const populateProduct = (product) => {
     if (!cardEl || !product) return;
     cardEl.dataset.productId = product.id || cardEl.dataset.productId || "demo-product";
@@ -74,6 +79,8 @@
     const notice = $("#product_notice");
     if (notice && cardEl.dataset.productNotice)
       notice.textContent = cardEl.dataset.productNotice;
+
+    window.StorefrontCartUI?.safeId?.(cardEl);
   };
 
   let cartInstance = null;
@@ -173,7 +180,7 @@
           }
         }
       }
-      window.location.href = "https://app.thehappy.clinic/storefront/checkout";
+      window.location.href = getCheckoutUrl();
     });
   };
 

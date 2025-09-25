@@ -1,7 +1,15 @@
 (() => {
   "use strict";
 
-  if (document.body?.dataset?.storefrontPage !== "checkout") return;
+  const pageHint = document.body?.dataset?.storefrontPage;
+  const isCheckoutPage =
+    pageHint === "checkout" ||
+    !!document.querySelector(".checkout-summary") ||
+    !!document.querySelector("[data-checkout-page]");
+
+  if (!isCheckoutPage) return;
+
+  window.StorefrontCartUI?.ensureDrawer?.();
 
   /* ========= helpers ========= */
   const $ = (sel, ctx = document) => ctx.querySelector(sel);
