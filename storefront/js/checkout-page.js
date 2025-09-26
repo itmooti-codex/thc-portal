@@ -32,13 +32,13 @@
   };
 
   const getSaveOrUpdateUrl = () => {
-    // Priority: window.ENV.SAVE_OR_UPDATE_URL > .get-url[data-api-url] > `${API_BASE}/api/contacts/saveorupdate`
+    // Priority: window.ENV.SAVE_OR_UPDATE_URL > .get-url[data-api-url] > `${API_BASE}/api-thc/contacts/saveorupdate`
     try {
       const explicit = window.ENV?.SAVE_OR_UPDATE_URL || document.querySelector('.get-url')?.dataset?.apiUrl;
       if (explicit) return new URL(explicit, window.location.href).toString();
     } catch {}
     const base = getApiBase();
-    const fallback = '/api/contacts/saveorupdate';
+    const fallback = '/api-thc/contacts/saveorupdate';
     return base ? `${base}${fallback}` : new URL(fallback, window.location.origin).toString();
   };
 
@@ -64,14 +64,14 @@
   };
 
   const saveContact = async (contactData) => {
-    return await apiCall('/api/contact/save', {
+    return await apiCall('/api-thc/contact/save', {
       method: 'POST',
       body: JSON.stringify(contactData)
     });
   };
 
   const validateCoupons = async (contactId, codes, cartProductIds) => {
-    return await apiCall('/api/coupons/validate', {
+    return await apiCall('/api-thc/coupons/validate', {
       method: 'POST',
       body: JSON.stringify({ contactId, codes, cartProductIds })
     });
@@ -79,18 +79,18 @@
 
   const getShippingTypes = async (allowedIds) => {
     const params = allowedIds ? `?allowed=${allowedIds.join(',')}` : '';
-    return await apiCall(`/api/shipping/types${params}`);
+    return await apiCall(`/api-thc/shipping/types${params}`);
   };
 
   const buildOffer = async (cart, appliedCoupon, shippingType) => {
-    return await apiCall('/api/offer/build', {
+    return await apiCall('/api-thc/offer/build', {
       method: 'POST',
       body: JSON.stringify({ cart, appliedCoupon, shippingType })
     });
   };
 
   const processTransaction = async (transactionData) => {
-    return await apiCall('/api/transaction/process', {
+    return await apiCall('/api-thc/transaction/process', {
       method: 'POST',
       body: JSON.stringify(transactionData)
     });
