@@ -754,7 +754,7 @@
           localStorage.removeItem(`${STORAGE_KEY}:form`);
           
           // Redirect to success page
-          window.location.href = `thank-you.html?order=${result.order_id || result.transaction_id || 'success'}`;
+          window.location.href = `https://app.thehappy.clinic/shop/thank-you?order=${result.order_id || result.transaction_id || 'success'}`;
         })
         .catch((err) => {
           alert(err?.message || 'Order processing failed. Please try again.');
