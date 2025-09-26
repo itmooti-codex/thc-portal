@@ -73,12 +73,12 @@ const handleError = (err, req, res, next) => {
 };
 
 // Health check
-app.get("/api/health", (_req, res) => {
+app.get("/api-thc/health", (_req, res) => {
   res.json({ ok: true });
 });
 
 // Contact save endpoint (updated to match requirements)
-app.post("/api/contact/save", async (req, res) => {
+app.post("/api-thc/contact/save", async (req, res) => {
   try {
     const {
       first_name,
@@ -129,7 +129,7 @@ app.post("/api/contact/save", async (req, res) => {
 });
 
 // Coupon validation endpoint
-app.post("/api/coupons/validate", async (req, res) => {
+app.post("/api-thc/coupons/validate", async (req, res) => {
   try {
     const { contactId, codes, cartProductIds } = req.body || {};
 
@@ -258,7 +258,7 @@ app.post("/api/coupons/validate", async (req, res) => {
 });
 
 // Shipping types endpoint
-app.get("/api/shipping/types", async (req, res) => {
+app.get("/api-thc/shipping/types", async (req, res) => {
   try {
     const { allowed } = req.query;
 
@@ -280,7 +280,7 @@ app.get("/api/shipping/types", async (req, res) => {
 });
 
 // Offer building endpoint
-app.post("/api/offer/build", async (req, res) => {
+app.post("/api-thc/offer/build", async (req, res) => {
   try {
     const { cart, appliedCoupon, shippingType } = req.body || {};
 
@@ -307,7 +307,7 @@ app.post("/api/offer/build", async (req, res) => {
 });
 
 // Transaction processing endpoint
-app.post("/api/transaction/process", async (req, res) => {
+app.post("/api-thc/transaction/process", async (req, res) => {
   try {
     const {
       contactId,
@@ -356,7 +356,7 @@ app.post("/api/transaction/process", async (req, res) => {
 });
 
 // Legacy endpoint for backward compatibility
-app.post("/api/contacts/saveorupdate", async (req, res) => {
+app.post("/api-thc/contacts/saveorupdate", async (req, res) => {
   try {
     const { firstname, lastname, email, sms_number } = req.body || {};
     if (!email || typeof email !== "string") {
