@@ -9,6 +9,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+
 // CORS configuration
 app.use(cors("*"));
 app.use(express.json());
@@ -136,24 +137,24 @@ app.post("/api-thc/coupons/validate", async (req, res) => {
     if (!Array.isArray(codes) || codes.length === 0) {
       return res.json({ applied: null, reasons: {} });
     }
-
+    // codes.map((c) => ({ value: c }))
     // Step 1: Check existence
     const existenceFilter = {
       field: { field: "coupon_code" },
       op: "IN",
-      value: { list: codes.map((c) => ({ value: c })) },
+      value: { list:  codes.map((c) => ({ value: c }))},
     };
 
     const existingCoupons = await ontraportRequest(
-      "/CouponCodes?range=1&count=false",
+      `/Coupons?condition=${JSON.stringify([existenceFilter])}`,
       {
-        method: "POST",
-        body: JSON.stringify([existenceFilter]),
+        method: "GET",
       }
     );
 
+    console.log("existingCoupons", existingCoupons);
     const existingCodes = new Map();
-    existingCoupons.data?.forEach((coupon) => {
+    existingCoupons?.data?.forEach((coupon) => {
       existingCodes.set(coupon.coupon_code, coupon);
     });
 
@@ -253,6 +254,7 @@ app.post("/api-thc/coupons/validate", async (req, res) => {
 
     res.json({ applied: appliedCoupon, reasons });
   } catch (err) {
+    console.log("error is ", err)
     handleError(err, req, res);
   }
 });
@@ -388,3 +390,10 @@ app.use(handleError);
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
+
+
+// [{
+//   "field":{"field":"id"},
+//   "op":"IN",
+//   "value":{"list":[{"value":"123XXX"},{"value":"50VOL"}]}
+//   }]
