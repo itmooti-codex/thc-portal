@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>THC - Shop Page</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script
+      async
+      src="https://static-au03.vitalstats.app/static/dynamic-list/v1/latest.js"
+      crossorigin="anonymous"
+    ></script>
+    <style>
+      .input-wrapper {
+        margin-top: 0.25rem;
+        border-radius: 0.75rem;
+        border-width: 1px;
+        border-color: rgb(209 213 219);
+        padding: 8px;
+        width: 100%;
+        box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        outline: none;
+      }
+
+      .input-wrapper input {
+        border: none !important;
+        box-shadow: none !important;
+        height: unset !important;
+        outline: none !important;
+        margin: 0 !important;
+        font-size: 16px !important;
+      }
+
+      .input-wrapper:focus-within {
+        box-shadow: 0 0 0 2px rgb(59 130 246 / 0.5);
+        border-color: rgb(59 130 246);
+      }
+    </style>
+  </head>
+
+  <body
+    data-storefront-page="catalog"
+    data-checkout-url="checkout.html"
+    class="get-url"
+  >
+    <div class="bg-gray-50 text-gray-900">
+      <!-- Header -->
+      <div class="bg-white/80 backdrop-blur border-b border-gray-200">
+        <div
+          class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4"
+        >
+          <a
+            href="../index.html"
+            class="flex items-center gap-2 text-lg font-semibold text-gray-900"
+          >
+            <span>THC Portal</span>
+          </a>
+          <div class="flex items-center gap-3">
+            <button
+              type="button"
+              class="cart-btn relative inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 transition"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  d="M2.25 3a.75.75 0 000 1.5h1.386l2.74 10.964A2.25 2.25 0 008.563 17.5h8.874a2.25 2.25 0 002.188-1.681l1.6-6.4a.75.75 0 10-1.453-.364l-1.6 6.4a.75.75 0 01-.735.545H8.563a.75.75 0 01-.727-.555L5.2 5.5h13.05a.75.75 0 000-1.5H4.5l-.318-1.273A1.5 1.5 0 002.718 1.5H2.25A.75.75 0 001.5 3h.75z"
+                />
+                <path
+                  d="M8.25 20.25a.75.75 0 100 1.5.75.75 0 000-1.5zM17.25 20.25a.75.75 0 100 1.5.75.75 0 000-1.5z"
+                />
+              </svg>
+              <span class="font-semibold">Cart</span>
+              <span
+                class="cart-count absolute -top-2 -right-2 translate-x-full inline-flex items-center justify-center text-xs font-bold bg-blue-600 text-white rounded-full w-5 h-5 hidden"
+                >0</span
+              >
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Product Grid -->
+      <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- Search -->
+        <div class="relative w-full max-w-md my-4">
+          <div class="input-wrapper">
+            <input
+              id="product_search"
+              type="search"
+              placeholder="Search products…"
+              class="w-full bg-transparent"
+            />
+          </div>
+          <!-- clear -->
+          <button
+            id="product_search_clear"
+            class="absolute right-2 top-2 hidden rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+            type="button"
+          >
+            Clear
+          </button>
+        </div>
+        <!-- repeated per record -->
+        <p
+          id="search_empty"
+          class="mt-6 hidden text-center text-sm text-gray-500"
+        >
+          No products match your search.
+        </p>
+        <div
+          class="w-full !grid gap-4 sm:gap-5 lg:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3"
+          data-dynamic-list="6_rB4C6cWF_UIIiEZuJts"
+          data-entity="thc"
+          data-entity-key="sKALpYiOd9z3eI8GLVaJe"
+        >
+          <div
+            class="product-card p-4 bg-white rounded-2xl shadow-md hover:shadow-xl transition-transform duration-150 ease-out hover:-translate-y-0.5 overflow-hidden h-full flex flex-col"
+            data-product-id="[product_uid]"
+            data-product-name="[item_name]"
+            data-product-brand="[brand]"
+            data-product-price="[price]"
+            data-product-desc="[description]"
+            data-product-image="[image]"
+            data-product-payment-id="[Product_ID_Payment]"
+          >
+            <a
+              href="[Storefront_Product_Detail_Page_URL]"
+              class="block w-[200px] m-auto view-product-link"
+              data-product-id="[product_uid]"
+            >
+              <img
+                class="block w-full h-auto aspect-[4/3] object-cover"
+                src="[image]"
+                alt="[name]"
+                loading="lazy"
+              />
+            </a>
+            <div class="p-4 flex flex-col gap-2 flex-1">
+              <div class="text-sm font-semibold text-black/70 product-brand">
+                [brand]
+              </div>
+              <h3 class="text-lg font-bold leading-snug product-name">
+                [item_name]
+              </h3>
+              <div class="text-base font-semibold text-gray-900 product-price">
+                $[price]
+              </div>
+              <p
+                class="text-sm text-gray-700 overflow-hidden product-desc line-clamp-3"
+              >
+                [description]
+              </p>
+              <div class="mt-auto flex items-center gap-2 pt-2">
+                <a
+                  href="[Storefront_Product_Detail_Page_URL]"
+                  data-product-id="[product_uid]"
+                  class="view-product-btn inline-flex items-center justify-center px-4 py-3 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition"
+                  >View</a
+                >
+                <button
+                  class="add-to-cart-btn flex-1 inline-flex items-center justify-center px-4 py-3 rounded-xl bg-neutral-900 text-white font-semibold hover:bg-neutral-700 transition-colors"
+                  data-product-id="[product_uid]"
+                >
+                  Add to Cart
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="js/utils.js"></script>
+    <script src="js/cart-state.js"></script>
+    <script src="js/cart-ui.js"></script>
+    <script src="js/catalog-page.js"></script>
+  </body>
+</html>

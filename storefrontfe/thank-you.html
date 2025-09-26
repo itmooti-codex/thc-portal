@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thank You · THC Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-50 text-gray-900">
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-white/80 backdrop-blur border-b border-gray-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+                <a href="../index.html" class="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                    <span>THC Portal</span>
+                </a>
+            </div>
+        </header>
+
+        <main class="flex-1 flex items-center justify-center">
+            <div class="max-w-md mx-auto text-center px-4">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                
+                <h1 class="text-3xl font-bold text-gray-900 mb-4">Order Confirmed!</h1>
+                <p class="text-lg text-gray-600 mb-8">
+                    Thank you for your order. We've received your payment and will process your order shortly.
+                </p>
+                
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">What's Next?</h2>
+                    <div class="space-y-3 text-sm text-gray-600 text-left">
+                        <div class="flex items-start gap-3">
+                            <div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span class="text-xs font-bold text-blue-600">1</span>
+                            </div>
+                            <div>
+                                <div class="font-medium">Order Processing</div>
+                                <div>We'll prepare your items for shipping</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span class="text-xs font-bold text-blue-600">2</span>
+                            </div>
+                            <div>
+                                <div class="font-medium">Shipping Notification</div>
+                                <div>You'll receive tracking information via email</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span class="text-xs font-bold text-blue-600">3</span>
+                            </div>
+                            <div>
+                                <div class="font-medium">Delivery</div>
+                                <div>Your order will arrive at your specified address</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <a href="shop.html" 
+                       class="flex-1 inline-flex items-center justify-center px-6 py-3 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 font-semibold transition">
+                        Continue Shopping
+                    </a>
+                    <a href="../index.html" 
+                       class="flex-1 inline-flex items-center justify-center px-6 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">
+                        Back to Home
+                    </a>
+                </div>
+                
+                <div class="mt-8 text-sm text-gray-500">
+                    <p>Questions about your order?</p>
+                    <a href="mailto:support@example.com" class="text-blue-600 hover:underline">support@example.com</a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Get order ID from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('order');
+        
+        if (orderId && orderId !== 'success') {
+            // You could display the order ID or make additional API calls here
+            console.log('Order ID:', orderId);
+        }
+    </script>
+</body>
+</html>
