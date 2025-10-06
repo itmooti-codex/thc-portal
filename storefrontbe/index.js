@@ -1,8 +1,11 @@
 import express from "express";
 import cors from "cors";
 import fetch from "node-fetch";
+
 import dotenv from "dotenv";
 import { OfferEngine } from "./offer-engine.js";
+import { ontraportRequest } from "./utils.js";
+import { applyCoupons, validateCouponExistence } from "./coupon-validate.service.js";
 
 dotenv.config();
 
@@ -15,45 +18,11 @@ app.use(cors("*"));
 app.use(express.json());
 
 // Ontraport configuration
-const ONTRAPORT_BASE_URL =
-  process.env.ONTRAPORT_BASE_URL || "https://api.ontraport.com/1";
-const ONTRAPORT_APP_ID = process.env.ONTRAPORT_APP_ID;
-const ONTRAPORT_API_KEY = process.env.ONTRAPORT_API_KEY;
-const DUMMY_GATEWAY_ID = process.env.DUMMY_GATEWAY_ID || "1";
 
 // Initialize offer engine
 const offerEngine = new OfferEngine();
 
-// Helper function to make Ontraport API calls
-const ontraportRequest = async (endpoint, options = {}) => {
-  if (!ONTRAPORT_APP_ID || !ONTRAPORT_API_KEY) {
-    throw new Error("Missing Ontraport credentials");
-  }
 
-  const url = `${ONTRAPORT_BASE_URL}${endpoint}`;
-  const headers = {
-    "Content-Type": "application/json",
-    "Api-Appid": ONTRAPORT_APP_ID,
-    "Api-Key": ONTRAPORT_API_KEY,
-    Accept: "application/json",
-    ...options.headers,
-  };
-
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(
-      `Ontraport API error: ${response.status} - ${JSON.stringify(data)}`
-    );
-  }
-
-  return data;
-};
 
 // Error handling middleware
 const handleError = (err, req, res, next) => {
@@ -137,122 +106,15 @@ app.post("/api-thc/coupons/validate", async (req, res) => {
     if (!Array.isArray(codes) || codes.length === 0) {
       return res.json({ applied: null, reasons: {} });
     }
-    // codes.map((c) => ({ value: c }))
     // Step 1: Check existence
-    const existenceFilter = {
-      field: { field: "coupon_code" },
-      op: "IN",
-      value: { list:  codes.map((c) => ({ value: c }))},
-    };
 
-    const existingCoupons = await ontraportRequest(
-      `/Coupons?condition=${JSON.stringify([existenceFilter])}`,
-      {
-        method: "GET",
-      }
-    );
+    const existingCodes = await validateCouponExistence(codes);
 
-    console.log("existingCoupons", existingCoupons);
-    const existingCodes = new Map();
-    existingCoupons?.data?.forEach((coupon) => {
-      existingCodes.set(coupon.coupon_code, coupon);
-    });
+    const response = await applyCoupons(existingCodes, codes, contactId)
 
-    const reasons = {};
-    let appliedCoupon = null;
 
-    // Check each code
-    for (const code of codes) {
-      if (!existingCodes.has(code)) {
-        reasons[code] = "not_found";
-        continue;
-      }
 
-      const coupon = existingCodes.get(code);
-
-      // Step 2: Check validity/expiration
-      const couponDetails = await ontraportRequest(
-        `/CouponCode?id=${coupon.id}`
-      );
-      const expiration = couponDetails.expiration_date;
-
-      if (expiration) {
-        const expTime = expiration * 1000; // Convert to milliseconds
-        if (expTime < Date.now()) {
-          reasons[code] = "expired";
-          continue;
-        }
-      }
-
-      // Step 3: Check if already used by this contact
-      if (contactId) {
-        const purchases = await ontraportRequest(
-          "/Purchases?range=50&sortDir=desc&count=false"
-        );
-        const usedByContact = purchases.data?.some(
-          (purchase) =>
-            purchase.contact_id === contactId &&
-            purchase.coupon_id === coupon.id
-        );
-
-        if (usedByContact) {
-          reasons[code] = "already_used";
-          continue;
-        }
-      }
-
-      // Step 4: Check product applicability
-      if (coupon.product_selection === "specific") {
-        const productFilter = {
-          field: { field: "coupon_id" },
-          op: "IN",
-          value: { list: [{ value: coupon.id }] },
-        };
-
-        const couponProducts = await ontraportRequest(
-          "/CouponProducts?range=50&count=false",
-          {
-            method: "POST",
-            body: JSON.stringify([productFilter]),
-          }
-        );
-
-        const applicableProductIds =
-          couponProducts.data?.map((cp) => cp.product_id) || [];
-        const hasApplicableProduct = cartProductIds.some((id) =>
-          applicableProductIds.includes(id)
-        );
-
-        if (!hasApplicableProduct) {
-          reasons[code] = "not_applicable";
-          continue;
-        }
-      }
-
-      // If we get here, the coupon is valid
-      if (!appliedCoupon) {
-        appliedCoupon = {
-          id: coupon.id,
-          coupon_code: coupon.coupon_code,
-          discount_type: coupon.discount_type,
-          discount_value: coupon.discount_value,
-          product_selection: coupon.product_selection,
-          recurring: coupon.recurring,
-        };
-        reasons[code] = null;
-      } else {
-        reasons[code] = "not_applied_multiple";
-      }
-    }
-
-    // Mark remaining codes as not applied
-    codes.forEach((code) => {
-      if (!(code in reasons)) {
-        reasons[code] = "not_applied_multiple";
-      }
-    });
-
-    res.json({ applied: appliedCoupon, reasons });
+    res.json(response);
   } catch (err) {
     console.log("error is ", err)
     handleError(err, req, res);
