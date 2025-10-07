@@ -10,8 +10,189 @@
 
     var pendingFocus = null;
 
+    function normalizeKeyName(key) {
+        return String(key || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+    }
+
+    function findRowKey(row, target) {
+        if (!row) return null;
+        var targetNorm = normalizeKeyName(target);
+        for (var key in row) {
+            if (!Object.prototype.hasOwnProperty.call(row, key)) continue;
+            if (normalizeKeyName(key) === targetNorm) return key;
+        }
+        return null;
+    }
+
+    function pickRowValue(row, candidates) {
+        if (!row) return { key: null, value: undefined };
+        for (var i = 0; i < candidates.length; i++) {
+            var actualKey = findRowKey(row, candidates[i]);
+            if (actualKey && row[actualKey] != null) {
+                return { key: actualKey, value: row[actualKey] };
+            }
+        }
+        return { key: null, value: undefined };
+    }
+
+    function withScriptVariants(candidates) {
+        var seen = Object.create(null);
+        var result = [];
+        function push(val) {
+            var normalized = normalizeKeyName(val);
+            if (!normalized) return;
+            if (seen[normalized]) return;
+            seen[normalized] = true;
+            result.push(val);
+        }
+        candidates.forEach(function (raw) {
+            if (!raw) return;
+            var base = String(raw).trim();
+            if (!base) return;
+            push(base);
+            if (!/^script[\s_]?/i.test(base)) {
+                push('script_' + base);
+                push('script' + base);
+                if (/^[a-z]/i.test(base)) {
+                    push('script' + base.charAt(0).toUpperCase() + base.slice(1));
+                }
+            }
+        });
+        return result;
+    }
+
+    function pad2(num) {
+        return String(num).padStart(2, '0');
+    }
+
+    function formatDateForInput(date) {
+        if (!(date instanceof Date) || isNaN(date.getTime())) return '';
+        return date.getUTCFullYear() + '-' + pad2(date.getUTCMonth() + 1) + '-' + pad2(date.getUTCDate());
+    }
+
+    function toDateInputValue(value) {
+        if (value == null || value === '') return '';
+        if (value instanceof Date) return formatDateForInput(value);
+        if (typeof value === 'number') {
+            if (!Number.isFinite(value)) return '';
+            var numeric = value;
+            if (numeric > 1e12) {
+                return formatDateForInput(new Date(numeric));
+            }
+            return formatDateForInput(new Date(numeric * 1000));
+        }
+        var str = String(value).trim();
+        if (!str) return '';
+        if (/^\d+$/.test(str)) {
+            var intVal = parseInt(str, 10);
+            if (!isNaN(intVal)) {
+                if (str.length > 10) return formatDateForInput(new Date(intVal));
+                return formatDateForInput(new Date(intVal * 1000));
+            }
+            return '';
+        }
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+            return str;
+        }
+        if (/^(\d{2})-(\d{2})-(\d{4})$/.test(str) || /^(\d{2})\/(\d{2})\/(\d{4})$/.test(str)) {
+            var parts = str.split(/[-\/]/);
+            if (parts.length === 3) {
+                return parts[2] + '-' + pad2(parts[1]) + '-' + pad2(parts[0]);
+            }
+        }
+        var parsed = new Date(str);
+        if (!isNaN(parsed.getTime())) return formatDateForInput(parsed);
+        return '';
+    }
+
+    function toNullableNumber(value) {
+        if (value === '' || value == null) return null;
+        var num = Number(value);
+        return Number.isFinite(num) ? num : null;
+    }
+
+    function safeString(value) {
+        if (value == null) return '';
+        return String(value).trim();
+    }
+
+    function normalizeQuantityFieldName(key) {
+        if (!key) return '';
+        var normalized = normalizeKeyName(key);
+        if (normalized === 'qty' || normalized === 'scriptqty') return 'qty';
+        if (normalized === 'quantity' || normalized === 'scriptquantity') return 'quantity';
+        return '';
+    }
+
+    function toEpochSecondsValue(val) {
+        if (val == null || val === '') return null;
+        if (typeof val === 'number') {
+            if (!Number.isFinite(val)) return null;
+            if (val > 1e12) return Math.floor(val / 1000);
+            return Math.floor(val);
+        }
+        var str = String(val).trim();
+        if (!str) return null;
+        if (/^\d+$/.test(str)) {
+            var intVal = parseInt(str, 10);
+            if (!isNaN(intVal)) {
+                if (str.length > 10) return Math.floor(intVal / 1000);
+                return Math.floor(intVal);
+            }
+            return null;
+        }
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+            var direct = new Date(str + 'T00:00:00Z');
+            return isNaN(direct.getTime()) ? null : Math.floor(direct.getTime() / 1000);
+        }
+        if (/^(\d{2})-(\d{2})-(\d{4})$/.test(str) || /^(\d{2})\/(\d{2})\/(\d{4})$/.test(str)) {
+            var parts = str.split(/[-\/]/);
+            if (parts.length === 3) {
+                var dmyDate = new Date(parts[2] + '-' + parts[1] + '-' + parts[0] + 'T00:00:00Z');
+                return isNaN(dmyDate.getTime()) ? null : Math.floor(dmyDate.getTime() / 1000);
+            }
+        }
+        var parsed = new Date(str);
+        if (!isNaN(parsed.getTime())) return Math.floor(parsed.getTime() / 1000);
+        return null;
+    }
+
+    function buildUpdatePayload(entry) {
+        if (!entry) return {};
+        var payload = {};
+        payload.dosage_instructions = safeString(entry.dosage);
+        payload.route_of_administration = safeString(entry.route);
+        var repeatsNum = toNullableNumber(entry.repeats);
+        payload.repeats = repeatsNum === null ? null : repeatsNum;
+        var intervalNum = toNullableNumber(entry.intervalDays);
+        payload.interval_days = intervalNum === null ? null : intervalNum;
+        var dispenseNum = toNullableNumber(entry.dispenseQty);
+        payload.dispense_quantity = dispenseNum === null ? null : dispenseNum;
+        var qtyNum = toNullableNumber(entry.qty);
+        if (entry.quantityFieldName) {
+            payload[entry.quantityFieldName] = qtyNum === null ? null : qtyNum;
+        }
+        if (Object.prototype.hasOwnProperty.call(entry, 'validUntil')) {
+            var initial = Object.prototype.hasOwnProperty.call(entry, 'initialValidUntil') ? entry.initialValidUntil : undefined;
+            var current = entry.validUntil;
+            if (initial !== current) {
+                if (current === '' || current == null) {
+                    payload.valid_until = null;
+                } else {
+                    var validUntil = toEpochSecondsValue(current);
+                    if (validUntil != null) {
+                        payload.valid_until = validUntil;
+                    }
+                }
+            }
+        }
+        payload.doctor_notes_to_pharmacy = entry.notesToPharmacy != null ? String(entry.notesToPharmacy) : '';
+        return payload;
+    }
+
     function renderSidebar() {
         if (!list) return;
+        var hasEditMode = false;
         var focusState = null;
         var activeEl = document.activeElement;
         if (activeEl && list.contains(activeEl) && activeEl.dataset && activeEl.dataset.entryId) {
@@ -29,6 +210,7 @@
 
         list.innerHTML = '';
         selected.forEach(function (entry, id) {
+            if (entry && entry.editing) hasEditMode = true;
             // Row container + visual card
             var wrap = document.createElement('div');
             wrap.className = 'px-4 py-2';
@@ -243,10 +425,15 @@
             fab.classList.remove('hidden');
             fabCount.textContent = String(selected.size);
             if (createBtn) {
-                var count = selected.size;
-                var label = 'Create ' + count + ' script' + (count === 1 ? '' : 's');
-                createBtn.textContent = label;
-                createBtn.setAttribute('aria-label', label);
+                if (hasEditMode) {
+                    createBtn.textContent = 'Edit Script';
+                    createBtn.setAttribute('aria-label', 'Edit Script');
+                } else {
+                    var count = selected.size;
+                    var label = 'Create ' + count + ' script' + (count === 1 ? '' : 's');
+                    createBtn.textContent = label;
+                    createBtn.setAttribute('aria-label', label);
+                }
             }
             if (!collapsed) {
                 document.documentElement.classList.add('compare-open');
@@ -268,6 +455,15 @@
     function handleChange(ev) {
         var cb = ev.target;
         if (!cb.classList.contains('js-compare')) return;
+        var editIds = [];
+        selected.forEach(function (entry, key) {
+            if (entry && entry.editing) editIds.push(key);
+        });
+        if (editIds.length) {
+            for (var i = 0; i < editIds.length; i++) {
+                selected.delete(editIds[i]);
+            }
+        }
         var id = cb.getAttribute('data-item-id');
         var name = cb.getAttribute('data-item-name');
         if (cb.checked) {
@@ -354,6 +550,82 @@
         }
     };
 
+    window.vsOpenScriptEditor = function (opts) {
+        try {
+            opts = opts || {};
+            var scriptId = opts.scriptId;
+            if (!scriptId) {
+                alert('Missing script id for editing.');
+                return;
+            }
+            var row = opts.row || {};
+            selected.clear();
+            var entryId = 'edit:' + scriptId;
+
+            var namePick = pickRowValue(row, withScriptVariants(['drug_name', 'item_name', 'item_item_name', 'product_name', 'script_name', 'item']));
+            var brandPick = pickRowValue(row, withScriptVariants(['item_brand', 'brand', 'drug_brand']));
+            var entryName = safeString(namePick.value);
+            if (!entryName) {
+                var brandName = safeString(brandPick.value);
+                var itemName = safeString(pickRowValue(row, withScriptVariants(['item_item_name', 'item_name', 'product_name', 'drug_name', 'item'])).value);
+                if (brandName && itemName && brandName.toLowerCase() !== itemName.toLowerCase()) {
+                    entryName = brandName + ' | ' + itemName;
+                } else if (brandName) {
+                    entryName = brandName;
+                } else if (itemName) {
+                    entryName = itemName;
+                }
+            }
+            if (!entryName) entryName = 'Script ' + scriptId;
+
+            var qtyPick = pickRowValue(row, withScriptVariants(['qty', 'quantity']));
+            var qtyNum = toNullableNumber(qtyPick.value);
+            var entryQty = qtyNum !== null ? qtyNum : '1';
+
+            var repeatsPick = pickRowValue(row, withScriptVariants(['repeats', 'repeat_count']));
+            var repeatsNum = toNullableNumber(repeatsPick.value);
+
+            var intervalPick = pickRowValue(row, withScriptVariants(['interval_days', 'interval', 'interval_day']));
+            var intervalNum = toNullableNumber(intervalPick.value);
+
+            var dispensePick = pickRowValue(row, withScriptVariants(['dispense_quantity', 'dispensed_quantity', 'quantity_dispensed', 'dispense_qty']));
+            var dispenseNum = toNullableNumber(dispensePick.value);
+
+            var validPick = pickRowValue(row, withScriptVariants(['valid_until', 'validuntil', 'expiry_date']));
+            var notesPick = pickRowValue(row, withScriptVariants(['doctor_notes_to_pharmacy', 'notes_to_pharmacy', 'pharmacy_notes']));
+            var dosagePick = pickRowValue(row, withScriptVariants(['dosage_instructions', 'dosageinstructions', 'dosage']));
+            var routePick = pickRowValue(row, withScriptVariants(['route_of_administration', 'route', 'administration_route']));
+
+            var entry = {
+                editing: true,
+                scriptId: scriptId,
+                ctx: opts.ctx || null,
+                name: entryName,
+                checkbox: null,
+                qty: entryQty,
+                quantityFieldName: normalizeQuantityFieldName(qtyPick.key),
+                dosage: safeString(dosagePick.value),
+                route: safeString(routePick.value),
+                repeats: repeatsNum !== null ? repeatsNum : '',
+                intervalDays: intervalNum !== null ? intervalNum : '',
+                dispenseQty: dispenseNum !== null ? dispenseNum : '',
+                validUntil: toDateInputValue(validPick.value),
+                notesToPharmacy: notesPick.value != null ? String(notesPick.value) : '',
+                drugId: row.drug_id ?? row.Drug_ID ?? row.drugId ?? null,
+                open: true
+            };
+            entry.initialValidUntil = entry.validUntil;
+
+            selected.set(entryId, entry);
+            collapsed = false;
+            pendingFocus = { id: entryId, field: 'dosage', start: null, end: null };
+            renderSidebar();
+        } catch (e) {
+            console.error('Failed to open script editor', e);
+            alert('Unable to open editor for this script.');
+        }
+    };
+
     // Cleanup if dynamic list refreshes
     document.addEventListener('DOMContentLoaded', function () {
         var host = document.querySelector('[data-dynamic-list]');
@@ -407,6 +679,66 @@
                 entriesList.push({ entry: entry, id: id });
             });
             if (entriesList.length === 0) return;
+            var origText = createBtn.textContent;
+
+            var editingEntries = entriesList.filter(function (item) {
+                return item.entry && item.entry.editing;
+            });
+            if (editingEntries.length > 0) {
+                if (entriesList.length !== editingEntries.length) {
+                    alert('Remove other items before editing a script.');
+                    return;
+                }
+                if (editingEntries.length !== 1) {
+                    alert('Select a single script to edit.');
+                    return;
+                }
+                var editEntry = editingEntries[0].entry || {};
+                if (!editEntry.scriptId) {
+                    alert('Missing script id for update.');
+                    return;
+                }
+                if (typeof window.vsPerformScriptUpdate !== 'function') {
+                    alert('Update handler is not available.');
+                    return;
+                }
+                var payload;
+                try {
+                    payload = buildUpdatePayload(editEntry);
+                } catch (err) {
+                    console.error(err);
+                    alert('Unable to prepare script update.');
+                    return;
+                }
+                createBtn.disabled = true;
+                createBtn.textContent = 'Saving…';
+                try {
+                    await window.vsPerformScriptUpdate({ scriptId: editEntry.scriptId, payload: payload });
+                    alert('Script updated successfully.');
+                    selected.clear();
+                    renderSidebar();
+                    if (editEntry.ctx) {
+                        try {
+                            if (typeof editEntry.ctx.reload === 'function') {
+                                editEntry.ctx.reload();
+                            } else if (typeof editEntry.ctx.refresh === 'function') {
+                                editEntry.ctx.refresh();
+                            }
+                        } catch (_) { }
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to update script: ' + (err && err.message ? err.message : 'Unknown error'));
+                } finally {
+                    createBtn.disabled = false;
+                    if (selected.size > 0) {
+                        createBtn.textContent = origText;
+                    } else {
+                        createBtn.textContent = 'Create Script';
+                    }
+                }
+                return;
+            }
             var searchInput = document.querySelector('input[placeholder="Search products"]');
             var customEntries = entriesList.filter(function (item) { return item.entry && item.entry.custom; });
             var itemMutation = `mutation createItem($payload: ItemCreateInput = null) {
@@ -475,20 +807,6 @@
                     entry.drugId = newId;
                 }
             }
-
-            function toEpochSeconds(val) {
-                if (!val) return null;
-                if (typeof val === 'number') return Math.floor(val);
-                if (typeof val === 'string') {
-                    // If the string is numeric, treat as seconds
-                    if (/^\d+$/.test(val)) return parseInt(val, 10);
-                    // Expecting YYYY-MM-DD from date input; convert to UTC midnight
-                    var d = new Date(val + 'T00:00:00Z');
-                    if (!isNaN(d.getTime())) return Math.floor(d.getTime() / 1000);
-                }
-                return null;
-            }
-
             var query = `mutation createScripts($payload: [ScriptCreateInput] = null) {
   createScripts(payload: $payload) {
     dosage_instructions
@@ -505,8 +823,6 @@
     appointment_id
   }
 }`;
-
-            var origText = createBtn.textContent;
             createBtn.disabled = true;
             createBtn.textContent = 'Creating…';
 
@@ -528,7 +844,7 @@
                         repeats: Number(entry.repeats || 0),
                         interval_days: Number(entry.intervalDays || 0),
                         dispense_quantity: Number(entry.dispenseQty || 0),
-                        valid_until: toEpochSeconds(entry.validUntil),
+                        valid_until: toEpochSecondsValue(entry.validUntil),
                         doctor_notes_to_pharmacy: entry.notesToPharmacy || '',
                         doctor_id: defaults.doctorId,
                         patient_id: defaults.patientId,
@@ -609,7 +925,11 @@
                 }
             } finally {
                 createBtn.disabled = false;
-                createBtn.textContent = origText;
+                if (selected.size > 0) {
+                    createBtn.textContent = origText;
+                } else {
+                    createBtn.textContent = 'Create Script';
+                }
             }
         });
     }

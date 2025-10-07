@@ -98,6 +98,30 @@
         }
     };
 
+    window.vsEditScript = function (detail) {
+        try {
+            if (!detail || !detail.row) return;
+            var row = detail.row || {};
+            var rawId = row.ID ?? row.id ?? row.Id ?? detail.id;
+            var scriptId = extractScriptId(rawId);
+            if (!scriptId) {
+                alert('Unable to determine script id for editing.');
+                return;
+            }
+            if (typeof window.vsOpenScriptEditor !== 'function') {
+                console.warn('vsOpenScriptEditor is not available');
+                return;
+            }
+            window.vsOpenScriptEditor({
+                scriptId: scriptId,
+                row: row,
+                ctx: detail.ctx || null
+            });
+        } catch (e) {
+            console.error('Failed to open script editor', e);
+        }
+    };
+
     // Duplicate selected scripts via createScripts mutation
     window.vsDuplicateScripts = async function (ids) {
         if (!Array.isArray(ids) || ids.length === 0) return;
@@ -214,6 +238,56 @@
         } catch (e) {
             console.error(e);
             alert('Network or server error while duplicating scripts.');
+        }
+    };
+
+    const UPDATE_SCRIPT_MUTATION = `mutation updateScript(\n  $id: ThcScriptID!\n  $payload: ScriptUpdateInput = null\n) {\n  updateScript(\n    query: [{ where: { id: $id } }]\n    payload: $payload\n  ) {\n    dosage_instructions\n  }\n}`;
+
+    window.vsPerformScriptUpdate = async function (options) {
+        options = options || {};
+        var scriptId = extractScriptId(options.scriptId);
+        if (!scriptId) {
+            throw new Error('Missing script id for update.');
+        }
+        var payload = options.payload || {};
+        var cfg = getApiConfig();
+        if (!cfg.endpoint || !cfg.apiKey) {
+            throw new Error('API endpoint or key not configured.');
+        }
+        var cleanPayload = {};
+        for (var key in payload) {
+            if (Object.prototype.hasOwnProperty.call(payload, key)) {
+                var value = payload[key];
+                if (value !== undefined) {
+                    cleanPayload[key] = value;
+                }
+            }
+        }
+        var body = {
+            query: UPDATE_SCRIPT_MUTATION,
+            variables: {
+                id: scriptId,
+                payload: cleanPayload
+            }
+        };
+        try {
+            var res = await fetch(cfg.endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Api-Key': cfg.apiKey
+                },
+                body: JSON.stringify(body)
+            });
+            var json = await res.json();
+            if (json.errors) {
+                var msg = (json.errors[0] && json.errors[0].message) ? json.errors[0].message : 'Unknown error';
+                throw new Error(msg);
+            }
+            return json.data && json.data.updateScript;
+        } catch (e) {
+            if (e && e.message) throw e;
+            throw new Error('Network error while updating script.');
         }
     };
 })();
