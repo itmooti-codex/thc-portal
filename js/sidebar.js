@@ -562,7 +562,7 @@
             selected.clear();
             var entryId = 'edit:' + scriptId;
 
-            var namePick = pickRowValue(row, withScriptVariants(['drug_name', 'item_name', 'item_item_name', 'product_name', 'script_name', 'item']));
+            var namePick = pickRowValue(row, withScriptVariants(['drug_item_name', 'drug item name', 'drug_name', 'item_name', 'item_item_name', 'product_name', 'script_name', 'item']));
             var brandPick = pickRowValue(row, withScriptVariants(['item_brand', 'brand', 'drug_brand']));
             var entryName = safeString(namePick.value);
             if (!entryName) {

@@ -200,6 +200,12 @@ window.vsInit = function (dynamicList) {
           field === "intervaldays"
         )
           return false;
+           if (
+          header === "drug item name" ||
+          field === "drug_item_name" ||
+          field === "drugitemname"
+        )
+          return false;
         return true;
       });
 
