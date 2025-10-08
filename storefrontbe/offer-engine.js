@@ -32,6 +32,7 @@ export class OfferEngine {
         id: item.productId,
         quantity,
         total: Math.max(0, total), // Ensure non-negative
+        price: Math.max(0, unitPrice), // Keep per-unit price for downstream processors
         taxable: Boolean(item.taxable),
         type: "one_time",
         shipping: Boolean(item.requiresShipping)
@@ -51,14 +52,28 @@ export class OfferEngine {
     const shipping = this.calculateShipping(products, shippingType);
     const shippingTotal = shipping.reduce((sum, ship) => sum + (Number(ship.price) || 0), 0);
 
+    // Recompute unit prices from updated totals after discount so the gateway can charge adjusted amounts
+    products.forEach((p) => {
+      const q = p.quantity || 1;
+      const unit = q > 0 ? p.total / q : p.total;
+      const unitRounded = Math.max(0, Math.round(unit * 100) / 100);
+      const unitStr = unitRounded.toFixed(2);
+      // Provide both numeric and string forms, and an override flag for gateways that require it
+      p.price = unitStr;
+      p.amount = unitStr;
+      p.price_override = true;
+      // Also normalize total to string for consistency
+      p.total = (Math.max(0, Math.round((p.total || 0) * 100) / 100)).toFixed(2);
+    });
+
     // Calculate final totals
     const grandTotal = Math.max(0, subTotal + shippingTotal - discountAmount);
 
     return {
       products,
       shipping,
-      subTotal: Math.max(0, subTotal),
-      grandTotal,
+      subTotal: Math.max(0, Math.round(subTotal * 100) / 100),
+      grandTotal: Math.max(0, Math.round(grandTotal * 100) / 100),
       hasTaxes: false, // Not implemented in this version
       hasShipping: shipping.length > 0,
       currency_code: this.currency,
@@ -73,18 +88,21 @@ export class OfferEngine {
    * @returns {number} Discount amount
    */
   calculateDiscount(products, coupon) {
-    if (!coupon || !coupon.discount_type || !coupon.discount_value) {
+    if (!coupon) return 0;
+    const discountType = coupon.discount_type || coupon.type;
+    let discountValue = coupon.discount_value != null ? coupon.discount_value : coupon.value;
+    if (discountType === "percent" && discountValue > 1) {
+      discountValue = discountValue / 100;
+    }
+    if (!discountType || !discountValue) {
       return 0;
     }
 
     // Determine eligible products based on coupon product selection
     let eligibleProducts = products;
-    
-    if (coupon.product_selection === "specific" && coupon.applicable_products) {
-      // Filter to only products that are in the coupon's applicable products list
-      eligibleProducts = products.filter(product => 
-        coupon.applicable_products.includes(product.id)
-      );
+    if (coupon.product_selection === "specific") {
+      const applicable = Array.isArray(coupon.applicable_products) ? coupon.applicable_products.map(String) : [];
+      eligibleProducts = applicable.length ? products.filter(product => applicable.includes(String(product.id))) : [];
     }
 
     if (eligibleProducts.length === 0) {
@@ -95,9 +113,9 @@ export class OfferEngine {
 
     let discountAmount = 0;
 
-    if (coupon.discount_type === "flat") {
+    if (discountType === "flat" || discountType === "fixed") {
       // Flat discount - apply to eligible lines proportionally
-      discountAmount = Math.min(coupon.discount_value, eligibleSubtotal);
+      discountAmount = Math.min(Number(discountValue) || 0, eligibleSubtotal);
       
       // Apply discount proportionally to each eligible line
       if (discountAmount > 0 && eligibleSubtotal > 0) {
@@ -107,9 +125,9 @@ export class OfferEngine {
           product.total = Math.max(0, product.total - lineDiscount);
         });
       }
-    } else if (coupon.discount_type === "percent") {
+    } else if (discountType === "percent") {
       // Percentage discount
-      const discountRate = Math.min(coupon.discount_value, 1); // Cap at 100%
+      const discountRate = Math.min(Number(discountValue) || 0, 1); // Cap at 100%
       discountAmount = eligibleSubtotal * discountRate;
       
       // Apply discount to each eligible line

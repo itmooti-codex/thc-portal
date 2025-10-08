@@ -3,11 +3,17 @@ import cors from "cors";
 import fetch from "node-fetch";
 
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 import { OfferEngine } from "./offer-engine.js";
 import { ontraportRequest } from "./utils.js";
 import { applyCoupons, validateCouponExistence } from "./coupon-validate.service.js";
 
-dotenv.config();
+// Ensure we load .env from the same directory as this file (storefrontbe/.env),
+// regardless of the current working directory when starting the server.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, ".env") });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -16,6 +22,22 @@ const PORT = process.env.PORT || 3001;
 // CORS configuration
 app.use(cors("*"));
 app.use(express.json());
+
+// Basic request logging
+app.use((req, res, next) => {
+  const start = Date.now();
+  const { method, originalUrl } = req;
+  const reqId = Math.random().toString(36).slice(2, 8);
+  console.log(`[REQ ${reqId}] ${method} ${originalUrl}`);
+  if (req.method !== 'GET') {
+    try { console.log(`[REQ ${reqId}] body:`, JSON.stringify(req.body)); } catch {}
+  }
+  res.on('finish', () => {
+    const ms = Date.now() - start;
+    console.log(`[RES ${reqId}] ${method} ${originalUrl} -> ${res.statusCode} (${ms}ms)`);
+  });
+  next();
+});
 
 // Ontraport configuration
 
@@ -94,6 +116,7 @@ app.post("/api-thc/contact/save", async (req, res) => {
     console.log(data);
     res.json({ contactId: data?.data?.id || data?.data?.attrs?.id || contactId });
   } catch (err) {
+    console.log(err)
     handleError(err, req, res);
   }
 });
@@ -106,14 +129,12 @@ app.post("/api-thc/coupons/validate", async (req, res) => {
     if (!Array.isArray(codes) || codes.length === 0) {
       return res.json({ applied: null, reasons: {} });
     }
+    // Keep original case for case-sensitive matching
+    const rawCodes = codes.map((c) => String(c || ""));
     // Step 1: Check existence
-
-    const existingCodes = await validateCouponExistence(codes);
-
-    const response = await applyCoupons(existingCodes, codes, contactId)
-
-
-
+    const existingCodes = await validateCouponExistence(rawCodes);
+    // Step 2: Validate and apply
+    const response = await applyCoupons(existingCodes, rawCodes, contactId, Array.isArray(cartProductIds) ? cartProductIds : []);
     res.json(response);
   } catch (err) {
     console.log("error is ", err)
@@ -133,8 +154,8 @@ app.get("/api-thc/shipping/types", async (req, res) => {
     let types = shippingTypes.data || [];
 
     if (allowed) {
-      const allowedIds = allowed.split(",").map((id) => parseInt(id.trim()));
-      types = types.filter((type) => allowedIds.includes(type.id));
+      const allowedIds = allowed.split(",").map((id) => String(id.trim()));
+      types = types.filter((type) => allowedIds.includes(String(type.id)));
     }
 
     res.json(types);
@@ -180,7 +201,7 @@ app.post("/api-thc/transaction/process", async (req, res) => {
       offer,
       external_order_id,
       invoice_template = 1,
-      gateway_id = DUMMY_GATEWAY_ID,
+      gateway_id = process.env.DUMMY_GATEWAY_ID || 1,
       customer_note,
       internal_note,
     } = req.body || {};
@@ -189,13 +210,112 @@ app.post("/api-thc/transaction/process", async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
+    // Helper: translate payment ids to Ontraport product ids when possible
+    const translatePaymentToProductIds = async (lineItems = []) => {
+      try {
+        const paymentIds = Array.from(new Set(lineItems.map((p) => String(p.id))));
+        if (!paymentIds.length) return new Map();
+        const map = new Map();
+        // Load static mapping from env if provided: PRODUCT_PAYMENT_TO_ONTRAPORT='{"205":"1234"}'
+        try {
+          const envMapRaw = process.env.PRODUCT_PAYMENT_TO_ONTRAPORT;
+          if (envMapRaw) {
+            const envMap = JSON.parse(envMapRaw);
+            paymentIds.forEach((pid) => {
+              const mapped = envMap[pid];
+              if (mapped) map.set(String(pid), String(mapped));
+            });
+          }
+        } catch {}
+        // Try Product_ID_Payment
+        try {
+          const cond1 = [{ field: { field: "Product_ID_Payment" }, op: "IN", value: { list: paymentIds.map((v) => ({ value: v })) } }];
+          const r1 = await ontraportRequest(`/Products?condition=${JSON.stringify(cond1)}`);
+          (r1?.data || []).forEach((row) => {
+            if (row && row.Product_ID_Payment != null && row.id != null) {
+              map.set(String(row.Product_ID_Payment), String(row.id));
+            }
+          });
+        } catch {}
+        // Try product_id_payment
+        try {
+          const cond2 = [{ field: { field: "product_id_payment" }, op: "IN", value: { list: paymentIds.map((v) => ({ value: v })) } }];
+          const r2 = await ontraportRequest(`/Products?condition=${JSON.stringify(cond2)}`);
+          (r2?.data || []).forEach((row) => {
+            const key = row?.product_id_payment ?? row?.Product_ID_Payment;
+            if (key != null && row.id != null) {
+              map.set(String(key), String(row.id));
+            }
+          });
+        } catch {}
+        return map;
+      } catch {
+        return new Map();
+      }
+    };
+
+    // Normalize offer numbers to 2 decimals and ensure consistency
+    const normalizedOffer = (() => {
+      if (!offer || !Array.isArray(offer.products)) return offer;
+      const products = offer.products.map((p) => {
+        const qty = Number(p.quantity) || 0;
+        const totalNum = Math.max(0, Math.round(((typeof p.total === 'string' ? Number(p.total) : (Number(p.total) || 0))) * 100) / 100);
+        const priceNum = Math.max(0, Math.round(((typeof p.price === 'string' ? Number(p.price) : (Number(p.price) || (qty ? totalNum / qty : 0))) ) * 100) / 100);
+        const amountNum = priceNum;
+        return {
+          ...p,
+          total: totalNum.toFixed(2),
+          price: priceNum.toFixed(2),
+          amount: amountNum.toFixed(2),
+          price_each: priceNum.toFixed(2),
+          unit_price: priceNum.toFixed(2),
+          price_override: 1,
+          override_product_price: 1,
+        };
+      });
+      const shipping = Array.isArray(offer.shipping) ? offer.shipping.map((s) => ({
+        ...s,
+        price: Math.max(0, Math.round((Number(s.price) || 0) * 100) / 100),
+      })) : [];
+      const subTotal = Math.max(0, Math.round((Number(offer.subTotal) || products.reduce((sum, p) => sum + p.total, 0)) * 100) / 100);
+      const shippingTotal = shipping.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+      const grandTotal = Math.max(0, Math.round((Number(offer.grandTotal) || (subTotal + shippingTotal)) * 100) / 100);
+      return { ...offer, products, shipping, subTotal: subTotal.toFixed(2), grandTotal: grandTotal.toFixed(2) };
+    })();
+
+    // Attempt to replace Product_ID_Payment ids with Ontraport product ids
+    if (normalizedOffer && Array.isArray(normalizedOffer.products) && normalizedOffer.products.length) {
+      const map = await translatePaymentToProductIds(normalizedOffer.products);
+      let priceIdMap = {};
+      try { priceIdMap = JSON.parse(process.env.PRODUCT_PRICE_ID_MAP || '{}'); } catch {}
+      normalizedOffer.products = normalizedOffer.products.map((p) => {
+        const paymentId = p.id ? String(p.id) : undefined;
+        const ontraportProductId = map.get(paymentId || '') || p.product_id || p.id;
+        const unitPrice = Number(p.price) || Number(p.amount) || Number(p.total) || 0;
+        const priceId = priceIdMap[paymentId || ontraportProductId] || priceIdMap[ontraportProductId] || priceIdMap[paymentId || ''] || undefined;
+        const priceArray = [{ price: unitPrice, payment_count: 0, unit: 'month', id: priceId ? Number(priceId) : undefined }];
+        const next = {
+          ...p,
+          id: String(ontraportProductId),
+          product_id: String(ontraportProductId),
+          // Ontraport expects `price` as an array of price objects
+          price: priceArray,
+          // keep flags
+          shipping: Boolean(p.shipping),
+          tax: Boolean(p.taxable),
+        };
+        return next;
+      });
+      console.log('[TX] normalized products', normalizedOffer.products);
+    }
+
     const payload = {
       contact_id: contactId,
       chargeNow: "chargeNow",
-      trans_date: Date.now(),
+      trans_date: Math.floor(Date.now() / 1000),
       invoice_template: parseInt(invoice_template),
       gateway_id: parseInt(gateway_id),
-      offer,
+      offer: normalizedOffer || offer,
       billing_address,
       payer,
       external_order_id: external_order_id || `WEB-${Date.now()}`,

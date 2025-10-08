@@ -1,5 +1,6 @@
 window.vsInit = function (dynamicList) {
   const ctx = dynamicList.tableCtx;
+  let hasMedicineColumn = false;
   // Keep selection in a global so other scripts can access
   window.vsSelectedRowIds = window.vsSelectedRowIds || [];
   window.vsRowMap = window.vsRowMap || Object.create(null);
@@ -110,7 +111,24 @@ window.vsInit = function (dynamicList) {
           f === "remaining" ||
           f === "scriptremaining" ||
           f === "script_remaining" ||
-          h === "remaining"
+            h === "remaining"
+        );
+      };
+      const isMedicineColumn = (col) => {
+        const f = lower(col?.field);
+        const h = lower(col?.headerName);
+        if (!f && !h) return false;
+        return (
+          f === "medicine" ||
+          f === "medication" ||
+          f === "medicine_name" ||
+          f === "medicinename" ||
+          f === "drugname" ||
+          f === "drug_name" ||
+          h === "medicine" ||
+          h === "medication" ||
+          h === "medicine name" ||
+          h === "medication name"
         );
       };
       const isBlankLike = (value) => {
@@ -175,6 +193,7 @@ window.vsInit = function (dynamicList) {
       };
 
       cols = Array.isArray(cols) ? cols.slice() : [];
+      hasMedicineColumn = false;
       cols = cols.filter((col) => {
         if (!col) return false;
         const header = (col.headerName || "").trim().toLowerCase();
@@ -323,7 +342,78 @@ window.vsInit = function (dynamicList) {
       }
 
       cols.forEach((col) => {
-        if (!col || !col.field || col.field === "__actions") return;
+        if (!col || !col.field) return;
+        if (col.field !== "__actions" && col.resizable == null) {
+          col.resizable = true;
+        }
+        if (col.field !== "__actions" && isMedicineColumn(col)) {
+          hasMedicineColumn = true;
+          if (typeof col.flex !== "number" || col.flex < 1.3) {
+            col.flex = 1.3;
+          }
+          if (typeof col.minWidth !== "number" || col.minWidth < 260) {
+            col.minWidth = 260;
+          }
+          if (Object.prototype.hasOwnProperty.call(col, "width")) {
+            delete col.width;
+          }
+          if (!col.align) col.align = "left";
+          if (!col.headerAlign) col.headerAlign = "left";
+          if (!col.__dlMedicineApplied) {
+            const prevRenderCell = col.renderCell;
+            col.renderCell = (params) => {
+              const R = window.vitalStatsReact || window.React;
+              let content =
+                typeof prevRenderCell === "function"
+                  ? prevRenderCell(params)
+                  : params?.formattedValue ?? params?.value;
+              if (content == null) content = "";
+              if (!R || typeof R.createElement !== "function") return content;
+              const title =
+                typeof content === "string" || typeof content === "number"
+                  ? String(content)
+                  : undefined;
+              return R.createElement(
+                "div",
+                {
+                  className: "dl-cell-medicine-content",
+                  style: {
+                    display: "block",
+                    whiteSpace: "normal",
+                    overflowWrap: "anywhere",
+                    wordBreak: "break-word",
+                    lineHeight: 1.35,
+                    width: "100%",
+                  },
+                  title,
+                },
+                content
+              );
+            };
+            if (!col.cellClassName) {
+              col.cellClassName = "dl-cell-medicine";
+            } else if (typeof col.cellClassName === "string") {
+              if (col.cellClassName.indexOf("dl-cell-medicine") === -1) {
+                col.cellClassName = col.cellClassName + " dl-cell-medicine";
+              }
+            } else if (typeof col.cellClassName === "function") {
+              const prev = col.cellClassName;
+              col.cellClassName = (params) => {
+                const result = prev(params);
+                if (!result) return "dl-cell-medicine";
+                if (
+                  typeof result === "string" &&
+                  result.indexOf("dl-cell-medicine") === -1
+                ) {
+                  return result + " dl-cell-medicine";
+                }
+                return result;
+              };
+            }
+            col.__dlMedicineApplied = true;
+          }
+        }
+        if (col.field === "__actions") return;
         enhanceFormatter(col);
       });
       return cols;
@@ -331,11 +421,15 @@ window.vsInit = function (dynamicList) {
     .setFinalizeDataGridProps((props) => {
       // Make sure our bulk bar exists in the DOM
       ensureBulkActionsBar();
-      return {
+      const nextProps = {
         ...props,
         disableColumnMenu: true,
         checkboxSelection: true,
         rowSelection: true,
+        columnResizeMode:
+          props && typeof props.columnResizeMode !== "undefined"
+            ? props.columnResizeMode
+            : "onChange",
         getRowId: (row) =>
           row?.ID ?? row?.id ?? row?.Id ?? row?.uid ?? row?._id,
         onRowSelectionModelChange: (selectionModel) => {
@@ -353,5 +447,13 @@ window.vsInit = function (dynamicList) {
           }
         },
       };
+      if (
+        hasMedicineColumn &&
+        typeof nextProps.getRowHeight !== "function" &&
+        typeof nextProps.autoHeight === "undefined"
+      ) {
+        nextProps.getRowHeight = () => "auto";
+      }
+      return nextProps;
     });
 };
