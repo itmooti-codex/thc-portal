@@ -5,7 +5,7 @@
 <div class="storefront-cart-root">
   <div class="cart-overlay fixed inset-0 z-[9990] bg-black/40 opacity-0 pointer-events-none transition-opacity duration-200"></div>
   <aside
-    class="cart-drawer fixed inset-y-0 right-0 h-screen h-[100dvh] w-full max-w-md bg-white shadow-2xl translate-x-full transition-transform duration-300 flex flex-col z-[9991]">
+    class="cart-drawer fixed inset-y-0 right-0 h-[100dvh] w-full max-w-md bg-white shadow-2xl translate-x-full transition-transform duration-300 flex flex-col z-[9991]">
     <header class="flex items-center justify-between p-4 border-b">
       <div>
         <h2 class="text-xl font-semibold">Shopping cart</h2>
