@@ -277,8 +277,23 @@ const config = Object.assign(
         total + (Number(item.price) || 0) * (Number(item.qty) || 0),
       0
     );
+    let discount = 0;
+    let total = subtotal;
+    try {
+      const offerRaw = localStorage.getItem('checkout:offer');
+      if (offerRaw) {
+        const offer = JSON.parse(offerRaw);
+        const shippingPrice = offer && offer.shipping && offer.shipping.length > 0 ? (Number(offer.shipping[0].price) || 0) : 0;
+        const usingOffer = Number.isFinite(Number(offer?.subTotal)) && Number.isFinite(Number(offer?.grandTotal));
+        if (usingOffer) {
+          // Compute discount as subTotal - (grandTotal - shipping)
+          discount = Math.max(0, (Number(offer.subTotal) || 0) - Math.max(0, (Number(offer.grandTotal) || 0) - shippingPrice));
+          total = Math.max(0, (Number(offer.grandTotal) || 0));
+        }
+      }
+    } catch {}
     if (subtotalEl) subtotalEl.textContent = money(subtotal);
-    if (totalEl) totalEl.textContent = money(subtotal);
+    if (totalEl) totalEl.textContent = money(total);
     updateCheckoutButton(state);
     dlog("renderCart: items", state.items.length, state.items.map(i => ({ id: i.id, name: i.name, qty: i.qty })));
   };
