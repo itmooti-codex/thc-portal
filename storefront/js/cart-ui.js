@@ -5,7 +5,7 @@
 <div class="storefront-cart-root">
   <div class="cart-overlay fixed inset-0 z-[9990] bg-black/40 opacity-0 pointer-events-none transition-opacity duration-200"></div>
   <aside
-    class="cart-drawer fixed inset-y-0 right-0 h-screen w-full max-w-md bg-white shadow-2xl translate-x-full transition-transform duration-300 flex flex-col z-[9991]">
+    class="cart-drawer fixed inset-y-0 right-0 h-screen h-[100dvh] w-full max-w-md bg-white shadow-2xl translate-x-full transition-transform duration-300 flex flex-col z-[9991]">
     <header class="flex items-center justify-between p-4 border-b">
       <div>
         <h2 class="text-xl font-semibold">Shopping cart</h2>
@@ -41,7 +41,8 @@
   /* ========= helpers ========= */
   const { $, $$, money, toNum } = window.StorefrontUtils || {};
   const fallback$ = (sel, ctx = document) => ctx.querySelector(sel);
-  const fallback$$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+  const fallback$$ = (sel, ctx = document) =>
+    Array.from(ctx.querySelectorAll(sel));
   const $use = $ || fallback$;
   const $$use = $$ || fallback$$;
 
@@ -50,16 +51,16 @@
     window.StorefrontCartConfig ||
     {};
 
-const config = Object.assign(
-  {
-    checkoutUrl:
-      document.querySelector(".get-url")?.dataset?.checkoutUrl ||
-      document.body?.dataset?.checkoutUrl ||
-      initialConfig.checkoutUrl ||
-      "checkout.html",
-  },
-  initialConfig
-);
+  const config = Object.assign(
+    {
+      checkoutUrl:
+        document.querySelector(".get-url")?.dataset?.checkoutUrl ||
+        document.body?.dataset?.checkoutUrl ||
+        initialConfig.checkoutUrl ||
+        "checkout.html",
+    },
+    initialConfig
+  );
 
   // Debug flag (enable via ?sfDebug=1 or <body data-sf-debug="1">)
   const DEBUG = (() => {
@@ -105,7 +106,10 @@ const config = Object.assign(
     subtotalEl = document.querySelector(".cart-subtotal");
     totalEl = document.querySelector(".cart-total");
     checkoutBtn = document.querySelector(".cart-checkout");
-    dlog("ensureDrawer: elements", { hasOverlay: !!overlayEl, hasDrawer: !!drawerEl });
+    dlog("ensureDrawer: elements", {
+      hasOverlay: !!overlayEl,
+      hasDrawer: !!drawerEl,
+    });
   };
 
   const openCart = () => {
@@ -128,8 +132,10 @@ const config = Object.assign(
   const getProductSignature = (card) => {
     if (!card) return "";
     const name = card.querySelector(".product-name")?.textContent?.trim() || "";
-    const brand = card.querySelector(".product-brand")?.textContent?.trim() || "";
-    const price = card.querySelector(".product-price")?.textContent?.trim() || "";
+    const brand =
+      card.querySelector(".product-brand")?.textContent?.trim() || "";
+    const price =
+      card.querySelector(".product-price")?.textContent?.trim() || "";
     return `${name}|${brand}|${price}`.trim();
   };
 
@@ -139,24 +145,38 @@ const config = Object.assign(
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
       .slice(0, 140);
-    return cleaned ? `sig:${cleaned}` : `sig:${Math.random().toString(36).slice(2, 10)}`;
+    return cleaned
+      ? `sig:${cleaned}`
+      : `sig:${Math.random().toString(36).slice(2, 10)}`;
   };
 
   const safeId = (el) => {
     if (!el) return "";
-    const card = el.classList?.contains("product-card") ? el : el.closest(".product-card");
+    const card = el.classList?.contains("product-card")
+      ? el
+      : el.closest(".product-card");
     const currentSignature = getProductSignature(card);
     let datasetId = el.dataset?.productId || card?.dataset?.productId;
     const previousSignature = card?.dataset?.productSignature || "";
 
     const placeholderId = datasetId && datasetId.startsWith("[");
     const signatureChanged =
-      currentSignature && previousSignature && previousSignature !== currentSignature;
-    const signatureUnavailable = currentSignature && currentSignature.includes("[");
+      currentSignature &&
+      previousSignature &&
+      previousSignature !== currentSignature;
+    const signatureUnavailable =
+      currentSignature && currentSignature.includes("[");
     const missingId = !datasetId;
 
-    if (missingId || placeholderId || signatureChanged || signatureUnavailable) {
-      const generated = generateIdFromSignature(currentSignature || datasetId || "");
+    if (
+      missingId ||
+      placeholderId ||
+      signatureChanged ||
+      signatureUnavailable
+    ) {
+      const generated = generateIdFromSignature(
+        currentSignature || datasetId || ""
+      );
       if (card) {
         card.dataset.productId = generated;
         if (currentSignature) {
@@ -177,7 +197,8 @@ const config = Object.assign(
     const priceAttr = card.dataset.productPrice;
     const product = {
       id: card.dataset.productId || safeId(card),
-      productId: card.dataset.productPaymentId || card.dataset.productId || safeId(card), // Use payment ID for backend
+      productId:
+        card.dataset.productPaymentId || card.dataset.productId || safeId(card), // Use payment ID for backend
       name:
         card.dataset.productName ||
         card.querySelector(".product-name")?.textContent?.trim() ||
@@ -280,22 +301,35 @@ const config = Object.assign(
     let discount = 0;
     let total = subtotal;
     try {
-      const offerRaw = localStorage.getItem('checkout:offer');
+      const offerRaw = localStorage.getItem("checkout:offer");
       if (offerRaw) {
         const offer = JSON.parse(offerRaw);
-        const shippingPrice = offer && offer.shipping && offer.shipping.length > 0 ? (Number(offer.shipping[0].price) || 0) : 0;
-        const usingOffer = Number.isFinite(Number(offer?.subTotal)) && Number.isFinite(Number(offer?.grandTotal));
+        const shippingPrice =
+          offer && offer.shipping && offer.shipping.length > 0
+            ? Number(offer.shipping[0].price) || 0
+            : 0;
+        const usingOffer =
+          Number.isFinite(Number(offer?.subTotal)) &&
+          Number.isFinite(Number(offer?.grandTotal));
         if (usingOffer) {
           // Compute discount as subTotal - (grandTotal - shipping)
-          discount = Math.max(0, (Number(offer.subTotal) || 0) - Math.max(0, (Number(offer.grandTotal) || 0) - shippingPrice));
-          total = Math.max(0, (Number(offer.grandTotal) || 0));
+          discount = Math.max(
+            0,
+            (Number(offer.subTotal) || 0) -
+              Math.max(0, (Number(offer.grandTotal) || 0) - shippingPrice)
+          );
+          total = Math.max(0, Number(offer.grandTotal) || 0);
         }
       }
     } catch {}
     if (subtotalEl) subtotalEl.textContent = money(subtotal);
     if (totalEl) totalEl.textContent = money(total);
     updateCheckoutButton(state);
-    dlog("renderCart: items", state.items.length, state.items.map(i => ({ id: i.id, name: i.name, qty: i.qty })));
+    dlog(
+      "renderCart: items",
+      state.items.length,
+      state.items.map((i) => ({ id: i.id, name: i.name, qty: i.qty }))
+    );
   };
 
   const syncAddButtons = () => {
@@ -303,15 +337,24 @@ const config = Object.assign(
     const items = Cart.getState().items;
     const inCart = new Set();
     const toSignature = (name = "", brand = "", priceText = "") => {
-      const signature = `${String(name).trim()}|${String(brand).trim()}|${String(priceText).trim()}`;
+      const signature = `${String(name).trim()}|${String(
+        brand
+      ).trim()}|${String(priceText).trim()}`;
       return generateIdFromSignature(signature);
     };
     items.forEach((item) => {
       const id = String(item.id);
       inCart.add(id);
       inCart.add(
-        toSignature(item.name || "", item.brand || "",
-          typeof item.price === "number" ? new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(item.price) : String(item.price || "")
+        toSignature(
+          item.name || "",
+          item.brand || "",
+          typeof item.price === "number"
+            ? new Intl.NumberFormat(undefined, {
+                style: "currency",
+                currency: "USD",
+              }).format(item.price)
+            : String(item.price || "")
         )
       );
     });
@@ -319,15 +362,21 @@ const config = Object.assign(
     let matched = 0;
     buttons.forEach((btn) => {
       // Prefer explicit dataset id if present; only fallback to signature-derived ids if the id starts with sig:
-      const explicitId = btn.dataset?.productId || btn.closest(".product-card")?.dataset?.productId || "";
+      const explicitId =
+        btn.dataset?.productId ||
+        btn.closest(".product-card")?.dataset?.productId ||
+        "";
       const computedId = explicitId || safeId(btn);
       const idStr = String(computedId);
       let on = inCart.has(idStr);
       if (!on && idStr.startsWith("sig:")) {
         const card = btn.closest(".product-card");
-        const name = card?.querySelector(".product-name")?.textContent?.trim() || "";
-        const brand = card?.querySelector(".product-brand")?.textContent?.trim() || "";
-        const price = card?.querySelector(".product-price")?.textContent?.trim() || "";
+        const name =
+          card?.querySelector(".product-name")?.textContent?.trim() || "";
+        const brand =
+          card?.querySelector(".product-brand")?.textContent?.trim() || "";
+        const price =
+          card?.querySelector(".product-price")?.textContent?.trim() || "";
         const sig = toSignature(name, brand, price);
         on = inCart.has(sig);
       }
@@ -341,7 +390,11 @@ const config = Object.assign(
       btn.classList.toggle("text-white", !on);
       if (on) matched++;
     });
-    dlog("syncAddButtons:", { cartItemCount: items.length, buttonCount: buttons.length, matched });
+    dlog("syncAddButtons:", {
+      cartItemCount: items.length,
+      buttonCount: buttons.length,
+      matched,
+    });
   };
 
   const getCheckoutUrl = () => {
