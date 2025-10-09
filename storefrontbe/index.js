@@ -86,7 +86,20 @@ app.post("/api-thc/contact/save", async (req, res) => {
       city,
       state,
       zip,
-      country
+      country,
+      contactId,
+      f3099,
+      default_shipping_option,
+      f3094,
+      f3095,
+      f3096,
+      f3097,
+      f3098,
+      parcel_number,
+      parcel_street,
+      parcel_city,
+      parcel_state,
+      parcel_postal,
     } = req.body;
 
     // 1. Email validation
@@ -106,8 +119,27 @@ app.post("/api-thc/contact/save", async (req, res) => {
       state: state || "",
       zip: zip || "",
       country: country || "",
-      update_by: "email"  // This ensures Ontraport uses email for matching
+      update_by: "email", // This ensures Ontraport uses email for matching
     };
+
+    if (contactId) payload.id = contactId;
+
+    const shippingOption = f3099 || default_shipping_option || "";
+    if (shippingOption) payload.f3099 = shippingOption;
+
+    const lockerFields = {
+      f3094: typeof f3094 !== "undefined" ? f3094 : parcel_number,
+      f3095: typeof f3095 !== "undefined" ? f3095 : parcel_street,
+      f3096: typeof f3096 !== "undefined" ? f3096 : parcel_city,
+      f3097: typeof f3097 !== "undefined" ? f3097 : parcel_state,
+      f3098: typeof f3098 !== "undefined" ? f3098 : parcel_postal,
+    };
+
+    Object.entries(lockerFields).forEach(([key, value]) => {
+      if (typeof value !== "undefined") {
+        payload[key] = value === null ? "" : String(value ?? "");
+      }
+    });
 
     // 3. Save or update using email as identifier
     const data = await ontraportRequest("/Contacts/saveorupdate", {

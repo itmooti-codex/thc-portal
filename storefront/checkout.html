@@ -120,128 +120,196 @@
                                     <p class="text-sm text-gray-500">Shipping details for your order.</p>
                                 </div>
                                 <div class="sm:col-span-2">
-                                    <label for="search_address" class="block text-sm font-medium">Search Address</label>
+                                    <label for="default_shipping_option" class="block text-sm font-medium">Default Shipping Option</label>
                                     <div class="input-wrapper">
-                                        <input  id="autocomplete" placeholder="Search address..."/>
+                                        <select id="default_shipping_option" data-req data-label="Default shipping option"
+                                            class="!block mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            <option value="">Select shipping option</option>
+                                            <option value="691" data-mode="home" data-special-field-prefill="true">Home Address</option>
+                                            <option value="690" data-mode="parcel" data-special-field-prefill="false">Parcel Locker</option>
+                                        </select>
                                     </div>
-                                    <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
-                                </div>
-                                <div class="sm:col-span-2">
-                                    <label for="ship_addr1" class="block text-sm font-medium">Address line 1</label>
-                                    <div class="input-wrapper">
-                                        <input id="ship_addr1" data-req data-label="Address line 1"
-                                            autocomplete="address-line1" />
-                                    </div>
-                                    <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
-                                </div>
-                                <div class="sm:col-span-2">
-                                    <label for="ship_addr2" class="block text-sm font-medium">Address line 2</label>
-                                    <div class="input-wrapper">
-                                        <input id="ship_addr2" autocomplete="address-line2" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label for="ship_city" class="block text-sm font-medium">City</label>
-                                    <div class="input-wrapper">
-                                        <input id="ship_city" data-req data-label="City" autocomplete="address-level2" />
-                                    </div>
-                                    <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
-                                </div>
-                                <div>
-                                    <label for="ship_state" class="block text-sm font-medium">State</label>
-                                    <select id="ship_state" data-req data-label="State"
-                                        class="!block mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        autocomplete="address-level1">
-                                        <option value="">Select state</option>
-                                        <option>NSW</option>
-                                        <option>VIC</option>
-                                        <option>QLD</option>
-                                        <option>WA</option>
-                                        <option>SA</option>
-                                        <option>TAS</option>
-                                        <option>ACT</option>
-                                        <option>NT</option>
-                                    </select>
-                                    <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
-                                </div>
-                                <div>
-                                    <label for="ship_postal" class="block text-sm font-medium">Postal code</label>
-                                    <div class="input-wrapper">
-                                        <input id="ship_postal" data-req data-label="Postal code" autocomplete="postal-code" />
-                                    </div>
-                                    <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
-                                </div>
-                                <div>
-                                    <label for="ship_country" class="block text-sm font-medium">Country</label>
-                                    <select id="ship_country" data-req data-label="Country"
-                                        class="!block mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option>Australia</option>
-                                    </select>
                                     <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
                                 </div>
 
-                                <div class="sm:col-span-2 mt-4 flex items-center justify-between">
-                                    <span class="text-sm text-gray-500">Billing address</span>
-                                    <label class="inline-flex items-center gap-2 text-xs">
-                                        <input type="checkbox" id="bill_same"
-                                            class="!block rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                        Same as shipping
-                                    </label>
-                                </div>
-                                <div class="sm:col-span-2">
-                                    <label for="bill_addr1" class="block text-sm font-medium">Address line 1</label>
-                                    <div class="input-wrapper">
-                                        <input id="bill_addr1" data-req data-label="Billing address line 1"
-                                            autocomplete="billing address-line1" />
+                                <div id="home_address_section" class="sm:col-span-2 hidden">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div class="sm:col-span-2">
+                                            <label for="autocomplete" class="block text-sm font-medium">Search Address</label>
+                                            <div class="input-wrapper">
+                                                <input id="autocomplete" placeholder="Search address..." />
+                                            </div>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
+                                        <div class="sm:col-span-2">
+                                            <label for="ship_addr1" class="block text-sm font-medium">Address line 1</label>
+                                            <div class="input-wrapper">
+                                                <input id="ship_addr1" data-home-req data-label="Address line 1"
+                                                    autocomplete="address-line1" />
+                                            </div>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
+                                        <div class="sm:col-span-2">
+                                            <label for="ship_addr2" class="block text-sm font-medium">Address line 2</label>
+                                            <div class="input-wrapper">
+                                                <input id="ship_addr2" autocomplete="address-line2" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label for="ship_city" class="block text-sm font-medium">City</label>
+                                            <div class="input-wrapper">
+                                                <input id="ship_city" data-home-req data-label="City"
+                                                    autocomplete="address-level2" />
+                                            </div>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
+                                        <div>
+                                            <label for="ship_state" class="block text-sm font-medium">State</label>
+                                            <select id="ship_state" data-home-req data-label="State"
+                                                class="!block mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                autocomplete="address-level1">
+                                                <option value="">Select state</option>
+                                                <option>NSW</option>
+                                                <option>VIC</option>
+                                                <option>QLD</option>
+                                                <option>WA</option>
+                                                <option>SA</option>
+                                                <option>TAS</option>
+                                                <option>ACT</option>
+                                                <option>NT</option>
+                                            </select>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
+                                        <div>
+                                            <label for="ship_postal" class="block text-sm font-medium">Postal code</label>
+                                            <div class="input-wrapper">
+                                                <input id="ship_postal" data-home-req data-label="Postal code"
+                                                    autocomplete="postal-code" />
+                                            </div>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
+                                        <div>
+                                            <label for="ship_country" class="block text-sm font-medium">Country</label>
+                                            <select id="ship_country" data-home-req data-label="Country"
+                                                class="!block mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                <option>Australia</option>
+                                            </select>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
+
+                                        <div class="sm:col-span-2 mt-4 flex items-center justify-between">
+                                            <span class="text-sm text-gray-500">Billing address</span>
+                                            <label class="inline-flex items-center gap-2 text-xs">
+                                                <input type="checkbox" id="bill_same"
+                                                    class="!block rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                                Same as shipping
+                                            </label>
+                                        </div>
+                                        <div class="sm:col-span-2">
+                                            <label for="bill_addr1" class="block text-sm font-medium">Address line 1</label>
+                                            <div class="input-wrapper">
+                                                <input id="bill_addr1" data-home-req data-label="Billing address line 1"
+                                                    autocomplete="billing address-line1" />
+                                            </div>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
+                                        <div class="sm:col-span-2">
+                                            <label for="bill_addr2" class="block text-sm font-medium">Address line 2</label>
+                                            <div class="input-wrapper">
+                                                <input id="bill_addr2" autocomplete="billing address-line2" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label for="bill_city" class="block text-sm font-medium">City</label>
+                                            <div class="input-wrapper">
+                                                <input id="bill_city" data-home-req data-label="Billing city"
+                                                    autocomplete="billing address-level2" />
+                                            </div>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
+                                        <div>
+                                            <label for="bill_state" class="block text-sm font-medium">State</label>
+                                            <select id="bill_state" data-home-req data-label="Billing state"
+                                                class="!block mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                autocomplete="billing address-level1">
+                                                <option value="">Select state</option>
+                                                <option>NSW</option>
+                                                <option>VIC</option>
+                                                <option>QLD</option>
+                                                <option>WA</option>
+                                                <option>SA</option>
+                                                <option>TAS</option>
+                                                <option>ACT</option>
+                                                <option>NT</option>
+                                            </select>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
+                                        <div>
+                                            <label for="bill_postal" class="block text-sm font-medium">Postal code</label>
+                                            <div class="input-wrapper">
+                                                <input id="bill_postal" data-home-req data-label="Billing postal code"
+                                                    autocomplete="billing postal-code" />
+                                            </div>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
+                                        <div>
+                                            <label for="bill_country" class="block text-sm font-medium">Country</label>
+                                            <select id="bill_country" data-home-req data-label="Billing country"
+                                                class="!block mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                <option>Australia</option>
+                                            </select>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
                                     </div>
-                                    <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
                                 </div>
-                                <div class="sm:col-span-2">
-                                    <label for="bill_addr2" class="block text-sm font-medium">Address line 2</label>
-                                    <div class="input-wrapper">
-                                        <input id="bill_addr2" autocomplete="billing address-line2" />
+
+                                <div id="parcel_locker_section" class="sm:col-span-2 hidden">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div class="sm:col-span-2">
+                                            <label for="parcel_number" class="block text-sm font-medium">Parcel Locker Number</label>
+                                            <div class="input-wrapper">
+                                                <input id="parcel_number" data-parcel-req data-label="Parcel locker number" />
+                                            </div>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
+                                        <div class="sm:col-span-2">
+                                            <label for="parcel_street" class="block text-sm font-medium">Parcel Locker Street</label>
+                                            <div class="input-wrapper">
+                                                <input id="parcel_street" data-parcel-req data-label="Parcel locker street" />
+                                            </div>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
+                                        <div>
+                                            <label for="parcel_city" class="block text-sm font-medium">Parcel Locker City</label>
+                                            <div class="input-wrapper">
+                                                <input id="parcel_city" data-parcel-req data-label="Parcel locker city" />
+                                            </div>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
+                                        <div>
+                                            <label for="parcel_state" class="block text-sm font-medium">Parcel Locker State</label>
+                                            <select id="parcel_state" data-parcel-req data-label="Parcel locker state"
+                                                class="!block mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                <option value="">Select state</option>
+                                                <option value="689" data-special-field-prefill="false">NSW</option>
+                                                <option value="688" data-special-field-prefill="false">QLD</option>
+                                                <option value="687" data-special-field-prefill="false">VIC</option>
+                                                <option value="686" data-special-field-prefill="false">WA</option>
+                                                <option value="685" data-special-field-prefill="false">SA</option>
+                                                <option value="684" data-special-field-prefill="false">TAS</option>
+                                                <option value="683" data-special-field-prefill="false">NT</option>
+                                                <option value="682" data-special-field-prefill="false">ACT</option>
+                                            </select>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
+                                        <div>
+                                            <label for="parcel_postal" class="block text-sm font-medium">Parcel Locker Postal Code</label>
+                                            <div class="input-wrapper">
+                                                <input id="parcel_postal" data-parcel-req data-label="Parcel locker postal code" />
+                                            </div>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
                                     </div>
-                                </div>
-                                <div>
-                                    <label for="bill_city" class="block text-sm font-medium">City</label>
-                                    <div class="input-wrapper">
-                                        <input id="bill_city" data-req data-label="Billing city"
-                                            autocomplete="billing address-level2" />
-                                    </div>
-                                    <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
-                                </div>
-                                <div>
-                                    <label for="bill_state" class="block text-sm font-medium">State</label>
-                                    <select id="bill_state" data-req data-label="Billing state"
-                                        class="!block mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        autocomplete="billing address-level1">
-                                        <option value="">Select state</option>
-                                        <option>NSW</option>
-                                        <option>VIC</option>
-                                        <option>QLD</option>
-                                        <option>WA</option>
-                                        <option>SA</option>
-                                        <option>TAS</option>
-                                        <option>ACT</option>
-                                        <option>NT</option>
-                                    </select>
-                                    <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
-                                </div>
-                                <div>
-                                    <label for="bill_postal" class="block text-sm font-medium">Postal code</label>
-                                    <div class="input-wrapper">
-                                        <input id="bill_postal" data-req data-label="Billing postal code"
-                                            autocomplete="billing postal-code" />
-                                    </div>
-                                    <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
-                                </div>
-                                <div>
-                                    <label for="bill_country" class="block text-sm font-medium">Country</label>
-                                    <select id="bill_country" data-req data-label="Billing country"
-                                        class="!block mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option>Australia</option>
-                                    </select>
-                                    <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
                                 </div>
                             </form>
 
