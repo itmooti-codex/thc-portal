@@ -107,6 +107,18 @@
     });
   };
 
+  const shippingOptionSelect = byId("default_shipping_option");
+  const HOME_SHIPPING_OPTION = "691";
+  const PARCEL_SHIPPING_OPTION = "690";
+  const homeAddressSection = byId("home_address_section");
+  const parcelLockerSection = byId("parcel_locker_section");
+  const homeRequiredFields = Array.from(
+    document.querySelectorAll("[data-home-req]")
+  );
+  const parcelRequiredFields = Array.from(
+    document.querySelectorAll("[data-parcel-req]")
+  );
+
   // Legacy function for backward compatibility
   const saveOrUpdateContact = async () => {
     const firstname = byId("cust_first")?.value?.trim() || "";
@@ -145,6 +157,7 @@
     contactId: null,
     shippingTypes: [],
     currentOffer: null,
+    shippingPreference: "",
   };
 
   // Load state from localStorage
@@ -441,6 +454,67 @@
     });
   };
 
+  const resetFieldState = (el) => {
+    if (!el) return;
+    const c = getFieldContainer(el);
+    c?.classList?.remove("ring-2", "ring-red-500", "border-red-500");
+    const err = getErrorEl(el);
+    if (err) err.classList.add("hidden");
+  };
+
+  const setRequiredForFields = (fields, required) => {
+    fields.forEach((el) => {
+      if (!el) return;
+      if (required) {
+        el.setAttribute("data-req", "true");
+      } else {
+        el.removeAttribute("data-req");
+        resetFieldState(el);
+      }
+    });
+  };
+
+  const toggleSectionVisibility = (section, show) => {
+    if (!section) return;
+    section.classList.toggle("hidden", !show);
+  };
+
+  const updateShippingOptionUI = (value = "") => {
+    const mode =
+      value === HOME_SHIPPING_OPTION
+        ? "home"
+        : value === PARCEL_SHIPPING_OPTION
+        ? "parcel"
+        : "";
+
+    toggleSectionVisibility(homeAddressSection, mode === "home");
+    toggleSectionVisibility(parcelLockerSection, mode === "parcel");
+
+    setRequiredForFields(homeRequiredFields, mode === "home");
+    setRequiredForFields(parcelRequiredFields, mode === "parcel");
+
+    if (mode !== "home" && homeAddressSection) clearErrors(homeAddressSection);
+    if (mode !== "parcel" && parcelLockerSection)
+      clearErrors(parcelLockerSection);
+
+    const billSame = byId("bill_same");
+    if (billSame && mode !== "home") {
+      if (billSame.checked) {
+        billSame.checked = false;
+        billSame.dispatchEvent(new Event("change", { bubbles: true }));
+      } else {
+        ["addr1", "addr2", "city", "state", "postal", "country"].forEach(
+          (key) => {
+            const el = byId(`bill_${key}`);
+            if (!el) return;
+            el.disabled = false;
+            el.classList?.remove("bg-gray-100");
+          }
+        );
+      }
+    }
+  };
+
   const showError = (el, message) => {
     const c = getFieldContainer(el);
     c.classList?.add("ring-2", "ring-red-500", "border-red-500");
@@ -547,16 +621,70 @@
     const t = (id) => (byId(id)?.value || "").trim();
     const contact = `${t("cust_first")} ${t("cust_last")} · ${t("cust_email")}`;
     $("#review_contact").textContent = contact.trim();
-    $("#review_shipping").textContent = `${t("ship_addr1")}${
-      t("ship_addr2") ? " " + t("ship_addr2") : ""
-    }, ${t("ship_city")}, ${t("ship_state")} ${t("ship_postal")}, ${t(
-      "ship_country"
-    )}`;
-    $("#review_billing").textContent = `${t("bill_addr1")}${
-      t("bill_addr2") ? " " + t("bill_addr2") : ""
-    }, ${t("bill_city")}, ${t("bill_state")} ${t("bill_postal")}, ${t(
-      "bill_country"
-    )}`;
+    const shippingValue = shippingOptionSelect?.value || "";
+    let shippingOptionLabel = "";
+    if (shippingValue && shippingOptionSelect) {
+      const opt =
+        shippingOptionSelect.options[
+          shippingOptionSelect.selectedIndex || 0
+        ];
+      shippingOptionLabel = opt?.textContent?.trim() || "";
+    }
+
+    const shippingLines = [];
+    if (shippingOptionLabel) shippingLines.push(shippingOptionLabel);
+
+    if (shippingValue === PARCEL_SHIPPING_OPTION) {
+      const parcelValue = (id) => (byId(id)?.value || "").trim();
+      const parcelStateEl = byId("parcel_state");
+      let parcelStateLabel = "";
+      if (parcelStateEl && parcelStateEl.value) {
+        const opt =
+          parcelStateEl.options[parcelStateEl.selectedIndex || 0];
+        parcelStateLabel = opt?.textContent?.trim() || "";
+      }
+      const lockerLine = [
+        parcelValue("parcel_number"),
+        parcelValue("parcel_street"),
+      ]
+        .filter(Boolean)
+        .join(", ");
+      const cityStateLine = [parcelValue("parcel_city"), parcelStateLabel]
+        .filter(Boolean)
+        .join(" ");
+      const postal = parcelValue("parcel_postal");
+      if (lockerLine) shippingLines.push(lockerLine);
+      const secondLine = [cityStateLine, postal]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+      if (secondLine) shippingLines.push(secondLine);
+      $("#review_shipping").innerHTML =
+        shippingLines.length > 0
+          ? shippingLines.map((line) => `<div>${line}</div>`).join("")
+          : "—";
+      $("#review_billing").textContent = "Not required for Parcel Locker";
+    } else if (shippingValue === HOME_SHIPPING_OPTION) {
+      const shippingAddress = `${t("ship_addr1")}${
+        t("ship_addr2") ? " " + t("ship_addr2") : ""
+      }, ${t("ship_city")}, ${t("ship_state")} ${t("ship_postal")}, ${t(
+        "ship_country"
+      )}`.trim();
+      if (shippingAddress) shippingLines.push(shippingAddress);
+      $("#review_shipping").innerHTML =
+        shippingLines.length > 0
+          ? shippingLines.map((line) => `<div>${line}</div>`).join("")
+          : "—";
+      const billingAddress = `${t("bill_addr1")}${
+        t("bill_addr2") ? " " + t("bill_addr2") : ""
+      }, ${t("bill_city")}, ${t("bill_state")} ${t("bill_postal")}, ${t(
+        "bill_country"
+      )}`.trim();
+      $("#review_billing").textContent = billingAddress || "—";
+    } else {
+      $("#review_shipping").textContent = "—";
+      $("#review_billing").textContent = "—";
+    }
 
     const meta = checkoutState.couponMeta;
     const shippingLabel =
@@ -853,11 +981,78 @@
           });
         return;
       }
-      if (
-        current === "address" &&
-        !validateContainer($("[data-step='address']"))
-      )
+      if (current === "address") {
+        const addressForm = $("[data-step='address']");
+        if (!validateContainer(addressForm)) return;
+        const btn = target.closest(".step-next");
+        const original = btn?.textContent;
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = "Saving…";
+        }
+
+        const shippingValue = shippingOptionSelect?.value || "";
+        const contactData = {
+          first_name: byId("cust_first")?.value?.trim() || "",
+          last_name: byId("cust_last")?.value?.trim() || "",
+          email: byId("cust_email")?.value?.trim() || "",
+          phone: byId("cust_phone")?.value?.trim() || "",
+          contactId: checkoutState.contactId,
+          f3099: shippingValue,
+          default_shipping_option: shippingValue,
+          address: "",
+          address2: "",
+          city: "",
+          state: "",
+          zip: "",
+          country: "",
+          f3094: "",
+          f3095: "",
+          f3096: "",
+          f3097: "",
+          f3098: "",
+        };
+
+        if (shippingValue === HOME_SHIPPING_OPTION) {
+          contactData.address = byId("ship_addr1")?.value?.trim() || "";
+          contactData.address2 = byId("ship_addr2")?.value?.trim() || "";
+          contactData.city = byId("ship_city")?.value?.trim() || "";
+          contactData.state = byId("ship_state")?.value?.trim() || "";
+          contactData.zip = byId("ship_postal")?.value?.trim() || "";
+          contactData.country =
+            byId("ship_country")?.value?.trim() || "Australia";
+        } else if (shippingValue === PARCEL_SHIPPING_OPTION) {
+          contactData.f3094 = byId("parcel_number")?.value?.trim() || "";
+          contactData.f3095 = byId("parcel_street")?.value?.trim() || "";
+          contactData.f3096 = byId("parcel_city")?.value?.trim() || "";
+          contactData.f3097 = byId("parcel_state")?.value || "";
+          contactData.f3098 = byId("parcel_postal")?.value?.trim() || "";
+        }
+
+        saveContact(contactData)
+          .then((result) => {
+            if (result?.contactId) {
+              checkoutState.contactId = result.contactId;
+              saveCheckoutState();
+            }
+            checkoutState.stepIndex = Math.min(
+              checkoutState.steps.length - 1,
+              checkoutState.stepIndex + 1
+            );
+            renderStepper();
+            renderStep();
+          })
+          .catch((err) => {
+            alert(err?.message || "Unable to save address.");
+          })
+          .finally(() => {
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = original;
+            }
+          });
         return;
+      }
       if (current === "payment" && !validateContainer($("#payment_form")))
         return;
       checkoutState.stepIndex = Math.min(
@@ -914,6 +1109,14 @@
 
   document.addEventListener("change", (event) => {
     const target = event.target;
+    if (target.id === "default_shipping_option") {
+      checkoutState.shippingPreference = target.value || "";
+      updateShippingOptionUI(target.value || "");
+      saveCheckoutState();
+      if (checkoutState.steps[checkoutState.stepIndex] === "review")
+        buildReview();
+      return;
+    }
     if (target.id === "bill_same") {
       const on = target.checked;
       const fields = ["addr1", "addr2", "city", "state", "postal", "country"];
@@ -964,6 +1167,14 @@
     // Load saved state and form data
     loadCheckoutState();
     loadFormData();
+
+    const prefValue =
+      shippingOptionSelect?.value || checkoutState.shippingPreference || "";
+    if (shippingOptionSelect && !shippingOptionSelect.value && prefValue) {
+      shippingOptionSelect.value = prefValue;
+    }
+    checkoutState.shippingPreference = prefValue;
+    updateShippingOptionUI(prefValue);
 
     ["ship_country", "bill_country"].forEach((id) => {
       const el = byId(id);
