@@ -9,15 +9,17 @@
 
   if (!isCheckoutPage) return;
   // Shipping options filter (ids). Overrideable via window.shippingOptions
-  let shippingOptions = Array.isArray(window.shippingOptions) ? window.shippingOptions : [1, 2];
-
+  let shippingOptions = Array.isArray(window.shippingOptions)
+    ? window.shippingOptions
+    : [1, 2];
 
   window.StorefrontCartUI?.ensureDrawer?.();
 
   /* ========= helpers ========= */
   const { $, $$, byId, money } = window.StorefrontUtils || {};
   const fallback$ = (sel, ctx = document) => ctx.querySelector(sel);
-  const fallback$$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+  const fallback$$ = (sel, ctx = document) =>
+    Array.from(ctx.querySelectorAll(sel));
   const $use = $ || fallback$;
   const $$use = $$ || fallback$$;
 
@@ -25,24 +27,30 @@
     // Priority: window.ENV.API_BASE > .get-url[data-api-base] > meta[name="api-base"]
     try {
       const winBase = window.ENV?.API_BASE;
-      const dataBase = document.querySelector('.get-url')?.dataset?.apiBase;
+      const dataBase = document.querySelector(".get-url")?.dataset?.apiBase;
       const metaBase = document.querySelector('meta[name="api-base"]')?.content;
-      const base = winBase || dataBase || metaBase || 'http://localhost:3001';
-      return base ? new URL(base, window.location.href).toString().replace(/\/$/, '') : 'http://localhost:3001';
+      const base = winBase || dataBase || metaBase || "http://localhost:3001";
+      return base
+        ? new URL(base, window.location.href).toString().replace(/\/$/, "")
+        : "http://localhost:3001";
     } catch {
-      return 'http://localhost:3001';
+      return "http://localhost:3001";
     }
   };
 
   const getSaveOrUpdateUrl = () => {
     // Priority: window.ENV.SAVE_OR_UPDATE_URL > .get-url[data-api-url] > `${API_BASE}/api-thc/contacts/saveorupdate`
     try {
-      const explicit = window.ENV?.SAVE_OR_UPDATE_URL || document.querySelector('.get-url')?.dataset?.apiUrl;
+      const explicit =
+        window.ENV?.SAVE_OR_UPDATE_URL ||
+        document.querySelector(".get-url")?.dataset?.apiUrl;
       if (explicit) return new URL(explicit, window.location.href).toString();
     } catch {}
     const base = getApiBase();
-    const fallback = '/api-thc/contacts/saveorupdate';
-    return base ? `${base}${fallback}` : new URL(fallback, window.location.origin).toString();
+    const fallback = "/api-thc/contacts/saveorupdate";
+    return base
+      ? `${base}${fallback}`
+      : new URL(fallback, window.location.origin).toString();
   };
 
   // API functions
@@ -50,78 +58,83 @@
     const base = getApiBase();
     const url = `${base}${endpoint}`;
     const response = await fetch(url, {
-      headers: { 'Content-Type': 'application/json' },
-      ...options
+      headers: { "Content-Type": "application/json" },
+      ...options,
     });
-    
+
     if (!response.ok) {
-      let errorMessage = 'Request failed';
+      let errorMessage = "Request failed";
       try {
         const errorData = await response.json();
         errorMessage = errorData.error || errorMessage;
       } catch {}
       throw new Error(`${errorMessage} (${response.status})`);
     }
-    
+
     return await response.json();
   };
 
   const saveContact = async (contactData) => {
-    return await apiCall('/api-thc/contact/save', {
-      method: 'POST',
-      body: JSON.stringify(contactData)
+    return await apiCall("/api-thc/contact/save", {
+      method: "POST",
+      body: JSON.stringify(contactData),
     });
   };
 
   const validateCoupons = async (contactId, codes, cartProductIds) => {
-    return await apiCall('/api-thc/coupons/validate', {
-      method: 'POST',
-      body: JSON.stringify({ contactId, codes, cartProductIds })
+    return await apiCall("/api-thc/coupons/validate", {
+      method: "POST",
+      body: JSON.stringify({ contactId, codes, cartProductIds }),
     });
   };
 
   const getShippingTypes = async (allowedIds) => {
-    const params = allowedIds ? `?allowed=${allowedIds.join(',')}` : '';
+    const params = allowedIds ? `?allowed=${allowedIds.join(",")}` : "";
     return await apiCall(`/api-thc/shipping/types${params}`);
   };
 
   const buildOffer = async (cart, appliedCoupon, shippingType) => {
-    return await apiCall('/api-thc/offer/build', {
-      method: 'POST',
-      body: JSON.stringify({ cart, appliedCoupon, shippingType })
+    return await apiCall("/api-thc/offer/build", {
+      method: "POST",
+      body: JSON.stringify({ cart, appliedCoupon, shippingType }),
     });
   };
 
   const processTransaction = async (transactionData) => {
-    return await apiCall('/api-thc/transaction/process', {
-      method: 'POST',
-      body: JSON.stringify(transactionData)
+    return await apiCall("/api-thc/transaction/process", {
+      method: "POST",
+      body: JSON.stringify(transactionData),
     });
   };
 
   // Legacy function for backward compatibility
   const saveOrUpdateContact = async () => {
-    const firstname = byId('cust_first')?.value?.trim() || '';
-    const lastname = byId('cust_last')?.value?.trim() || '';
-    const email = byId('cust_email')?.value?.trim() || '';
-    const sms_number = byId('cust_phone')?.value?.trim() || '';
+    const firstname = byId("cust_first")?.value?.trim() || "";
+    const lastname = byId("cust_last")?.value?.trim() || "";
+    const email = byId("cust_email")?.value?.trim() || "";
+    const sms_number = byId("cust_phone")?.value?.trim() || "";
     const endpoint = getSaveOrUpdateUrl();
     const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ firstname, lastname, email, sms_number }),
     });
     if (!res.ok) {
-      let details = '';
-      try { const data = await res.json(); details = data?.details ? JSON.stringify(data.details) : (data?.error || ''); } catch {}
-      throw new Error('Contact save failed. ' + details);
+      let details = "";
+      try {
+        const data = await res.json();
+        details = data?.details
+          ? JSON.stringify(data.details)
+          : data?.error || "";
+      } catch {}
+      throw new Error("Contact save failed. " + details);
     }
     return await res.json().catch(() => ({}));
   };
 
   /* ========= checkout state ========= */
-  const STORAGE_KEY = 'checkout:v1';
-  
+  const STORAGE_KEY = "checkout:v1";
+
   const checkoutState = {
     steps: ["contact", "address", "payment", "review"],
     stepIndex: 0,
@@ -131,7 +144,7 @@
     freeShipping: false,
     contactId: null,
     shippingTypes: [],
-    currentOffer: null
+    currentOffer: null,
   };
 
   // Load state from localStorage
@@ -143,7 +156,7 @@
         Object.assign(checkoutState, parsed);
       }
     } catch (err) {
-      console.warn('Failed to load checkout state:', err);
+      console.warn("Failed to load checkout state:", err);
     }
   };
 
@@ -152,7 +165,7 @@
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(checkoutState));
     } catch (err) {
-      console.warn('Failed to save checkout state:', err);
+      console.warn("Failed to save checkout state:", err);
     }
   };
 
@@ -168,7 +181,7 @@
         });
       }
     } catch (err) {
-      console.warn('Failed to load form data:', err);
+      console.warn("Failed to load form data:", err);
     }
   };
 
@@ -176,15 +189,15 @@
   const saveFormData = () => {
     try {
       const formData = {};
-      const inputs = document.querySelectorAll('input, select, textarea');
-      inputs.forEach(input => {
+      const inputs = document.querySelectorAll("input, select, textarea");
+      inputs.forEach((input) => {
         if (input.id && input.value) {
           formData[input.id] = input.value;
         }
       });
       localStorage.setItem(`${STORAGE_KEY}:form`, JSON.stringify(formData));
     } catch (err) {
-      console.warn('Failed to save form data:', err);
+      console.warn("Failed to save form data:", err);
     }
   };
 
@@ -226,28 +239,31 @@
       const cartState = Cart.getState();
       if (!cartState.items.length) {
         checkoutState.currentOffer = null;
-        try { localStorage.removeItem('checkout:offer'); } catch {}
+        try {
+          localStorage.removeItem("checkout:offer");
+        } catch {}
         renderSummary();
         return;
       }
 
       // Convert cart items to backend format
-      const cartItems = cartState.items.map(item => ({
+      const cartItems = cartState.items.map((item) => ({
         productId: item.productId || item.id, // productId now contains the payment ID
         name: item.name,
         quantity: item.qty,
         price: item.price,
         taxable: true, // Default to taxable
-        requiresShipping: true // Default to requiring shipping
+        requiresShipping: true, // Default to requiring shipping
       }));
 
       // Get selected shipping type
       let shippingType = null;
       if (checkoutState.shippingTypes.length > 0) {
         const selectedMethod = checkoutState.shippingMethod;
-        shippingType = checkoutState.shippingTypes.find(st => 
-          st.name.toLowerCase().includes(selectedMethod) || 
-          st.id.toString() === selectedMethod
+        shippingType = checkoutState.shippingTypes.find(
+          (st) =>
+            st.name.toLowerCase().includes(selectedMethod) ||
+            st.id.toString() === selectedMethod
         );
       }
 
@@ -259,10 +275,12 @@
       );
 
       checkoutState.currentOffer = offer;
-      try { localStorage.setItem('checkout:offer', JSON.stringify(offer)); } catch {}
+      try {
+        localStorage.setItem("checkout:offer", JSON.stringify(offer));
+      } catch {}
       renderSummary();
     } catch (err) {
-      console.error('Failed to update offer:', err);
+      console.error("Failed to update offer:", err);
       // Fallback to client-side calculation
       const cartState = Cart.getState();
       const totals = calcTotals(cartState);
@@ -270,23 +288,35 @@
         subTotal: totals.subtotal,
         grandTotal: totals.total,
         hasShipping: totals.shipping > 0,
-        currency_code: 'USD'
+        currency_code: "USD",
       };
-      try { localStorage.setItem('checkout:offer', JSON.stringify(checkoutState.currentOffer)); } catch {}
+      try {
+        localStorage.setItem(
+          "checkout:offer",
+          JSON.stringify(checkoutState.currentOffer)
+        );
+      } catch {}
       renderSummary();
     }
   };
 
   const calcTotals = (cartState) => {
     const subtotal = cartState.items.reduce(
-      (total, item) => total + (Number(item.price) || 0) * (Number(item.qty) || 0),
+      (total, item) =>
+        total + (Number(item.price) || 0) * (Number(item.qty) || 0),
       0
     );
     // Prefer dynamic shipping types if loaded
     let baseShipping = 0;
-    if (checkoutState.shippingTypes && checkoutState.shippingTypes.length && checkoutState.shippingMethod) {
-      const selected = checkoutState.shippingTypes.find(st => st.id.toString() === checkoutState.shippingMethod);
-      baseShipping = selected ? (Number(selected.price) || 0) : 0;
+    if (
+      checkoutState.shippingTypes &&
+      checkoutState.shippingTypes.length &&
+      checkoutState.shippingMethod
+    ) {
+      const selected = checkoutState.shippingTypes.find(
+        (st) => st.id.toString() === checkoutState.shippingMethod
+      );
+      baseShipping = selected ? Number(selected.price) || 0 : 0;
     } else {
       baseShipping = shippingRates[checkoutState.shippingMethod] || 0;
     }
@@ -315,16 +345,20 @@
         row.className = "py-4 flex gap-3 items-center";
         row.innerHTML = `
         <img src="${item.image}" alt="${
-        item.name
-      }" class="w-16 h-16 rounded-lg object-cover"/>
+          item.name
+        }" class="w-16 h-16 rounded-lg object-cover"/>
         <div class="flex-1 min-w-0">
-          <div class="font-semibold text-sm sm:text-base truncate">${item.name}</div>
+          <div class="font-semibold text-sm sm:text-base truncate">${
+            item.name
+          }</div>
           ${
             item.brand
               ? `<div class=\"text-xs text-gray-500\">${item.brand}</div>`
               : ""
           }
-          <div class="text-sm font-medium text-gray-900">${money(item.price)}</div>
+          <div class="text-sm font-medium text-gray-900">${money(
+            item.price
+          )}</div>
           <div class="mt-2 inline-flex items-center gap-2">
             <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${
               item.id
@@ -348,20 +382,29 @@
         summaryEls.list.appendChild(row);
       });
     }
-    
+
     // Use backend offer if available, otherwise fallback to client calculation
     if (checkoutState.currentOffer) {
       const offer = checkoutState.currentOffer;
       summaryEls.subtotal.textContent = money(offer.subTotal);
-      summaryEls.shipping.textContent = offer.hasShipping ? 
-        (offer.shipping && offer.shipping.length > 0 ? money(offer.shipping[0].price) : "Calculated at checkout") : 
-        "Free";
-      summaryEls.discount.textContent = money(offer.subTotal - (offer.grandTotal - (offer.shipping && offer.shipping.length > 0 ? offer.shipping[0].price : 0)));
+      summaryEls.shipping.textContent = offer.hasShipping
+        ? offer.shipping && offer.shipping.length > 0
+          ? money(offer.shipping[0].price)
+          : "Calculated at checkout"
+        : "Free";
+      summaryEls.discount.textContent = money(
+        offer.subTotal -
+          (offer.grandTotal -
+            (offer.shipping && offer.shipping.length > 0
+              ? offer.shipping[0].price
+              : 0))
+      );
       summaryEls.total.textContent = money(offer.grandTotal);
     } else {
       const totals = calcTotals(cartState);
       summaryEls.subtotal.textContent = money(totals.subtotal);
-      summaryEls.shipping.textContent = totals.shipping > 0 ? money(totals.shipping) : "Free";
+      summaryEls.shipping.textContent =
+        totals.shipping > 0 ? money(totals.shipping) : "Free";
       summaryEls.discount.textContent = money(-totals.discount);
       summaryEls.total.textContent = money(Math.max(totals.total, 0));
     }
@@ -371,7 +414,10 @@
   const getFieldContainer = (el) => el.closest(".input-wrapper") ?? el;
   const getErrorEl = (el) => {
     const wrapper = el.closest(".input-wrapper");
-    if (wrapper && wrapper.nextElementSibling?.classList?.contains("form-error"))
+    if (
+      wrapper &&
+      wrapper.nextElementSibling?.classList?.contains("form-error")
+    )
       return wrapper.nextElementSibling;
     if (el.nextElementSibling?.classList?.contains("form-error"))
       return el.nextElementSibling;
@@ -532,7 +578,7 @@
   const applyCoupon = async () => {
     if (!couponInput) return;
     const code = (couponInput.value || "").trim();
-    
+
     if (!code) {
       checkoutState.couponMeta = null;
       checkoutState.freeShipping = false;
@@ -545,89 +591,140 @@
     try {
       // Get cart product IDs for validation (use payment IDs)
       const cartState = Cart.getState();
-      const cartProductIds = cartState.items.map(item => item.productId || item.id);
-      
+      const cartProductIds = cartState.items.map(
+        (item) => item.productId || item.id
+      );
+      const applyButton = document.querySelector(".apply-coupon");
+      if (applyButton) {
+        applyButton.style.pointerEvents = "none";
+        applyButton.style.opacity = "0.6";
+        applyButton.textContent = "Applying…";
+      }
+
       // Validate coupon with backend
-      const result = await validateCoupons(checkoutState.contactId, [code], cartProductIds);
-      
+      const result = await validateCoupons(
+        checkoutState.contactId,
+        [code],
+        cartProductIds
+      );
+
       if (result.applied) {
         checkoutState.couponMeta = {
           code: result.applied.coupon_code,
           type: result.applied.discount_type,
           value: result.applied.discount_value,
           product_selection: result.applied.product_selection,
-          applicable_products: Array.isArray(result.applied.applicable_products) ? result.applied.applicable_products.map(String) : undefined,
-          recurring: result.applied.recurring
+          applicable_products: Array.isArray(result.applied.applicable_products)
+            ? result.applied.applicable_products.map(String)
+            : undefined,
+          recurring: result.applied.recurring,
         };
-        checkoutState.freeShipping = false; // Will be handled by offer engine
-        if (couponFeedback) couponFeedback.textContent = "Coupon applied successfully!";
+        checkoutState.freeShipping = false;
+        if (couponFeedback)
+          couponFeedback.textContent = "Coupon applied successfully!";
+        applyButton.style.pointerEvents = "";
+        applyButton.style.opacity = "";
+        applyButton.style.borderColor = "red";
+        applyButton.textContent = "Remove";
+        // button chnaged to remove if coupon applied
+        // todo
+        // if applied and again clicked on remove, coupon should be removed
+        applyButton.onclick = () => {
+          checkoutState.couponMeta = null;
+          checkoutState.freeShipping = false;
+          if (couponFeedback) couponFeedback.textContent = "Coupon removed.";
+          if (couponInput) couponInput.value = "";
+          applyButton.style.borderColor = "";
+          applyButton.textContent = "Apply";
+          applyButton.onclick = applyCoupon; // revert onclick
+          updateOffer();
+        };
       } else {
         const reason = result.reasons[code];
         let message = "Invalid coupon code";
         switch (reason) {
-          case "not_found": message = "Coupon code not found"; break;
-          case "expired": message = "Coupon has expired"; break;
-          case "already_used": message = "Coupon already used"; break;
-          case "not_applicable": message = "Coupon not applicable to cart items"; break;
-          case "not_applied_multiple": message = "Only one coupon can be applied"; break;
+          case "not_found":
+            message = "Coupon code not found";
+            break;
+          case "expired":
+            message = "Coupon has expired";
+            break;
+          case "already_used":
+            message = "Coupon already used";
+            break;
+          case "not_applicable":
+            message = "Coupon not applicable to cart items";
+            break;
+          case "not_applied_multiple":
+            message = "Only one coupon can be applied";
+            break;
         }
+        applyButton.style.pointerEvents = "";
+        applyButton.style.opacity = "";
+        applyButton.textContent = "Apply";
         checkoutState.couponMeta = null;
         checkoutState.freeShipping = false;
         if (couponFeedback) couponFeedback.textContent = message;
       }
     } catch (err) {
-      console.error('Coupon validation failed:', err);
+      console.error("Coupon validation failed:", err);
       checkoutState.couponMeta = null;
       checkoutState.freeShipping = false;
-      if (couponFeedback) couponFeedback.textContent = "Failed to validate coupon. Please try again.";
+      if (couponFeedback)
+        couponFeedback.textContent =
+          "Failed to validate coupon. Please try again.";
     }
-    
+
     await updateOffer();
   };
 
   // Process the complete order
   const processOrder = async () => {
     if (!checkoutState.contactId) {
-      throw new Error('Contact not saved. Please complete the contact step.');
+      throw new Error("Contact not saved. Please complete the contact step.");
     }
 
     if (!checkoutState.currentOffer) {
-      throw new Error('Offer not calculated. Please try again.');
+      throw new Error("Offer not calculated. Please try again.");
     }
 
     // Get billing address
     const billing_address = {
-      address: byId('bill_addr1')?.value?.trim() || '',
-      address2: byId('bill_addr2')?.value?.trim() || '',
-      city: byId('bill_city')?.value?.trim() || '',
-      state: byId('bill_state')?.value?.trim() || '',
-      zip: byId('bill_postal')?.value?.trim() || '',
-      country: byId('bill_country')?.value?.trim() || 'Australia'
+      address: byId("bill_addr1")?.value?.trim() || "",
+      address2: byId("bill_addr2")?.value?.trim() || "",
+      city: byId("bill_city")?.value?.trim() || "",
+      state: byId("bill_state")?.value?.trim() || "",
+      zip: byId("bill_postal")?.value?.trim() || "",
+      country: byId("bill_country")?.value?.trim() || "Australia",
     };
 
     // Get payment details
     const payer = {
-      ccnumber: byId('cc_number')?.value?.replace(/\s/g, '') || '',
-      code: byId('cc_cvc')?.value?.trim() || '',
-      expire_month: parseInt(byId('cc_exp')?.value?.split('/')[0] || '0'),
-      expire_year: 2000 + parseInt(byId('cc_exp')?.value?.split('/')[1] || '0')
+      ccnumber: byId("cc_number")?.value?.replace(/\s/g, "") || "",
+      code: byId("cc_cvc")?.value?.trim() || "",
+      expire_month: parseInt(byId("cc_exp")?.value?.split("/")[0] || "0"),
+      expire_year: 2000 + parseInt(byId("cc_exp")?.value?.split("/")[1] || "0"),
     };
 
     // Get selected shipping type
-    const selectedShipping = document.querySelector('input[name="shipping_method"]:checked');
-    const shippingType = selectedShipping ? 
-      checkoutState.shippingTypes.find(st => st.id.toString() === selectedShipping.value) : 
-      null;
+    const selectedShipping = document.querySelector(
+      'input[name="shipping_method"]:checked'
+    );
+    const shippingType = selectedShipping
+      ? checkoutState.shippingTypes.find(
+          (st) => st.id.toString() === selectedShipping.value
+        )
+      : null;
 
     // Build final offer with current shipping selection
     const cartState = Cart.getState();
-    const cartItems = cartState.items.map(item => ({
+    const cartItems = cartState.items.map((item) => ({
       productId: item.productId || item.id, // Use payment ID for backend
       name: item.name,
       quantity: item.qty,
       price: item.price,
       taxable: true,
-      requiresShipping: true
+      requiresShipping: true,
     }));
 
     const finalOffer = await buildOffer(
@@ -644,7 +741,7 @@
       offer: finalOffer,
       external_order_id: `WEB-${Date.now()}`,
       invoice_template: 1,
-      gateway_id: 1
+      gateway_id: 1,
     };
 
     return await processTransaction(transactionData);
@@ -654,34 +751,41 @@
   const loadShippingTypes = async () => {
     try {
       const cartState = Cart.getState();
-      const requiresShipping = cartState.items.some(item => item.requiresShipping !== false);
-      
+      const requiresShipping = cartState.items.some(
+        (item) => item.requiresShipping !== false
+      );
+
       if (!requiresShipping) {
         // Hide shipping section if no items require shipping
-        const shippingFieldset = document.querySelector('fieldset');
+        const shippingFieldset = document.querySelector("fieldset");
         if (shippingFieldset) {
-          shippingFieldset.style.display = 'none';
+          shippingFieldset.style.display = "none";
         }
         return;
       }
 
       const shippingTypes = await getShippingTypes(shippingOptions);
       checkoutState.shippingTypes = shippingTypes;
-      
+
       // Update shipping UI with dynamic options
-      const shippingContainer = document.getElementById('shipping_methods');
+      const shippingContainer = document.getElementById("shipping_methods");
       if (shippingContainer && shippingTypes.length > 0) {
-        shippingContainer.innerHTML = '';
+        shippingContainer.innerHTML = "";
         shippingTypes.forEach((type, index) => {
-          const label = document.createElement('label');
-          label.className = 'flex items-center justify-between gap-3 rounded-xl border border-gray-200 px-4 py-3 hover:border-blue-500';
+          const label = document.createElement("label");
+          label.className =
+            "flex items-center justify-between gap-3 rounded-xl border border-gray-200 px-4 py-3 hover:border-blue-500";
           label.innerHTML = `
             <div class="flex items-center gap-3">
-              <input type="radio" name="shipping_method" value="${type.id}" ${index === 0 ? 'checked' : ''}
+              <input type="radio" name="shipping_method" value="${type.id}" ${
+            index === 0 ? "checked" : ""
+          }
                 class="text-blue-600 focus:ring-blue-500" />
               <div>
                 <div class="font-semibold">${type.name}</div>
-                <div class="text-xs text-gray-500">${type.description || 'Standard delivery'}</div>
+                <div class="text-xs text-gray-500">${
+                  type.description || "Standard delivery"
+                }</div>
               </div>
             </div>
             <span class="text-sm font-semibold">${money(type.price || 0)}</span>
@@ -693,7 +797,7 @@
         await updateOffer();
       }
     } catch (err) {
-      console.error('Failed to load shipping types:', err);
+      console.error("Failed to load shipping types:", err);
     }
   };
 
@@ -710,19 +814,22 @@
       const current = checkoutState.steps[checkoutState.stepIndex];
       if (current === "contact") {
         if (!validateContainer($("[data-step='contact']"))) return;
-        const btn = target.closest('.step-next');
+        const btn = target.closest(".step-next");
         const original = btn?.textContent;
-        if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
-        
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = "Saving…";
+        }
+
         // Save contact with new API
         const contactData = {
-          first_name: byId('cust_first')?.value?.trim() || '',
-          last_name: byId('cust_last')?.value?.trim() || '',
-          email: byId('cust_email')?.value?.trim() || '',
-          phone: byId('cust_phone')?.value?.trim() || '',
-          contactId: checkoutState.contactId
+          first_name: byId("cust_first")?.value?.trim() || "",
+          last_name: byId("cust_last")?.value?.trim() || "",
+          email: byId("cust_email")?.value?.trim() || "",
+          phone: byId("cust_phone")?.value?.trim() || "",
+          contactId: checkoutState.contactId,
         };
-        
+
         saveContact(contactData)
           .then((result) => {
             checkoutState.contactId = result.contactId;
@@ -736,14 +843,20 @@
             loadShippingTypes();
           })
           .catch((err) => {
-            alert(err?.message || 'Unable to save contact.');
+            alert(err?.message || "Unable to save contact.");
           })
           .finally(() => {
-            if (btn) { btn.disabled = false; btn.textContent = original; }
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = original;
+            }
           });
         return;
       }
-      if (current === "address" && !validateContainer($("[data-step='address']")))
+      if (
+        current === "address" &&
+        !validateContainer($("[data-step='address']"))
+      )
         return;
       if (current === "payment" && !validateContainer($("#payment_form")))
         return;
@@ -758,26 +871,34 @@
     if (target.closest(".place-order")) {
       if (!validateContainer($("#payment_form"))) return;
       buildReview();
-      
-      const btn = target.closest('.place-order');
+
+      const btn = target.closest(".place-order");
       const original = btn?.textContent;
-      if (btn) { btn.disabled = true; btn.textContent = 'Processing…'; }
-      
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Processing…";
+      }
+
       processOrder()
         .then((result) => {
           // Clear cart and state
           Cart.clear();
           localStorage.removeItem(STORAGE_KEY);
           localStorage.removeItem(`${STORAGE_KEY}:form`);
-          
+
           // Redirect to success page
-          window.location.href = `https://app.thehappy.clinic/shop/thank-you?order=${result.order_id || result.transaction_id || 'success'}`;
+          window.location.href = `https://app.thehappy.clinic/shop/thank-you?order=${
+            result.order_id || result.transaction_id || "success"
+          }`;
         })
         .catch((err) => {
-          alert(err?.message || 'Order processing failed. Please try again.');
+          alert(err?.message || "Order processing failed. Please try again.");
         })
         .finally(() => {
-          if (btn) { btn.disabled = false; btn.textContent = original; }
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = original;
+          }
         });
       return;
     }
@@ -825,7 +946,8 @@
     if (target.name === "shipping_method") {
       checkoutState.shippingMethod = target.value || "standard";
       renderSummary();
-      if (checkoutState.steps[checkoutState.stepIndex] === "review") buildReview();
+      if (checkoutState.steps[checkoutState.stepIndex] === "review")
+        buildReview();
       updateOffer();
     }
   });
@@ -849,15 +971,15 @@
     });
 
     // Set up form change listeners for persistence
-    const inputs = document.querySelectorAll('input, select, textarea');
-    inputs.forEach(input => {
-      input.addEventListener('change', saveFormData);
-      input.addEventListener('input', saveFormData);
+    const inputs = document.querySelectorAll("input, select, textarea");
+    inputs.forEach((input) => {
+      input.addEventListener("change", saveFormData);
+      input.addEventListener("input", saveFormData);
     });
 
     // Clear static shipping options and load dynamic ones; do this regardless of contact state
-    const shippingContainer = document.getElementById('shipping_methods');
-    if (shippingContainer) shippingContainer.innerHTML = '';
+    const shippingContainer = document.getElementById("shipping_methods");
+    if (shippingContainer) shippingContainer.innerHTML = "";
     await loadShippingTypes();
 
     // Update offer with current state
@@ -869,7 +991,8 @@
 
     Cart.subscribe(() => {
       renderSummary();
-      if (checkoutState.steps[checkoutState.stepIndex] === "review") buildReview();
+      if (checkoutState.steps[checkoutState.stepIndex] === "review")
+        buildReview();
       updateOffer(); // Update offer when cart changes
     });
 
@@ -886,5 +1009,78 @@
     document.addEventListener("DOMContentLoaded", init, { once: true });
   } else {
     init();
+  }
+})();
+
+
+(() => {
+  const cc   = document.getElementById("cc_number");
+  const exp  = document.getElementById("cc_exp");
+  const cvc  = document.getElementById("cc_cvc");
+
+  // --- Card number: group every 4 digits ---
+  if (cc) {
+    const formatCC = (v) =>
+      v.replace(/\D/g, "").slice(0, 16)               // keep up to 16 digits
+       .replace(/(\d{4})(?=\d)/g, "$1 ")              // 1234 5678 9012 3456
+       .trim();
+
+    const reformatCCKeepingCaret = () => {
+      const prev = cc.value;
+      const start = cc.selectionStart ?? prev.length;
+      // number of digits before caret in the raw input
+      const digitsBeforeCaret = prev.slice(0, start).replace(/\D/g, "").length;
+
+      cc.value = formatCC(prev);
+
+      // place caret after the same count of digits in the new, spaced value
+      let seen = 0, newPos = 0;
+      for (const ch of cc.value) {
+        newPos++;
+        if (/\d/.test(ch)) seen++;
+        if (seen === digitsBeforeCaret) break;
+      }
+      cc.setSelectionRange(newPos, newPos);
+    };
+
+    cc.addEventListener("input", reformatCCKeepingCaret);
+    cc.addEventListener("paste", () => setTimeout(reformatCCKeepingCaret, 0));
+  }
+
+  // --- Expiry: MM/YY, auto-slash, mobile-friendly ---
+  if (exp) {
+    const formatExp = (raw) => {
+      let d = raw.replace(/\D/g, "").slice(0, 4); // keep up to 4 digits (MMYY)
+
+      // Auto-prepend 0 if first digit is 2–9 (so "3" -> "03")
+      if (d.length >= 1 && d[0] > "1") d = "0" + d;
+
+      if (d.length >= 3) return d.slice(0, 2) + "/" + d.slice(2);
+      if (d.length >= 2) return d.slice(0, 2) + "/";
+      return d;
+    };
+
+    const reformatExp = () => {
+      exp.value = formatExp(exp.value);
+      // keep caret at end (simple + reliable across mobile keyboards)
+      const len = exp.value.length;
+      exp.setSelectionRange(len, len);
+    };
+
+    // Users don't need to type '/', we insert it
+    exp.addEventListener("keydown", (e) => {
+      if (e.key === "/" || e.code === "Slash") e.preventDefault();
+    });
+    exp.addEventListener("input", reformatExp);
+    exp.addEventListener("paste", () => setTimeout(reformatExp, 0));
+  }
+
+  // --- CVC: digits only, up to 4 ---
+  if (cvc) {
+    const clampCVC = () => {
+      cvc.value = cvc.value.replace(/\D/g, "").slice(0, 4);
+    };
+    cvc.addEventListener("input", clampCVC);
+    cvc.addEventListener("paste", () => setTimeout(clampCVC, 0));
   }
 })();
