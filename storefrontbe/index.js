@@ -200,9 +200,14 @@ app.get("/api-thc/contact/:id/credit-cards", async (req, res) => {
       return res.status(400).json({ error: "contact id is required" });
     }
 
-    const condition = encodeURIComponent(
-      JSON.stringify([{ field: "contact_id", op: "=", value: String(id) }])
-    );
+    const conditionFilter = [
+      {
+        field: { field: "contact_id" },
+        op: "=",
+        value: { value: String(id) }
+      }
+    ];
+    const condition = encodeURIComponent(JSON.stringify(conditionFilter));
     const response = await ontraportRequest(
       `/CreditCards?range=50&count=false&condition=${condition}`
     );

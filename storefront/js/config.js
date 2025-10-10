@@ -3,7 +3,7 @@
     /**
      * Set to the Ontraport contact ID for the logged in user. Leave empty for guests.
      */
-    loggedInContactId: "",
+    loggedInContactId: "546",
     /**
      * Ontraport gateway ID to charge transactions against.
      */
@@ -15,7 +15,7 @@
     /**
      * Restrict shipping types to these Ontraport IDs. Leave empty to allow all.
      */
-    shippingTypeIds: [691, 690],
+    shippingTypeIds: [1, 2],
   };
 
   const existing = window.StorefrontConfig || {};
