@@ -2,8 +2,13 @@
   // --------- Safe getters ----------
   const $ = (id) => document.getElementById(id);
 
-  // Guard: only run if the form exists
-  if (!$("autocomplete") || !$("ship_addr1")) return;
+  const hasAddressFields = () => $("autocomplete") && $("ship_addr1");
+  let initialized = false;
+
+  const GOOGLE_READY_FLAG = "__thcGooglePlacesReady";
+  if (typeof window !== "undefined" && window[GOOGLE_READY_FLAG] === undefined) {
+    window[GOOGLE_READY_FLAG] = false;
+  }
 
   // --------- Field helpers ----------
   function clearShipFields() {
@@ -42,18 +47,23 @@
     if (match) selectEl.value = match.value;
   }
 
-  // --------- Google Places Autocomplete ----------
-  function initAutocomplete() {
-    // Guard if Google isn't loaded
-    if (!window.google || !google.maps || !google.maps.places) return;
+  function onDomReady(fn) {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", fn, { once: true });
+    } else {
+      fn();
+    }
+  }
 
+  // --------- Google Places Autocomplete ----------
+  function setupAutocomplete() {
     const input = $("autocomplete");
+    if (!input) return;
+
     const ac = new google.maps.places.Autocomplete(input, {
       types: ["geocode"],
       componentRestrictions: { country: "au" },
     });
-
-    let lastToken = "";
 
     ac.addListener("place_changed", () => {
       input.blur();
@@ -105,12 +115,27 @@
     });
   }
 
-  // --------- Boot ----------
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initAutocomplete, {
-      once: true,
-    });
-  } else {
-    initAutocomplete();
+  function tryInitAutocomplete() {
+    if (initialized) return;
+    if (!hasAddressFields()) return;
+    if (!window.google || !google.maps || !google.maps.places) return;
+
+    setupAutocomplete();
+    initialized = true;
   }
+
+  const triggerInit = () => {
+    onDomReady(tryInitAutocomplete);
+  };
+
+  // Try immediately (covers cached API loads) and again if the flag was set
+  triggerInit();
+  if (window[GOOGLE_READY_FLAG]) {
+    triggerInit();
+  }
+
+  window.initAutocomplete = () => {
+    window[GOOGLE_READY_FLAG] = true;
+    triggerInit();
+  };
 })();
