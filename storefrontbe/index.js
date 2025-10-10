@@ -294,6 +294,96 @@ app.post("/api-thc/offer/build", async (req, res) => {
   }
 });
 
+const STARTRACK_MATCHER = /star\s*track/i;
+const STARTRACK_OPTION_ID = "328";
+const DISPENSE_STATUS_PAID = "152";
+
+const createDispenses = async ({ contactId, offer }) => {
+  if (!contactId) return;
+  const products = Array.isArray(offer?.products) ? offer.products : [];
+  if (!products.length) return;
+
+  const shippingOptions = Array.isArray(offer?.shipping) ? offer.shipping : [];
+  const hasStartrack = shippingOptions.some((option) => {
+    if (!option) return false;
+    if (option.option_id) {
+      const id = String(option.option_id).trim();
+      if (id === STARTRACK_OPTION_ID) return true;
+    }
+    if (option.id) {
+      const id = String(option.id).trim();
+      if (id === STARTRACK_OPTION_ID) return true;
+    }
+    const name = String(option.name || "");
+    return STARTRACK_MATCHER.test(name);
+  });
+
+  const basePayload = {
+    f2261: DISPENSE_STATUS_PAID,
+    f2787: String(contactId),
+  };
+
+  if (hasStartrack) {
+    basePayload.f2708 = STARTRACK_OPTION_ID;
+  }
+
+  const payloads = products
+    .map((product) => {
+      if (!product) return null;
+      const productId = String(
+        product.original_product_id ||
+          product.product_id ||
+          product.id ||
+          ""
+      ).trim();
+      if (!productId) return null;
+
+      const quantityRaw = Number(product.quantity);
+      const quantity = Number.isFinite(quantityRaw) && quantityRaw > 0 ? quantityRaw : 1;
+
+      const priceCandidate = [
+        product.original_price,
+        product.unit_price,
+        product.price,
+        product.amount,
+        product.total,
+      ].find((value) => {
+        const num = Number(value);
+        return Number.isFinite(num);
+      });
+      const unitPrice = Number(priceCandidate);
+      const formattedPrice = Number.isFinite(unitPrice)
+        ? (Math.round(unitPrice * 100) / 100).toFixed(2)
+        : undefined;
+
+      const payload = {
+        ...basePayload,
+        f2301: productId,
+        f2790: productId,
+        f2838: quantity,
+      };
+
+      if (formattedPrice !== undefined) {
+        payload.f2302 = formattedPrice;
+      }
+
+      return payload;
+    })
+    .filter(Boolean);
+
+  if (!payloads.length) return;
+
+  const requests = payloads.map((payload) =>
+    ontraportRequest("/Dispenses", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
+  );
+
+  await Promise.allSettled(requests);
+};
+
+
 // Transaction processing endpoint
 app.post("/api-thc/transaction/process", async (req, res) => {
   try {
@@ -312,6 +402,8 @@ app.post("/api-thc/transaction/process", async (req, res) => {
     if (!contactId || !billing_address || !payer || !offer) {
       return res.status(400).json({ error: "Missing required fields" });
     }
+
+    const offerForDispense = JSON.parse(JSON.stringify(offer || {}));
 
     // Helper: translate payment ids to Ontraport product ids when possible
     const translatePaymentToProductIds = async (lineItems = []) => {
@@ -504,6 +596,34 @@ app.post("/api-thc/transaction/process", async (req, res) => {
       body: JSON.stringify(payload),
     });
 
+    const dispenseContactId = [
+      contactId,
+      data?.contact_id,
+      data?.order?.contact_id,
+      data?.order?.contactId,
+      data?.order?.contact?.id,
+      data?.order?.contact?.ID,
+      data?.order?.contact?.contact_id,
+      data?.order?.payer?.id,
+      data?.order?.payer?.ID,
+      data?.payer_id,
+      data?.payer?.id,
+      data?.payer?.ID,
+      payer?.contact_id,
+      payer?.id,
+      payer?.ID,
+      payer?.contact?.id,
+      payer?.contact?.ID,
+      payer?.contactId,
+    ].find((value) => value != null && value !== "");
+
+    createDispenses({
+      contactId: dispenseContactId,
+      offer: offerForDispense,
+    }).catch((err) => {
+      console.error("[Dispense] creation failed", err);
+    });
+    
     res.json({
       success: true,
       transaction_id: data.transaction_id,
