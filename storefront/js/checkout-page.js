@@ -155,6 +155,7 @@
     couponMeta: null,
     freeShipping: false,
     contactId: null,
+    contactEmail: "",
     shippingTypes: [],
     currentOffer: null,
     shippingPreference: "",
@@ -955,12 +956,12 @@
           last_name: byId("cust_last")?.value?.trim() || "",
           email: byId("cust_email")?.value?.trim() || "",
           phone: byId("cust_phone")?.value?.trim() || "",
-          contactId: checkoutState.contactId,
         };
 
         saveContact(contactData)
           .then((result) => {
-            checkoutState.contactId = result.contactId;
+            checkoutState.contactId = result?.contactId || null;
+            checkoutState.contactEmail = contactData.email;
             saveCheckoutState();
             checkoutState.stepIndex = Math.min(
               checkoutState.steps.length - 1,
@@ -997,7 +998,6 @@
           last_name: byId("cust_last")?.value?.trim() || "",
           email: byId("cust_email")?.value?.trim() || "",
           phone: byId("cust_phone")?.value?.trim() || "",
-          contactId: checkoutState.contactId,
           f3099: shippingValue,
           default_shipping_option: shippingValue,
           address: "",
@@ -1033,8 +1033,11 @@
           .then((result) => {
             if (result?.contactId) {
               checkoutState.contactId = result.contactId;
-              saveCheckoutState();
+            } else {
+              checkoutState.contactId = null;
             }
+            checkoutState.contactEmail = contactData.email;
+            saveCheckoutState();
             checkoutState.stepIndex = Math.min(
               checkoutState.steps.length - 1,
               checkoutState.stepIndex + 1
@@ -1187,6 +1190,34 @@
       input.addEventListener("change", saveFormData);
       input.addEventListener("input", saveFormData);
     });
+
+    const emailInput = byId("cust_email");
+    if (emailInput) {
+      const syncEmailState = () => {
+        const raw = emailInput.value || "";
+        const trimmed = raw.trim();
+        const normalizedStored = (checkoutState.contactEmail || "")
+          .trim()
+          .toLowerCase();
+        const normalizedCurrent = trimmed.toLowerCase();
+        if (normalizedCurrent !== normalizedStored || !trimmed) {
+          if (trimmed) {
+            checkoutState.contactEmail = trimmed;
+          } else {
+            checkoutState.contactEmail = "";
+          }
+          checkoutState.contactId = null;
+          saveCheckoutState();
+        }
+      };
+      emailInput.addEventListener("change", syncEmailState);
+      emailInput.addEventListener("blur", syncEmailState);
+
+      if (!checkoutState.contactEmail && emailInput.value) {
+        checkoutState.contactEmail = emailInput.value.trim();
+        saveCheckoutState();
+      }
+    }
 
     // Clear static shipping options and load dynamic ones; do this regardless of contact state
     const shippingContainer = document.getElementById("shipping_methods");
