@@ -8,10 +8,41 @@
     !!document.querySelector("[data-checkout-page]");
 
   if (!isCheckoutPage) return;
+  const toNumberOr = (value, fallback) => {
+    const num =
+      typeof value === "number"
+        ? value
+        : value === null || value === undefined
+        ? NaN
+        : Number(value);
+    return Number.isFinite(num) ? num : fallback;
+  };
+
+  const config = window.StorefrontConfig || {};
+  const loggedInContactId = (() => {
+    const raw = config.loggedInContactId;
+    if (raw === null || raw === undefined) return "";
+    const str = String(raw).trim();
+    return str.length ? str : "";
+  })();
+  const invoiceTemplateId = toNumberOr(config.invoiceTemplateId, 1);
+  const paymentGatewayId = toNumberOr(config.paymentGatewayId, 1);
+
   // Shipping options filter (ids). Overrideable via window.shippingOptions
-  let shippingOptions = Array.isArray(window.shippingOptions)
+  let shippingOptions = Array.isArray(config.shippingTypeIds)
+    ? config.shippingTypeIds
+    : Array.isArray(window.shippingOptions)
     ? window.shippingOptions
     : [1, 2];
+  if (Array.isArray(shippingOptions)) {
+    shippingOptions = shippingOptions
+      .map((id) => {
+        if (id === null || id === undefined) return "";
+        const str = String(id).trim();
+        return str;
+      })
+      .filter(Boolean);
+  }
 
   window.StorefrontCartUI?.ensureDrawer?.();
 
@@ -107,6 +138,30 @@
     });
   };
 
+  const fetchContactDetails = async (contactId) => {
+    if (!contactId) return null;
+    try {
+      const result = await apiCall(`/api-thc/contact/${encodeURIComponent(contactId)}`);
+      return result?.contact || null;
+    } catch (err) {
+      console.error("Failed to fetch contact", err);
+      throw err;
+    }
+  };
+
+  const fetchSavedCards = async (contactId) => {
+    if (!contactId) return [];
+    try {
+      const result = await apiCall(
+        `/api-thc/contact/${encodeURIComponent(contactId)}/credit-cards`
+      );
+      return Array.isArray(result?.cards) ? result.cards : [];
+    } catch (err) {
+      console.error("Failed to fetch saved cards", err);
+      throw err;
+    }
+  };
+
   const shippingOptionSelect = byId("default_shipping_option");
   const HOME_SHIPPING_OPTION = "691";
   const PARCEL_SHIPPING_OPTION = "690";
@@ -118,6 +173,16 @@
   const parcelRequiredFields = Array.from(
     document.querySelectorAll("[data-parcel-req]")
   );
+  const paymentSourceSelector = byId("payment_source_selector");
+  const savedCardsListEl = byId("saved_cards_list");
+  const newCardSection = byId("new_card_section");
+  const newCardRadio = paymentSourceSelector?.querySelector(
+    'input[name="payment_source"][value="new"]'
+  );
+  const cardFieldIds = ["cc_number", "cc_exp", "cc_cvc", "cc_name"];
+  const cardFields = cardFieldIds
+    .map((id) => byId(id))
+    .filter((el) => el);
 
   // Legacy function for backward compatibility
   const saveOrUpdateContact = async () => {
@@ -159,6 +224,8 @@
     shippingTypes: [],
     currentOffer: null,
     shippingPreference: "",
+    savedCards: [],
+    selectedPaymentSource: "new",
   };
 
   // Load state from localStorage
@@ -168,6 +235,9 @@
       if (saved) {
         const parsed = JSON.parse(saved);
         Object.assign(checkoutState, parsed);
+        if (!checkoutState.selectedPaymentSource) {
+          checkoutState.selectedPaymentSource = "new";
+        }
       }
     } catch (err) {
       console.warn("Failed to load checkout state:", err);
@@ -177,7 +247,8 @@
   // Save state to localStorage
   const saveCheckoutState = () => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(checkoutState));
+      const { savedCards, ...persistable } = checkoutState;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(persistable));
     } catch (err) {
       console.warn("Failed to save checkout state:", err);
     }
@@ -463,6 +534,309 @@
     if (err) err.classList.add("hidden");
   };
 
+  const isUsingSavedCard = () =>
+    typeof checkoutState.selectedPaymentSource === "string" &&
+    checkoutState.selectedPaymentSource.startsWith("saved:");
+
+  const getSelectedSavedCard = () => {
+    if (!Array.isArray(checkoutState.savedCards) || !isUsingSavedCard()) {
+      return null;
+    }
+    const [, cardId] = checkoutState.selectedPaymentSource.split(":");
+    if (!cardId) return null;
+    return (
+      checkoutState.savedCards.find(
+        (card) => String(card?.id ?? "") === String(cardId)
+      ) || null
+    );
+  };
+
+  const setCardFieldsRequired = (required) => {
+    cardFields.forEach((field) => {
+      if (!field) return;
+      if (required) {
+        field.setAttribute("data-req", "true");
+        field.disabled = false;
+      } else {
+        field.removeAttribute("data-req");
+        field.disabled = true;
+        resetFieldState(field);
+      }
+    });
+  };
+
+  const toggleNewCardSection = (show) => {
+    if (newCardSection)
+      newCardSection.classList.toggle("hidden", show === false);
+    cardFields.forEach((field) => {
+      if (!field) return;
+      field.disabled = show === false;
+    });
+  };
+
+  const applyPaymentSourceSelection = ({ save = true } = {}) => {
+    if (isUsingSavedCard() && !getSelectedSavedCard()) {
+      checkoutState.selectedPaymentSource = "new";
+    }
+
+    const usingSavedCard = isUsingSavedCard();
+    toggleNewCardSection(!usingSavedCard);
+    setCardFieldsRequired(!usingSavedCard);
+
+    if (paymentSourceSelector) {
+      const radios = paymentSourceSelector.querySelectorAll(
+        'input[name="payment_source"]'
+      );
+      radios.forEach((radio) => {
+        radio.checked = radio.value === checkoutState.selectedPaymentSource;
+      });
+      if (
+        usingSavedCard &&
+        !Array.from(radios).some((radio) => radio.checked)
+      ) {
+        checkoutState.selectedPaymentSource = "new";
+        toggleNewCardSection(true);
+        setCardFieldsRequired(true);
+        radios.forEach((radio) => {
+          radio.checked = radio.value === "new";
+        });
+      }
+    }
+
+    if (usingSavedCard) {
+      cardFields.forEach((field) => resetFieldState(field));
+    }
+
+    if (save) saveCheckoutState();
+    if (checkoutState.steps[checkoutState.stepIndex] === "review") {
+      buildReview();
+    }
+  };
+
+  const renderSavedCards = () => {
+    if (!paymentSourceSelector || !savedCardsListEl) {
+      applyPaymentSourceSelection({ save: false });
+      return;
+    }
+
+    savedCardsListEl.innerHTML = "";
+    const cards = Array.isArray(checkoutState.savedCards)
+      ? checkoutState.savedCards
+      : [];
+
+    if (!cards.length) {
+      paymentSourceSelector.classList.add("hidden");
+      checkoutState.selectedPaymentSource = "new";
+      if (newCardRadio) newCardRadio.checked = true;
+      applyPaymentSourceSelection();
+      return;
+    }
+
+    paymentSourceSelector.classList.remove("hidden");
+    const fragment = document.createDocumentFragment();
+    const validValues = [];
+
+    cards.forEach((card) => {
+      if (!card) return;
+      const value = `saved:${card.id}`;
+      validValues.push(value);
+      const label = document.createElement("label");
+      label.className =
+        "flex items-center justify-between gap-3 rounded-xl border border-gray-200 px-4 py-3 hover:border-blue-500";
+      const last4 = card.last4 || card.card_last_four || "••••";
+      const expMonth = card.exp_month || card.card_expiration_month;
+      const expYear = card.exp_year || card.card_expiration_year;
+      const expDisplay = expMonth && expYear
+        ? `${String(expMonth).padStart(2, "0")}/${String(expYear).slice(-2)}`
+        : "";
+      const nameLine = [card.firstname, card.lastname]
+        .filter(Boolean)
+        .join(" ");
+      label.innerHTML = `
+        <div class="flex items-center gap-3">
+          <input type="radio" name="payment_source" value="${value}" class="text-blue-600 focus:ring-blue-500" />
+          <div>
+            <div class="font-semibold">Card ending in ${last4}</div>
+            <div class="text-xs text-gray-500">${
+              expDisplay ? `Expires ${expDisplay}` : "Stored payment method"
+            }</div>
+          </div>
+        </div>
+        <span class="text-xs text-gray-500">${
+          nameLine || card.nickname || "Saved card"
+        }</span>
+      `;
+      fragment.appendChild(label);
+    });
+
+    savedCardsListEl.appendChild(fragment);
+
+    let selection = checkoutState.selectedPaymentSource;
+    if (!selection || selection === "new") {
+      selection = validValues[0] || "new";
+    } else if (!validValues.includes(selection)) {
+      selection = validValues[0] || "new";
+    }
+    checkoutState.selectedPaymentSource = selection || "new";
+
+    applyPaymentSourceSelection();
+  };
+
+  const formatValue = (value, { uppercase = false } = {}) => {
+    if (value === null || value === undefined) return "";
+    let str = String(value);
+    if (uppercase) {
+      str = str.trim().toUpperCase();
+    } else {
+      str = str.trim();
+    }
+    return str;
+  };
+
+  const setFieldValue = (id, value, opts = {}) => {
+    const el = byId(id);
+    if (!el) return;
+    const str = formatValue(value, opts);
+    if (el.value !== str) {
+      el.value = str;
+    }
+  };
+
+  const getContactValue = (contact, keys, opts = {}) => {
+    if (!contact) return "";
+    const list = Array.isArray(keys) ? keys : [keys];
+    for (const key of list) {
+      if (
+        Object.prototype.hasOwnProperty.call(contact, key) &&
+        contact[key] !== null &&
+        contact[key] !== undefined
+      ) {
+        const raw = contact[key];
+        const str = formatValue(raw, opts);
+        if (str) return str;
+      }
+    }
+    return "";
+  };
+
+  const applyContactToForm = (contact) => {
+    if (!contact) return;
+
+    setFieldValue("cust_first", getContactValue(contact, ["firstname", "first_name", "First_Name"]));
+    setFieldValue("cust_last", getContactValue(contact, ["lastname", "last_name", "Last_Name"]));
+    const emailValue = getContactValue(contact, ["email", "Email", "contact_email"]);
+    setFieldValue("cust_email", emailValue);
+    setFieldValue(
+      "cust_phone",
+      getContactValue(contact, ["sms_number", "phone", "Phone"])
+    );
+
+    const shippingOption = getContactValue(contact, [
+      "f3099",
+      "default_shipping_option",
+      "shipping_option",
+    ]);
+
+    if (shippingOptionSelect && shippingOption) {
+      shippingOptionSelect.value = shippingOption;
+      checkoutState.shippingPreference = shippingOption;
+      updateShippingOptionUI(shippingOption);
+    }
+
+    const shippingValues = {
+      addr1: getContactValue(contact, ["address", "address1", "addr1", "Address"]),
+      addr2: getContactValue(contact, ["address2", "addr2", "Address2"]),
+      city: getContactValue(contact, ["city", "City"]),
+      state: getContactValue(contact, ["state", "State"], { uppercase: true }),
+      postal: getContactValue(contact, ["zip", "postal_code", "Postal", "postcode"]),
+      country: getContactValue(contact, ["country", "Country"], {
+        uppercase: true,
+      }),
+    };
+
+    setFieldValue("ship_addr1", shippingValues.addr1);
+    setFieldValue("ship_addr2", shippingValues.addr2);
+    setFieldValue("ship_city", shippingValues.city);
+    setFieldValue("ship_state", shippingValues.state, { uppercase: true });
+    setFieldValue("ship_postal", shippingValues.postal);
+    setFieldValue("ship_country", shippingValues.country || "Australia");
+
+    const parcelValues = {
+      number: getContactValue(contact, ["f3094", "parcel_number"]),
+      street: getContactValue(contact, ["f3095", "parcel_street"]),
+      city: getContactValue(contact, ["f3096", "parcel_city"]),
+      state: getContactValue(contact, ["f3097", "parcel_state"], {
+        uppercase: true,
+      }),
+      postal: getContactValue(contact, ["f3098", "parcel_postal"]),
+    };
+
+    setFieldValue("parcel_number", parcelValues.number);
+    setFieldValue("parcel_street", parcelValues.street);
+    setFieldValue("parcel_city", parcelValues.city);
+    setFieldValue("parcel_state", parcelValues.state, { uppercase: true });
+    setFieldValue("parcel_postal", parcelValues.postal);
+
+    const billingValues = {
+      addr1: getContactValue(contact, ["bill_addr1", "billing_address", "billing_addr1"]),
+      addr2: getContactValue(contact, ["bill_addr2", "billing_address2", "billing_addr2"]),
+      city: getContactValue(contact, ["bill_city", "billing_city"]),
+      state: getContactValue(contact, ["bill_state", "billing_state"], {
+        uppercase: true,
+      }),
+      postal: getContactValue(contact, ["bill_postal", "billing_postal", "billing_zip"]),
+      country: getContactValue(contact, ["bill_country", "billing_country"], {
+        uppercase: true,
+      }),
+    };
+
+    setFieldValue("bill_addr1", billingValues.addr1 || shippingValues.addr1);
+    setFieldValue("bill_addr2", billingValues.addr2 || shippingValues.addr2);
+    setFieldValue("bill_city", billingValues.city || shippingValues.city);
+    setFieldValue("bill_state", billingValues.state || shippingValues.state, {
+      uppercase: true,
+    });
+    setFieldValue("bill_postal", billingValues.postal || shippingValues.postal);
+    setFieldValue(
+      "bill_country",
+      billingValues.country || shippingValues.country || "Australia"
+    );
+
+    if (emailValue) {
+      checkoutState.contactEmail = emailValue.trim();
+    } else {
+      checkoutState.contactEmail = "";
+    }
+  };
+
+  const hydrateLoggedInContact = async (contactId) => {
+    if (!contactId) return;
+
+    try {
+      const contact = await fetchContactDetails(contactId);
+      if (contact) {
+        applyContactToForm(contact);
+        checkoutState.contactId = String(contact.id || contactId);
+        if (checkoutState.contactEmail) {
+          checkoutState.contactEmail = checkoutState.contactEmail.trim();
+        }
+        saveCheckoutState();
+        saveFormData();
+      }
+    } catch (err) {
+      console.error("Failed to prefill contact", err);
+    }
+
+    try {
+      const cards = await fetchSavedCards(contactId);
+      checkoutState.savedCards = cards;
+    } catch (err) {
+      console.error("Failed to load saved cards", err);
+      checkoutState.savedCards = [];
+    }
+    renderSavedCards();
+  };
+
   const setRequiredForFields = (fields, required) => {
     fields.forEach((el) => {
       if (!el) return;
@@ -542,7 +916,7 @@
       }
     });
 
-    if (container.id === "payment_form") {
+    if (container.id === "payment_form" && !isUsingSavedCard()) {
       const exp = byId("cc_exp");
       if (exp) {
         const v = (exp.value || "").trim();
@@ -691,7 +1065,21 @@
     const shippingLabel =
       checkoutState.shippingMethod === "express" ? "Express" : "Standard";
     const paymentLines = [];
-    paymentLines.push(`Card ending in ${t("cc_number").slice(-4) || "••••"}`);
+    if (isUsingSavedCard()) {
+      const card = getSelectedSavedCard();
+      const last4 = card?.last4 || card?.card_last_four || "••••";
+      const expMonth = card?.exp_month || card?.card_expiration_month;
+      const expYear = card?.exp_year || card?.card_expiration_year;
+      const expLabel =
+        expMonth && expYear
+          ? `${String(expMonth).padStart(2, "0")}/${String(expYear).slice(-2)}`
+          : "";
+      paymentLines.push(
+        `Saved card ending in ${last4}${expLabel ? ` · Expires ${expLabel}` : ""}`
+      );
+    } else {
+      paymentLines.push(`Card ending in ${t("cc_number").slice(-4) || "••••"}`);
+    }
     paymentLines.push(`Shipping: ${shippingLabel}`);
     if (meta) paymentLines.push(`Coupon: ${meta.code}`);
     $("#review_payment").innerHTML = paymentLines
@@ -827,13 +1215,32 @@
       country: byId("bill_country")?.value?.trim() || "Australia",
     };
 
-    // Get payment details
-    const payer = {
-      ccnumber: byId("cc_number")?.value?.replace(/\s/g, "") || "",
-      code: byId("cc_cvc")?.value?.trim() || "",
-      expire_month: parseInt(byId("cc_exp")?.value?.split("/")[0] || "0"),
-      expire_year: 2000 + parseInt(byId("cc_exp")?.value?.split("/")[1] || "0"),
-    };
+    const usingSavedCard = isUsingSavedCard();
+    let payer;
+    if (usingSavedCard) {
+      const selectedCard = getSelectedSavedCard();
+      if (!selectedCard) {
+        throw new Error(
+          "Saved card could not be found. Please choose another payment method."
+        );
+      }
+      const cardId = selectedCard.id;
+      payer = {
+        card_id: Number(cardId) || cardId,
+      };
+    } else {
+      const expRaw = byId("cc_exp")?.value || "";
+      const [expMonthRaw, expYearRaw] = expRaw.split("/");
+      const expMonth = parseInt(expMonthRaw || "0", 10);
+      const expYear = 2000 + parseInt(expYearRaw || "0", 10);
+      payer = {
+        ccnumber: byId("cc_number")?.value?.replace(/\s/g, "") || "",
+        code: byId("cc_cvc")?.value?.trim() || "",
+        expire_month: expMonth,
+        expire_year: expYear,
+        name: byId("cc_name")?.value?.trim() || "",
+      };
+    }
 
     // Get selected shipping type
     const selectedShipping = document.querySelector(
@@ -869,8 +1276,8 @@
       payer,
       offer: finalOffer,
       external_order_id: `WEB-${Date.now()}`,
-      invoice_template: 1,
-      gateway_id: 1,
+      invoice_template: invoiceTemplateId,
+      gateway_id: paymentGatewayId,
     };
 
     return await processTransaction(transactionData);
@@ -900,14 +1307,32 @@
       const shippingContainer = document.getElementById("shipping_methods");
       if (shippingContainer && shippingTypes.length > 0) {
         shippingContainer.innerHTML = "";
+        const preferred = (() => {
+          const current = checkoutState.shippingMethod;
+          const currentStr = current ? String(current) : "";
+          if (
+            currentStr &&
+            shippingTypes.some((type) => String(type.id) === currentStr)
+          ) {
+            return currentStr;
+          }
+          return shippingTypes[0] ? String(shippingTypes[0].id) : "";
+        })();
         shippingTypes.forEach((type, index) => {
           const label = document.createElement("label");
           label.className =
             "flex items-center justify-between gap-3 rounded-xl border border-gray-200 px-4 py-3 hover:border-blue-500";
+          const value = String(type.id);
           label.innerHTML = `
             <div class="flex items-center gap-3">
-              <input type="radio" name="shipping_method" value="${type.id}" ${
-            index === 0 ? "checked" : ""
+              <input type="radio" name="shipping_method" value="${value}" ${
+            preferred
+              ? value === preferred
+                ? "checked"
+                : ""
+              : index === 0
+              ? "checked"
+              : ""
           }
                 class="text-blue-600 focus:ring-blue-500" />
               <div>
@@ -921,8 +1346,7 @@
           `;
           shippingContainer.appendChild(label);
         });
-        // Set default selection to first id
-        checkoutState.shippingMethod = String(shippingTypes[0].id);
+        checkoutState.shippingMethod = preferred || String(shippingTypes[0].id);
         await updateOffer();
       }
     } catch (err) {
@@ -1151,10 +1575,16 @@
     }
     if (target.name === "shipping_method") {
       checkoutState.shippingMethod = target.value || "standard";
+      saveCheckoutState();
       renderSummary();
       if (checkoutState.steps[checkoutState.stepIndex] === "review")
         buildReview();
       updateOffer();
+      return;
+    }
+    if (target.name === "payment_source") {
+      checkoutState.selectedPaymentSource = target.value || "new";
+      applyPaymentSourceSelection();
     }
   });
 
@@ -1169,6 +1599,11 @@
 
     // Load saved state and form data
     loadCheckoutState();
+    if (loggedInContactId) {
+      checkoutState.contactId = loggedInContactId;
+      saveCheckoutState();
+    }
+    applyPaymentSourceSelection({ save: false });
     loadFormData();
 
     const prefValue =
@@ -1217,6 +1652,13 @@
         checkoutState.contactEmail = emailInput.value.trim();
         saveCheckoutState();
       }
+    }
+
+    if (loggedInContactId) {
+      await hydrateLoggedInContact(loggedInContactId);
+    } else {
+      checkoutState.savedCards = [];
+      applyPaymentSourceSelection({ save: false });
     }
 
     // Clear static shipping options and load dynamic ones; do this regardless of contact state

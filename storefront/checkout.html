@@ -326,7 +326,21 @@
                                     <p class="text-sm text-gray-500">Securely enter your payment details, add a coupon, and
                                         choose a delivery speed.</p>
                                 </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div id="payment_source_selector" class="hidden space-y-2">
+                                    <span class="text-sm font-medium text-gray-600">Payment method</span>
+                                    <div id="saved_cards_list" class="space-y-2"></div>
+                                    <label class="flex items-center justify-between gap-3 rounded-xl border border-gray-200 px-4 py-3 hover:border-blue-500">
+                                        <div class="flex items-center gap-3">
+                                            <input type="radio" name="payment_source" value="new"
+                                                class="text-blue-600 focus:ring-blue-500">
+                                            <div>
+                                                <div class="font-semibold">Use a new card</div>
+                                                <div class="text-xs text-gray-500">Enter details below</div>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div id="new_card_section" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div class="md:col-span-2">
                                         <label for="cc_number" class="block text-sm font-medium">Card number</label>
                                         <div class="input-wrapper">
@@ -456,6 +470,7 @@
     </div>
     
     <!-- <script>window.ENV={API_BASE:'https://api2.itmooti.com',SAVE_OR_UPDATE_URL:'https://api2.itmooti.com/api-thc/contacts/saveorupdate'};</script> -->
+    <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/cart-state.js"></script>
     <script src="js/cart-ui.js"></script>
