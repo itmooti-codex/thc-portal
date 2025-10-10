@@ -1,21 +1,26 @@
+// const loggedInContactIdFromOp = "546";
+// const paymentGatewayIdFromOp = 1;
+// const invoiceTemplateIdFromOp = 1;
+// const shippingTypeIdsFromOp = [1, 2];
+
 (() => {
   const defaults = {
     /**
      * Set to the Ontraport contact ID for the logged in user. Leave empty for guests.
      */
-    loggedInContactId: "546",
+    loggedInContactId: loggedInContactIdFromOp,
     /**
      * Ontraport gateway ID to charge transactions against.
      */
-    paymentGatewayId: 1,
+    paymentGatewayId: paymentGatewayIdFromOp,
     /**
      * Ontraport invoice template ID used for generated invoices.
      */
-    invoiceTemplateId: 1,
+    invoiceTemplateId: invoiceTemplateIdFromOp,
     /**
      * Restrict shipping types to these Ontraport IDs. Leave empty to allow all.
      */
-    shippingTypeIds: [1, 2],
+    shippingTypeIds: shippingTypeIdsFromOp,
   };
 
   const existing = window.StorefrontConfig || {};
