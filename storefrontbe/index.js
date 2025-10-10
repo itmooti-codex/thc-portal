@@ -159,6 +159,66 @@ app.post("/api-thc/contact/save", async (req, res) => {
   }
 });
 
+app.get("/api-thc/contact/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ error: "contact id is required" });
+    }
+
+    const response = await ontraportRequest(
+      `/Contact?id=${encodeURIComponent(id)}`
+    );
+
+    let contact = null;
+    const raw = response?.data;
+    if (raw) {
+      if (raw?.attrs && typeof raw.attrs === "object") {
+        contact = { id: raw.id || raw.attrs?.id || String(id), ...raw.attrs };
+      } else if (Array.isArray(raw)) {
+        const first = raw[0];
+        if (first) contact = first;
+      } else if (typeof raw === "object") {
+        contact = raw;
+      }
+    }
+
+    if (contact && !contact.id) {
+      contact.id = String(id);
+    }
+
+    res.json({ contact });
+  } catch (err) {
+    handleError(err, req, res);
+  }
+});
+
+app.get("/api-thc/contact/:id/credit-cards", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ error: "contact id is required" });
+    }
+
+    const conditionFilter = [
+      {
+        field: { field: "contact_id" },
+        op: "=",
+        value: { value: String(id) }
+      }
+    ];
+    const condition = encodeURIComponent(JSON.stringify(conditionFilter));
+    const response = await ontraportRequest(
+      `/CreditCards?range=50&count=false&condition=${condition}`
+    );
+
+    const cards = Array.isArray(response?.data) ? response.data : [];
+    res.json({ cards });
+  } catch (err) {
+    handleError(err, req, res);
+  }
+});
+
 // Coupon validation endpoint
 app.post("/api-thc/coupons/validate", async (req, res) => {
   try {
