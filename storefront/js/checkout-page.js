@@ -47,12 +47,30 @@
   window.StorefrontCartUI?.ensureDrawer?.();
 
   /* ========= helpers ========= */
-  const { $, $$, byId, money } = window.StorefrontUtils || {};
+  const {
+    $, $$, byId, money,
+    showPageLoader: showPageLoaderFn,
+    hidePageLoader: hidePageLoaderFn,
+    setPageLoaderMessage: setPageLoaderMessageFn,
+  } = window.StorefrontUtils || {};
   const fallback$ = (sel, ctx = document) => ctx.querySelector(sel);
   const fallback$$ = (sel, ctx = document) =>
     Array.from(ctx.querySelectorAll(sel));
   const $use = $ || fallback$;
   const $$use = $$ || fallback$$;
+
+  const showLoader =
+    typeof showPageLoaderFn === "function"
+      ? (message) => showPageLoaderFn(message)
+      : () => {};
+  const hideLoader =
+    typeof hidePageLoaderFn === "function" ? hidePageLoaderFn : () => {};
+  const setLoaderMessage =
+    typeof setPageLoaderMessageFn === "function"
+      ? (message) => setPageLoaderMessageFn(message)
+      : () => {};
+
+  showLoader("Preparing checkout…");
 
   const getApiBase = () => {
     // Priority: window.ENV.API_BASE > .get-url[data-api-base] > meta[name="api-base"]
@@ -184,6 +202,53 @@
     .map((id) => byId(id))
     .filter((el) => el);
 
+  const CARD_TYPE_LABELS = {
+    "1": "Visa",
+    "2": "Mastercard",
+    "3": "AMEX",
+    "4": "Discover",
+    "6": "Other",
+  };
+
+  const getCardTypeLabel = (card) => {
+    if (!card) return "";
+    const raw =
+      card.type ??
+      card.card_type ??
+      card.cardType ??
+      card.brand ??
+      card.card_brand ??
+      "";
+    const key = String(raw ?? "").trim();
+    if (CARD_TYPE_LABELS[key]) return CARD_TYPE_LABELS[key];
+    const directMatch = Object.values(CARD_TYPE_LABELS).find(
+      (label) => label.toLowerCase() === key.toLowerCase()
+    );
+    if (directMatch) return directMatch;
+    return key;
+  };
+
+  const serialiseContactPayload = (payload) => {
+    if (!payload || typeof payload !== "object") return "";
+    const normalised = {};
+    Object.keys(payload)
+      .sort()
+      .forEach((key) => {
+        const value = payload[key];
+        if (value === undefined || value === null) return;
+        const normalisedValue =
+          typeof value === "string" ? value.trim() : value;
+        if (
+          typeof normalisedValue === "string" &&
+          normalisedValue.trim() === ""
+        ) {
+          return;
+        }
+        normalised[key] = normalisedValue;
+      });
+    return JSON.stringify(normalised);
+  };
+
   // Legacy function for backward compatibility
   const saveOrUpdateContact = async () => {
     const firstname = byId("cust_first")?.value?.trim() || "";
@@ -215,7 +280,7 @@
   const checkoutState = {
     steps: ["contact", "address", "payment", "review"],
     stepIndex: 0,
-    shippingMethod: "standard",
+    shippingMethod: "",
     coupon: null,
     couponMeta: null,
     freeShipping: false,
@@ -226,6 +291,7 @@
     shippingPreference: "",
     savedCards: [],
     selectedPaymentSource: "new",
+    lastSavedContactPayload: null,
   };
 
   // Load state from localStorage
@@ -247,7 +313,8 @@
   // Save state to localStorage
   const saveCheckoutState = () => {
     try {
-      const { savedCards, ...persistable } = checkoutState;
+      const { savedCards, lastSavedContactPayload, ...persistable } =
+        checkoutState;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(persistable));
     } catch (err) {
       console.warn("Failed to save checkout state:", err);
@@ -318,6 +385,20 @@
     total: $use(".summary-total"),
   };
 
+  const cartEmptyNotice = document.querySelector("[data-cart-empty-notice]");
+
+  const updateStepControlsForCart = () => {
+    if (typeof Cart === "undefined") return;
+    const cartState = Cart.getState();
+    const empty = !cartState.items.length;
+    const nextBtn = document.querySelector(".step-next");
+    const placeBtn = document.querySelector(".place-order");
+    if (nextBtn) nextBtn.disabled = empty;
+    if (placeBtn) placeBtn.disabled = empty;
+    if (cartEmptyNotice)
+      cartEmptyNotice.classList.toggle("hidden", !empty);
+  };
+
   // Update offer from backend
   const updateOffer = async () => {
     try {
@@ -342,14 +423,9 @@
       }));
 
       // Get selected shipping type
-      let shippingType = null;
-      if (checkoutState.shippingTypes.length > 0) {
-        const selectedMethod = checkoutState.shippingMethod;
-        shippingType = checkoutState.shippingTypes.find(
-          (st) =>
-            st.name.toLowerCase().includes(selectedMethod) ||
-            st.id.toString() === selectedMethod
-        );
+      let shippingType = getSelectedShippingType();
+      if (shippingType && String(shippingType.id) === NONE_SHIPPING_ID) {
+        shippingType = null;
       }
 
       // Build offer with backend
@@ -373,7 +449,7 @@
         subTotal: totals.subtotal,
         grandTotal: totals.total,
         hasShipping: totals.shipping > 0,
-        currency_code: "USD",
+        currency_code: "AUD",
       };
       try {
         localStorage.setItem(
@@ -385,24 +461,128 @@
     }
   };
 
-  const calcTotals = (cartState) => {
-    const subtotal = cartState.items.reduce(
+  const SPECIAL_PRODUCT_ID = "296";
+  const FREE_SHIPPING_ID = "3";
+  const NONE_SHIPPING_ID = "none";
+  const FREE_SHIPPING_THRESHOLD = 200;
+
+  const getCartSubtotal = (cartState = Cart.getState()) =>
+    cartState.items.reduce(
       (total, item) =>
         total + (Number(item.price) || 0) * (Number(item.qty) || 0),
       0
     );
-    // Prefer dynamic shipping types if loaded
+
+  const normaliseShippingType = (type) => {
+    if (!type) return null;
+    const id =
+      type.id ??
+      type.shipping_type_id ??
+      type.shippingTypeId ??
+      type.shipping_type ??
+      type.code ??
+      type.ID;
+    const price =
+      type.price ?? type.amount ?? type.total ?? type.fee ?? type.cost ?? 0;
+    return {
+      ...type,
+      id: id !== undefined && id !== null ? String(id) : "",
+      price: Number(price) || 0,
+      name: type.name || type.title || "Shipping",
+      description: type.description || type.subtitle || "",
+    };
+  };
+
+  const getSelectedShippingType = () => {
+    if (!checkoutState.shippingTypes || !checkoutState.shippingTypes.length)
+      return null;
+    const match = checkoutState.shippingTypes.find(
+      (st) => st && String(st.id) === String(checkoutState.shippingMethod)
+    );
+    return match || null;
+  };
+
+  const ensureNoneOption = (types) => {
+    const list = Array.isArray(types) ? [...types] : [];
+    const hasOption = list.some((type) => String(type.id) === NONE_SHIPPING_ID);
+    if (list.length <= 1 && !hasOption) {
+      list.push({
+        id: NONE_SHIPPING_ID,
+        name: "No shipping",
+        description: "Do not add shipping to this order",
+        price: 0,
+        _isNone: true,
+      });
+    }
+    if (!list.length) {
+      list.push({
+        id: NONE_SHIPPING_ID,
+        name: "No shipping",
+        description: "Do not add shipping to this order",
+        price: 0,
+        _isNone: true,
+      });
+    }
+    return list;
+  };
+
+  const applyShippingRules = (types) => {
+    const cartState = Cart.getState();
+    const subtotal = getCartSubtotal(cartState);
+    const baseList = (Array.isArray(types) ? types : [])
+      .map((type) => normaliseShippingType(type))
+      .filter(Boolean);
+
+    if (subtotal > FREE_SHIPPING_THRESHOLD) {
+      const existing = baseList.find((type) => type.id === FREE_SHIPPING_ID);
+      const freeOption = existing
+        ? { ...existing, price: 0 }
+        : {
+            id: FREE_SHIPPING_ID,
+            name: "Free shipping",
+            description: "Complimentary shipping on orders over $200",
+            price: 0,
+          };
+      return ensureNoneOption([freeOption]);
+    }
+
+    const hasSpecial = cartState.items.some((item) => {
+      const pid = item.productId || item.id;
+      return String(pid) === SPECIAL_PRODUCT_ID;
+    });
+    const hasOtherItems = cartState.items.some((item) => {
+      const pid = item.productId || item.id;
+      return String(pid) !== SPECIAL_PRODUCT_ID;
+    });
+
+    if (hasSpecial) {
+      if (!hasOtherItems) {
+        const special = baseList.find((type) => type.id === "2");
+        if (special) return ensureNoneOption([special]);
+        return ensureNoneOption([
+          {
+            id: "2",
+            name: "Special shipping",
+            description: "Required for this item",
+            price: 0,
+          },
+        ]);
+      }
+      const standardOnly = baseList.filter((type) => type.id === "1");
+      if (standardOnly.length) return ensureNoneOption(standardOnly);
+      return ensureNoneOption(baseList.filter((type) => type.id !== "2"));
+    }
+
+    return ensureNoneOption(baseList);
+  };
+
+  const calcTotals = (cartState) => {
+    const subtotal = getCartSubtotal(cartState);
     let baseShipping = 0;
-    if (
-      checkoutState.shippingTypes &&
-      checkoutState.shippingTypes.length &&
-      checkoutState.shippingMethod
-    ) {
-      const selected = checkoutState.shippingTypes.find(
-        (st) => st.id.toString() === checkoutState.shippingMethod
-      );
-      baseShipping = selected ? Number(selected.price) || 0 : 0;
-    } else {
+    const selected = getSelectedShippingType();
+    if (selected && String(selected.id) !== NONE_SHIPPING_ID) {
+      baseShipping = Number(selected.price) || 0;
+    } else if (!selected && checkoutState.shippingMethod) {
       baseShipping = shippingRates[checkoutState.shippingMethod] || 0;
     }
     const shipping = checkoutState.freeShipping ? 0 : baseShipping;
@@ -472,9 +652,15 @@
     if (checkoutState.currentOffer) {
       const offer = checkoutState.currentOffer;
       summaryEls.subtotal.textContent = money(offer.subTotal);
+      const shippingPrice =
+        offer.shipping && offer.shipping.length > 0
+          ? Number(offer.shipping[0].price) || 0
+          : null;
       summaryEls.shipping.textContent = offer.hasShipping
-        ? offer.shipping && offer.shipping.length > 0
-          ? money(offer.shipping[0].price)
+        ? shippingPrice !== null
+          ? shippingPrice > 0
+            ? money(shippingPrice)
+            : "Free"
           : "Calculated at checkout"
         : "Free";
       summaryEls.discount.textContent = money(
@@ -493,6 +679,8 @@
       summaryEls.discount.textContent = money(-totals.discount);
       summaryEls.total.textContent = money(Math.max(totals.total, 0));
     }
+
+    updateStepControlsForCart();
   };
 
   /* ========= validation ========= */
@@ -652,11 +840,15 @@
       const nameLine = [card.firstname, card.lastname]
         .filter(Boolean)
         .join(" ");
+      const typeLabel = getCardTypeLabel(card);
+      const heading = `${
+        typeLabel ? `${typeLabel} card` : "Card"
+      } ending in ${last4}`;
       label.innerHTML = `
         <div class="flex items-center gap-3">
           <input type="radio" name="payment_source" value="${value}" class="text-blue-600 focus:ring-blue-500" />
           <div>
-            <div class="font-semibold">Card ending in ${last4}</div>
+            <div class="font-semibold">${heading}</div>
             <div class="text-xs text-gray-500">${
               expDisplay ? `Expires ${expDisplay}` : "Stored payment method"
             }</div>
@@ -980,6 +1172,7 @@
     $$use(".step").forEach((el) => el.classList.add("hidden"));
     const active = $use(`.step[data-step="${current}"]`);
     if (active) active.classList.remove("hidden");
+    updateStepControlsForCart();
     $(".step-prev").disabled = checkoutState.stepIndex === 0;
     $(".step-next").classList.toggle(
       "hidden",
@@ -1007,6 +1200,15 @@
     }
 
     const shippingLines = [];
+    const selectedShippingType = getSelectedShippingType();
+    if (selectedShippingType && selectedShippingType.name) {
+      shippingLines.push(selectedShippingType.name);
+    } else if (
+      checkoutState.shippingMethod &&
+      checkoutState.shippingMethod === NONE_SHIPPING_ID
+    ) {
+      shippingLines.push("No shipping selected");
+    }
     if (shippingOptionLabel) shippingLines.push(shippingOptionLabel);
 
     if (shippingValue === PARCEL_SHIPPING_OPTION) {
@@ -1062,8 +1264,6 @@
     }
 
     const meta = checkoutState.couponMeta;
-    const shippingLabel =
-      checkoutState.shippingMethod === "express" ? "Express" : "Standard";
     const paymentLines = [];
     if (isUsingSavedCard()) {
       const card = getSelectedSavedCard();
@@ -1074,13 +1274,24 @@
         expMonth && expYear
           ? `${String(expMonth).padStart(2, "0")}/${String(expYear).slice(-2)}`
           : "";
+      const typeLabel = getCardTypeLabel(card);
+      const descriptor = typeLabel ? `${typeLabel} card` : "Saved card";
       paymentLines.push(
-        `Saved card ending in ${last4}${expLabel ? ` · Expires ${expLabel}` : ""}`
+        `${descriptor} ending in ${last4}${
+          expLabel ? ` · Expires ${expLabel}` : ""
+        }`
       );
     } else {
-      paymentLines.push(`Card ending in ${t("cc_number").slice(-4) || "••••"}`);
+      const ccValue = t("cc_number");
+      const last4 = ccValue.slice(-4) || "••••";
+      paymentLines.push(`Card ending in ${last4}`);
     }
-    paymentLines.push(`Shipping: ${shippingLabel}`);
+    if (selectedShippingType && selectedShippingType.name) {
+      const label = selectedShippingType.name;
+      paymentLines.push(`Shipping: ${label}`);
+    } else if (checkoutState.shippingMethod === NONE_SHIPPING_ID) {
+      paymentLines.push("Shipping: No shipping selected");
+    }
     if (meta) paymentLines.push(`Coupon: ${meta.code}`);
     $("#review_payment").innerHTML = paymentLines
       .filter(Boolean)
@@ -1091,19 +1302,94 @@
   /* ========= coupon handling ========= */
   const couponInput = byId("coupon_code");
   const couponFeedback = byId("coupon_feedback");
+  const couponInputWrapper = couponInput?.closest(".input-wrapper");
+
+  const getCouponButton = () =>
+    document.querySelector(".apply-coupon");
+
+  const setCouponVisualState = (state = "neutral", message = "") => {
+    if (couponFeedback) {
+      couponFeedback.textContent = message || "";
+      couponFeedback.classList.remove(
+        "text-gray-500",
+        "text-red-600",
+        "text-emerald-600"
+      );
+      if (state === "error") {
+        couponFeedback.classList.add("text-red-600");
+      } else if (state === "success") {
+        couponFeedback.classList.add("text-emerald-600");
+      } else {
+        couponFeedback.classList.add("text-gray-500");
+      }
+    }
+    if (couponInputWrapper) {
+      couponInputWrapper.classList.remove(
+        "ring-2",
+        "ring-red-500",
+        "border-red-500",
+        "ring-emerald-500",
+        "border-emerald-500"
+      );
+      if (state === "error") {
+        couponInputWrapper.classList.add(
+          "ring-2",
+          "ring-red-500",
+          "border-red-500"
+        );
+      } else if (state === "success") {
+        couponInputWrapper.classList.add(
+          "ring-2",
+          "ring-emerald-500",
+          "border-emerald-500"
+        );
+      }
+    }
+  };
+
+  const setCouponButtonState = ({ loading = false, applied = false } = {}) => {
+    const button = getCouponButton();
+    if (!button) return;
+    button.disabled = loading;
+    button.style.pointerEvents = loading ? "none" : "";
+    button.style.opacity = loading ? "0.6" : "";
+    if (loading) {
+      button.textContent = "Applying…";
+    } else if (applied) {
+      button.textContent = "Remove";
+    } else {
+      button.textContent = "Apply";
+    }
+  };
+
+  const clearCouponState = ({ message = "" } = {}) => {
+    checkoutState.couponMeta = null;
+    checkoutState.freeShipping = false;
+    setCouponButtonState({ applied: false });
+    setCouponVisualState("neutral", message);
+  };
+
+  const removeCoupon = async ({ message = "Coupon removed." } = {}) => {
+    checkoutState.couponMeta = null;
+    checkoutState.freeShipping = false;
+    if (couponInput) couponInput.value = "";
+    setCouponButtonState({ applied: false });
+    setCouponVisualState("neutral", message);
+    await updateOffer();
+  };
 
   const applyCoupon = async () => {
     if (!couponInput) return;
     const code = (couponInput.value || "").trim();
 
     if (!code) {
-      checkoutState.couponMeta = null;
-      checkoutState.freeShipping = false;
-      if (couponFeedback)
-        couponFeedback.textContent = "Enter a code to apply a discount.";
+      clearCouponState({ message: "Enter a code to apply a discount." });
       await updateOffer();
       return;
     }
+
+    setCouponButtonState({ loading: true, applied: false });
+    setCouponVisualState("neutral", "Validating coupon…");
 
     try {
       // Get cart product IDs for validation (use payment IDs)
@@ -1111,12 +1397,6 @@
       const cartProductIds = cartState.items.map(
         (item) => item.productId || item.id
       );
-      const applyButton = document.querySelector(".apply-coupon");
-      if (applyButton) {
-        applyButton.style.pointerEvents = "none";
-        applyButton.style.opacity = "0.6";
-        applyButton.textContent = "Applying…";
-      }
 
       // Validate coupon with backend
       const result = await validateCoupons(
@@ -1136,26 +1416,13 @@
             : undefined,
           recurring: result.applied.recurring,
         };
-        checkoutState.freeShipping = false;
-        if (couponFeedback)
-          couponFeedback.textContent = "Coupon applied successfully!";
-        applyButton.style.pointerEvents = "";
-        applyButton.style.opacity = "";
-        applyButton.style.borderColor = "red";
-        applyButton.textContent = "Remove";
-        // button chnaged to remove if coupon applied
-        // todo
-        // if applied and again clicked on remove, coupon should be removed
-        applyButton.onclick = () => {
-          checkoutState.couponMeta = null;
-          checkoutState.freeShipping = false;
-          if (couponFeedback) couponFeedback.textContent = "Coupon removed.";
-          if (couponInput) couponInput.value = "";
-          applyButton.style.borderColor = "";
-          applyButton.textContent = "Apply";
-          applyButton.onclick = applyCoupon; // revert onclick
-          updateOffer();
-        };
+        checkoutState.freeShipping =
+          result.applied.discount_type === "shipping";
+        setCouponVisualState(
+          "success",
+          result.applied.message || "Coupon applied successfully!"
+        );
+        setCouponButtonState({ applied: true });
       } else {
         const reason = result.reasons[code];
         let message = "Invalid coupon code";
@@ -1176,20 +1443,25 @@
             message = "Only one coupon can be applied";
             break;
         }
-        applyButton.style.pointerEvents = "";
-        applyButton.style.opacity = "";
-        applyButton.textContent = "Apply";
         checkoutState.couponMeta = null;
         checkoutState.freeShipping = false;
-        if (couponFeedback) couponFeedback.textContent = message;
+        setCouponButtonState({ applied: false });
+        setCouponVisualState("error", message);
       }
     } catch (err) {
       console.error("Coupon validation failed:", err);
       checkoutState.couponMeta = null;
       checkoutState.freeShipping = false;
-      if (couponFeedback)
-        couponFeedback.textContent =
-          "Failed to validate coupon. Please try again.";
+      setCouponButtonState({ applied: false });
+      setCouponVisualState(
+        "error",
+        "Failed to validate coupon. Please try again."
+      );
+    } finally {
+      setCouponButtonState({
+        loading: false,
+        applied: !!checkoutState.couponMeta,
+      });
     }
 
     await updateOffer();
@@ -1246,11 +1518,17 @@
     const selectedShipping = document.querySelector(
       'input[name="shipping_method"]:checked'
     );
-    const shippingType = selectedShipping
-      ? checkoutState.shippingTypes.find(
-          (st) => st.id.toString() === selectedShipping.value
-        )
-      : null;
+    let shippingType = null;
+    if (selectedShipping) {
+      shippingType = checkoutState.shippingTypes.find(
+        (st) => String(st.id) === selectedShipping.value
+      );
+    } else {
+      shippingType = getSelectedShippingType();
+    }
+    if (shippingType && String(shippingType.id) === NONE_SHIPPING_ID) {
+      shippingType = null;
+    }
 
     // Build final offer with current shipping selection
     const cartState = Cart.getState();
@@ -1297,43 +1575,51 @@
         if (shippingFieldset) {
           shippingFieldset.style.display = "none";
         }
+        checkoutState.shippingTypes = [];
+        checkoutState.shippingMethod = "";
         return;
       }
 
-      const shippingTypes = await getShippingTypes(shippingOptions);
-      checkoutState.shippingTypes = shippingTypes;
+      const rawShippingTypes = await getShippingTypes(shippingOptions);
+      const resolvedTypes = applyShippingRules(rawShippingTypes);
+      checkoutState.shippingTypes = resolvedTypes;
 
       // Update shipping UI with dynamic options
       const shippingContainer = document.getElementById("shipping_methods");
-      if (shippingContainer && shippingTypes.length > 0) {
+      if (shippingContainer) {
         shippingContainer.innerHTML = "";
         const preferred = (() => {
-          const current = checkoutState.shippingMethod;
-          const currentStr = current ? String(current) : "";
+          const current = checkoutState.shippingMethod
+            ? String(checkoutState.shippingMethod)
+            : "";
           if (
-            currentStr &&
-            shippingTypes.some((type) => String(type.id) === currentStr)
+            current &&
+            resolvedTypes.some((type) => String(type.id) === current)
           ) {
-            return currentStr;
+            return current;
           }
-          return shippingTypes[0] ? String(shippingTypes[0].id) : "";
+          return resolvedTypes[0] ? String(resolvedTypes[0].id) : "";
         })();
-        shippingTypes.forEach((type, index) => {
+
+        resolvedTypes.forEach((type, index) => {
+          if (!type) return;
           const label = document.createElement("label");
           label.className =
             "flex items-center justify-between gap-3 rounded-xl border border-gray-200 px-4 py-3 hover:border-blue-500";
           const value = String(type.id);
+          const priceValue = Number(type.price) || 0;
+          const priceLabel = priceValue > 0 ? money(priceValue) : "Free";
           label.innerHTML = `
             <div class="flex items-center gap-3">
               <input type="radio" name="shipping_method" value="${value}" ${
-            preferred
-              ? value === preferred
-                ? "checked"
-                : ""
-              : index === 0
-              ? "checked"
-              : ""
-          }
+                preferred
+                  ? value === preferred
+                    ? "checked"
+                    : ""
+                  : index === 0
+                  ? "checked"
+                  : ""
+              }
                 class="text-blue-600 focus:ring-blue-500" />
               <div>
                 <div class="font-semibold">${type.name}</div>
@@ -1342,11 +1628,13 @@
                 }</div>
               </div>
             </div>
-            <span class="text-sm font-semibold">${money(type.price || 0)}</span>
+            <span class="text-sm font-semibold">${priceLabel}</span>
           `;
           shippingContainer.appendChild(label);
         });
-        checkoutState.shippingMethod = preferred || String(shippingTypes[0].id);
+
+        checkoutState.shippingMethod = preferred ||
+          (resolvedTypes[0] ? String(resolvedTypes[0].id) : "");
         await updateOffer();
       }
     } catch (err) {
@@ -1364,6 +1652,10 @@
       return;
     }
     if (target.closest(".step-next")) {
+      if (!Cart.getState().items.length) {
+        updateStepControlsForCart();
+        return;
+      }
       const current = checkoutState.steps[checkoutState.stepIndex];
       if (current === "contact") {
         if (!validateContainer($("[data-step='contact']"))) return;
@@ -1381,28 +1673,49 @@
           email: byId("cust_email")?.value?.trim() || "",
           phone: byId("cust_phone")?.value?.trim() || "",
         };
+        const serialized = serialiseContactPayload(contactData);
+        const proceed = () => {
+          checkoutState.contactEmail = contactData.email;
+          saveCheckoutState();
+          checkoutState.stepIndex = Math.min(
+            checkoutState.steps.length - 1,
+            checkoutState.stepIndex + 1
+          );
+          renderStepper();
+          renderStep();
+          loadShippingTypes();
+        };
+        const restoreButton = () => {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = original;
+          }
+        };
+
+        if (
+          serialized &&
+          checkoutState.lastSavedContactPayload === serialized
+        ) {
+          proceed();
+          restoreButton();
+          return;
+        }
 
         saveContact(contactData)
           .then((result) => {
             checkoutState.contactId = result?.contactId || null;
             checkoutState.contactEmail = contactData.email;
+            if (serialized) {
+              checkoutState.lastSavedContactPayload = serialized;
+            }
             saveCheckoutState();
-            checkoutState.stepIndex = Math.min(
-              checkoutState.steps.length - 1,
-              checkoutState.stepIndex + 1
-            );
-            renderStepper();
-            renderStep();
-            loadShippingTypes();
+            proceed();
           })
           .catch((err) => {
             alert(err?.message || "Unable to save contact.");
           })
           .finally(() => {
-            if (btn) {
-              btn.disabled = false;
-              btn.textContent = original;
-            }
+            restoreButton();
           });
         return;
       }
@@ -1422,35 +1735,58 @@
           last_name: byId("cust_last")?.value?.trim() || "",
           email: byId("cust_email")?.value?.trim() || "",
           phone: byId("cust_phone")?.value?.trim() || "",
-          f3099: shippingValue,
-          default_shipping_option: shippingValue,
-          address: "",
-          address2: "",
-          city: "",
-          state: "",
-          zip: "",
-          country: "",
-          f3094: "",
-          f3095: "",
-          f3096: "",
-          f3097: "",
-          f3098: "",
+        };
+        if (shippingValue) {
+          contactData.f3099 = shippingValue;
+          contactData.default_shipping_option = shippingValue;
+        }
+        const assign = (key, value) => {
+          if (value === null || value === undefined) return;
+          const str = typeof value === "string" ? value.trim() : value;
+          if (typeof str === "string" && str === "") return;
+          contactData[key] = str;
         };
 
         if (shippingValue === HOME_SHIPPING_OPTION) {
-          contactData.address = byId("ship_addr1")?.value?.trim() || "";
-          contactData.address2 = byId("ship_addr2")?.value?.trim() || "";
-          contactData.city = byId("ship_city")?.value?.trim() || "";
-          contactData.state = byId("ship_state")?.value?.trim() || "";
-          contactData.zip = byId("ship_postal")?.value?.trim() || "";
-          contactData.country =
-            byId("ship_country")?.value?.trim() || "Australia";
+          assign("address", byId("ship_addr1")?.value);
+          assign("address2", byId("ship_addr2")?.value);
+          assign("city", byId("ship_city")?.value);
+          assign("state", byId("ship_state")?.value);
+          assign("zip", byId("ship_postal")?.value);
+          assign("country", byId("ship_country")?.value || "Australia");
         } else if (shippingValue === PARCEL_SHIPPING_OPTION) {
-          contactData.f3094 = byId("parcel_number")?.value?.trim() || "";
-          contactData.f3095 = byId("parcel_street")?.value?.trim() || "";
-          contactData.f3096 = byId("parcel_city")?.value?.trim() || "";
-          contactData.f3097 = byId("parcel_state")?.value || "";
-          contactData.f3098 = byId("parcel_postal")?.value?.trim() || "";
+          assign("f3094", byId("parcel_number")?.value);
+          assign("f3095", byId("parcel_street")?.value);
+          assign("f3096", byId("parcel_city")?.value);
+          assign("f3097", byId("parcel_state")?.value);
+          assign("f3098", byId("parcel_postal")?.value);
+        }
+
+        const serialized = serialiseContactPayload(contactData);
+        const proceed = () => {
+          checkoutState.contactEmail = contactData.email;
+          saveCheckoutState();
+          checkoutState.stepIndex = Math.min(
+            checkoutState.steps.length - 1,
+            checkoutState.stepIndex + 1
+          );
+          renderStepper();
+          renderStep();
+        };
+        const restoreButton = () => {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = original;
+          }
+        };
+
+        if (
+          serialized &&
+          checkoutState.lastSavedContactPayload === serialized
+        ) {
+          proceed();
+          restoreButton();
+          return;
         }
 
         saveContact(contactData)
@@ -1461,22 +1797,17 @@
               checkoutState.contactId = null;
             }
             checkoutState.contactEmail = contactData.email;
+            if (serialized) {
+              checkoutState.lastSavedContactPayload = serialized;
+            }
             saveCheckoutState();
-            checkoutState.stepIndex = Math.min(
-              checkoutState.steps.length - 1,
-              checkoutState.stepIndex + 1
-            );
-            renderStepper();
-            renderStep();
+            proceed();
           })
           .catch((err) => {
             alert(err?.message || "Unable to save address.");
           })
           .finally(() => {
-            if (btn) {
-              btn.disabled = false;
-              btn.textContent = original;
-            }
+            restoreButton();
           });
         return;
       }
@@ -1491,6 +1822,10 @@
       return;
     }
     if (target.closest(".place-order")) {
+      if (!Cart.getState().items.length) {
+        updateStepControlsForCart();
+        return;
+      }
       if (!validateContainer($("#payment_form"))) return;
       buildReview();
 
@@ -1525,7 +1860,13 @@
       return;
     }
     if (target.closest(".apply-coupon")) {
-      applyCoupon();
+      if (checkoutState.couponMeta) {
+        removeCoupon().catch((err) =>
+          console.error("Failed to remove coupon", err)
+        );
+      } else {
+        applyCoupon();
+      }
       return;
     }
     if (target.closest(".return-to-shop")) {
@@ -1574,7 +1915,14 @@
       return;
     }
     if (target.name === "shipping_method") {
-      checkoutState.shippingMethod = target.value || "standard";
+      checkoutState.shippingMethod = target.value || "";
+      if (
+        checkoutState.shippingMethod !== NONE_SHIPPING_ID &&
+        (!checkoutState.couponMeta ||
+          checkoutState.couponMeta.type !== "shipping")
+      ) {
+        checkoutState.freeShipping = false;
+      }
       saveCheckoutState();
       renderSummary();
       if (checkoutState.steps[checkoutState.stepIndex] === "review")
@@ -1589,104 +1937,140 @@
   });
 
   const init = async () => {
-    if (typeof Cart === "undefined") return;
-    await Cart.init();
-    const cartState = Cart.getState();
-    if (!cartState.items.length) {
-      window.location.href = "https://app.thehappy.clinic/shop";
-      return;
-    }
+    try {
+      if (typeof Cart === "undefined") {
+        hideLoader();
+        return;
+      }
+      setLoaderMessage("Loading your cart…");
+      await Cart.init();
+      const cartState = Cart.getState();
+      if (!cartState.items.length) {
+        hideLoader();
+        window.location.href = "https://app.thehappy.clinic/shop";
+        return;
+      }
 
-    // Load saved state and form data
-    loadCheckoutState();
-    if (loggedInContactId) {
-      checkoutState.contactId = loggedInContactId;
-      saveCheckoutState();
-    }
-    applyPaymentSourceSelection({ save: false });
-    loadFormData();
-
-    const prefValue =
-      shippingOptionSelect?.value || checkoutState.shippingPreference || "";
-    if (shippingOptionSelect && !shippingOptionSelect.value && prefValue) {
-      shippingOptionSelect.value = prefValue;
-    }
-    checkoutState.shippingPreference = prefValue;
-    updateShippingOptionUI(prefValue);
-
-    ["ship_country", "bill_country"].forEach((id) => {
-      const el = byId(id);
-      if (el && !el.value) el.value = "Australia";
-    });
-
-    // Set up form change listeners for persistence
-    const inputs = document.querySelectorAll("input, select, textarea");
-    inputs.forEach((input) => {
-      input.addEventListener("change", saveFormData);
-      input.addEventListener("input", saveFormData);
-    });
-
-    const emailInput = byId("cust_email");
-    if (emailInput) {
-      const syncEmailState = () => {
-        const raw = emailInput.value || "";
-        const trimmed = raw.trim();
-        const normalizedStored = (checkoutState.contactEmail || "")
-          .trim()
-          .toLowerCase();
-        const normalizedCurrent = trimmed.toLowerCase();
-        if (normalizedCurrent !== normalizedStored || !trimmed) {
-          if (trimmed) {
-            checkoutState.contactEmail = trimmed;
-          } else {
-            checkoutState.contactEmail = "";
-          }
-          checkoutState.contactId = null;
-          saveCheckoutState();
-        }
-      };
-      emailInput.addEventListener("change", syncEmailState);
-      emailInput.addEventListener("blur", syncEmailState);
-
-      if (!checkoutState.contactEmail && emailInput.value) {
-        checkoutState.contactEmail = emailInput.value.trim();
+      // Load saved state and form data
+      loadCheckoutState();
+      if (loggedInContactId) {
+        checkoutState.contactId = loggedInContactId;
         saveCheckoutState();
       }
-    }
-
-    if (loggedInContactId) {
-      await hydrateLoggedInContact(loggedInContactId);
-    } else {
-      checkoutState.savedCards = [];
       applyPaymentSourceSelection({ save: false });
-    }
+      loadFormData();
 
-    // Clear static shipping options and load dynamic ones; do this regardless of contact state
-    const shippingContainer = document.getElementById("shipping_methods");
-    if (shippingContainer) shippingContainer.innerHTML = "";
-    await loadShippingTypes();
+      const prefValue =
+        shippingOptionSelect?.value || checkoutState.shippingPreference || "";
+      if (shippingOptionSelect && !shippingOptionSelect.value && prefValue) {
+        shippingOptionSelect.value = prefValue;
+      }
+      checkoutState.shippingPreference = prefValue;
+      updateShippingOptionUI(prefValue);
 
-    // Update offer with current state
-    await updateOffer();
-
-    renderSummary();
-    renderStepper();
-    renderStep();
-
-    Cart.subscribe(() => {
-      renderSummary();
-      if (checkoutState.steps[checkoutState.stepIndex] === "review")
-        buildReview();
-      updateOffer(); // Update offer when cart changes
-    });
-
-    if (couponInput)
-      couponInput.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          applyCoupon();
-        }
+      ["ship_country", "bill_country"].forEach((id) => {
+        const el = byId(id);
+        if (el && !el.value) el.value = "Australia";
       });
+
+      // Set up form change listeners for persistence
+      const inputs = document.querySelectorAll("input, select, textarea");
+      inputs.forEach((input) => {
+        input.addEventListener("change", saveFormData);
+        input.addEventListener("input", saveFormData);
+      });
+
+      const emailInput = byId("cust_email");
+      if (emailInput) {
+        const syncEmailState = () => {
+          const raw = emailInput.value || "";
+          const trimmed = raw.trim();
+          const normalizedStored = (checkoutState.contactEmail || "")
+            .trim()
+            .toLowerCase();
+          const normalizedCurrent = trimmed.toLowerCase();
+          if (normalizedCurrent !== normalizedStored || !trimmed) {
+            if (trimmed) {
+              checkoutState.contactEmail = trimmed;
+            } else {
+              checkoutState.contactEmail = "";
+            }
+            checkoutState.contactId = null;
+            saveCheckoutState();
+          }
+        };
+        emailInput.addEventListener("change", syncEmailState);
+        emailInput.addEventListener("blur", syncEmailState);
+
+        if (!checkoutState.contactEmail && emailInput.value) {
+          checkoutState.contactEmail = emailInput.value.trim();
+          saveCheckoutState();
+        }
+      }
+
+      if (loggedInContactId) {
+        setLoaderMessage("Fetching your details…");
+        await hydrateLoggedInContact(loggedInContactId);
+      } else {
+        checkoutState.savedCards = [];
+        applyPaymentSourceSelection({ save: false });
+      }
+
+      // Clear static shipping options and load dynamic ones; do this regardless of contact state
+      const shippingContainer = document.getElementById("shipping_methods");
+      if (shippingContainer) shippingContainer.innerHTML = "";
+      setLoaderMessage("Updating shipping options…");
+      await loadShippingTypes();
+
+      // Update offer with current state
+      await updateOffer();
+
+      renderSummary();
+      renderStepper();
+      renderStep();
+      updateStepControlsForCart();
+
+      Cart.subscribe(() => {
+        renderSummary();
+        updateStepControlsForCart();
+        if (checkoutState.steps[checkoutState.stepIndex] === "review")
+          buildReview();
+        updateOffer(); // Update offer when cart changes
+        loadShippingTypes().catch((err) =>
+          console.error("Failed to refresh shipping types", err)
+        );
+      });
+
+      if (couponInput)
+        couponInput.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            applyCoupon();
+          }
+        });
+
+      if (couponInput)
+        couponInput.addEventListener("input", () => {
+          if (!checkoutState.couponMeta) {
+            setCouponVisualState("neutral", "");
+            return;
+          }
+          const typed = (couponInput.value || "").trim().toUpperCase();
+          const current = String(checkoutState.couponMeta.code || "")
+            .trim()
+            .toUpperCase();
+          if (typed !== current) {
+            checkoutState.couponMeta = null;
+            checkoutState.freeShipping = false;
+            setCouponButtonState({ applied: false });
+            setCouponVisualState("neutral", "");
+          }
+        });
+    } catch (err) {
+      console.error("Checkout initialization failed", err);
+    } finally {
+      hideLoader();
+    }
   };
 
   if (document.readyState === "loading") {

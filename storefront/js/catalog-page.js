@@ -1,8 +1,21 @@
 (function () {
-  const page = document.querySelector(".get-url")?.dataset?.storefrontPage;
-  if (page !== "catalog") return;
+  const root = document.querySelector(".get-url");
+  const page = root?.dataset?.storefrontPage;
+  const isCatalogPage = page === "catalog";
+  if (!isCatalogPage && page !== "checkout") return;
 
-  const { $, $$ } = window.StorefrontUtils || {};
+  const utils = window.StorefrontUtils || {};
+  const showLoader =
+    isCatalogPage && typeof utils.showPageLoader === "function"
+      ? (msg) => utils.showPageLoader(msg)
+      : () => {};
+  const hideLoader =
+    isCatalogPage && typeof utils.hidePageLoader === "function"
+      ? () => utils.hidePageLoader()
+      : () => {};
+
+  showLoader("Loading products…");
+
   const searchEl = document.getElementById("product_search");
   const clearEl = document.getElementById("product_search_clear");
   const emptyEl = document.getElementById("search_empty");
@@ -39,10 +52,25 @@
 
   if (clearEl)
     clearEl.addEventListener("click", () => {
-      searchEl.value = "";
+      if (searchEl) searchEl.value = "";
       filterProducts("");
-      searchEl.focus();
+      searchEl?.focus();
     });
+
+  const hasRealProducts = () =>
+    Array.from(document.querySelectorAll(".product-card")).some((card) => {
+      const id = card.dataset?.productId || "";
+      const name = card.querySelector(".product-name")?.textContent?.trim();
+      return (
+        (id && !/^[\[\]]/.test(id)) ||
+        (name && !/\[[^\]]*\]/.test(name || ""))
+      );
+    });
+
+  const maybeHideLoader = () => {
+    if (!isCatalogPage) return;
+    if (hasRealProducts()) hideLoader();
+  };
 
   let mutationScheduled = false;
   const scheduleSync = () => {
@@ -52,6 +80,7 @@
       mutationScheduled = false;
       window.StorefrontCartUI?.syncAddButtons?.();
       if (searchEl) filterProducts(searchEl.value);
+      maybeHideLoader();
     });
   };
 
@@ -73,18 +102,28 @@
   const init = () => {
     scheduleSync();
     filterProducts(searchEl?.value || "");
+    maybeHideLoader();
+    if (isCatalogPage) setTimeout(() => hideLoader(), 6000);
   };
 
   if (document.readyState === "loading")
     document.addEventListener("DOMContentLoaded", init);
   else init();
 
-  // Re-sync on late load, visibility restore, and bfcache restore
-  window.addEventListener("load", scheduleSync, { once: true });
+  window.addEventListener("load", () => {
+    scheduleSync();
+    maybeHideLoader();
+  }, { once: true });
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") scheduleSync();
+    if (document.visibilityState === "visible") {
+      scheduleSync();
+      maybeHideLoader();
+    }
   });
-  window.addEventListener("pageshow", () => scheduleSync());
+  window.addEventListener("pageshow", () => {
+    scheduleSync();
+    maybeHideLoader();
+  });
 
   document.addEventListener("click", (event) => {
     const view = event.target.closest(".view-product-btn, .view-product-link");
@@ -96,7 +135,6 @@
       Cart.saveProductSnapshot(product);
     }
 
-    // Ensure stable navigation to detail page with a consistent product id in URL
     if (product && product.id) {
       event.preventDefault();
       const url = new URL("product.html", window.location.origin);

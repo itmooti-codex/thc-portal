@@ -8,7 +8,18 @@
     return;
   }
 
-  const { $, byId, clamp } = window.StorefrontUtils || {};
+  const {
+    $, byId, clamp,
+    showPageLoader: showPageLoaderFn,
+    hidePageLoader: hidePageLoaderFn,
+  } = window.StorefrontUtils || {};
+  const showLoader =
+    typeof showPageLoaderFn === "function"
+      ? (message) => showPageLoaderFn(message)
+      : () => {};
+  const hideLoader =
+    typeof hidePageLoaderFn === "function" ? hidePageLoaderFn : () => {};
+  showLoader("Loading product…");
   const fallback$ = (sel, ctx = document) => ctx.querySelector(sel);
   const $use = $ || fallback$;
 
@@ -110,5 +121,9 @@
     clampAndSyncInput(qtyInput?.value || "1", { syncCart: false });
   };
 
-  init();
+  try {
+    init();
+  } finally {
+    hideLoader();
+  }
 })();
