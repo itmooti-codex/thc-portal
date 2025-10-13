@@ -352,7 +352,7 @@
           typeof item.price === "number"
             ? new Intl.NumberFormat(undefined, {
                 style: "currency",
-                currency: "USD",
+                currency: "AUD",
               }).format(item.price)
             : String(item.price || "")
         )

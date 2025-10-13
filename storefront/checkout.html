@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Checkout · THC Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script async src="https://static-au03.vitalstats.app/static/dynamic-list/v1/latest.js" crossorigin="anonymous"></script>
     <script>
         window.__thcGooglePlacesReady = false;
         window.initAutocomplete = function () {
@@ -437,6 +438,7 @@
                             <div class="flex items-center justify-between">
                                 <h2 class="text-lg font-semibold">Order summary</h2>
                             </div>
+                            <p data-cart-empty-notice class="mt-2 text-sm text-red-600 hidden">Add at least one item to continue checkout.</p>
                             <div class="checkout-summary mt-4 divide-y border-t border-gray-200"></div>
                             <dl class="mt-4 space-y-2 text-sm text-gray-600">
                                 <div class="flex items-center justify-between">
@@ -466,14 +468,58 @@
                     </aside>
                 </div>
             </div>
+            <section class="border-t border-gray-200/60 bg-white/30">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <h2 class="text-xl font-semibold text-gray-900">Need something else?</h2>
+                            <p class="text-sm text-gray-500">Add products without leaving checkout.</p>
+                        </div>
+                        <a href="shop.html" class="text-sm font-medium text-blue-600 hover:underline">Browse full shop</a>
+                    </div>
+                    <div class="relative w-full max-w-md">
+                        <div class="input-wrapper">
+                            <input id="product_search" type="search" placeholder="Search products…" class="w-full bg-transparent" />
+                        </div>
+                        <button id="product_search_clear" class="absolute right-2 top-2 hidden rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100" type="button">Clear</button>
+                    </div>
+                    <p id="search_empty" class="hidden text-sm text-gray-500">No products match your search.</p>
+                    <div class="w-full !grid gap-4 sm:gap-5 lg:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3"
+                        data-dynamic-list="6_rB4C6cWF_UIIiEZuJts" data-entity="thc" data-entity-key="sKALpYiOd9z3eI8GLVaJe">
+                        <div class="product-card p-4 bg-white rounded-2xl shadow-md hover:shadow-xl transition-transform duration-150 ease-out hover:-translate-y-0.5 overflow-hidden h-full flex flex-col"
+                            data-product-id="[product_uid]" data-product-name="[item_name]" data-product-brand="[brand]"
+                            data-product-price="[price]" data-product-desc="[description]" data-product-image="[image]"
+                            data-product-payment-id="[Product_ID_Payment]">
+                            <a href="[Storefront_Product_Detail_Page_URL]"
+                                class="block w-[200px] m-auto view-product-link" data-product-id="[product_uid]">
+                                <img class="block w-full h-auto aspect-[4/3] object-cover" src="[image]" alt="[name]"
+                                    loading="lazy" />
+                            </a>
+                            <div class="p-4 flex flex-col gap-2 flex-1">
+                                <div class="text-sm font-semibold text-black/70 product-brand">[brand]</div>
+                                <h3 class="text-lg font-bold leading-snug product-name">[item_name]</h3>
+                                <div class="text-base font-semibold text-gray-900 product-price">$[price]</div>
+                                <p class="text-sm text-gray-700 overflow-hidden product-desc line-clamp-3">[description]</p>
+                                <div class="mt-auto flex items-center gap-2 pt-2">
+                                    <a href="[Storefront_Product_Detail_Page_URL]" data-product-id="[product_uid]"
+                                        class="view-product-btn inline-flex items-center justify-center px-4 py-3 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition">View</a>
+                                    <button class="add-to-cart-btn flex-1 inline-flex items-center justify-center px-4 py-3 rounded-xl bg-neutral-900 text-white font-semibold hover:bg-neutral-700 transition-colors"
+                                        data-product-id="[product_uid]">Add to Cart</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
-    
+
     <!-- <script>window.ENV={API_BASE:'https://api2.itmooti.com',SAVE_OR_UPDATE_URL:'https://api2.itmooti.com/api-thc/contacts/saveorupdate'};</script> -->
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/cart-state.js"></script>
     <script src="js/cart-ui.js"></script>
+    <script src="js/catalog-page.js"></script>
     <script src="js/checkout-page.js"></script>
     <script type="module" src="js/searchAddress.js"></script>
 </body>

@@ -5,7 +5,7 @@
 
 export class OfferEngine {
   constructor() {
-    this.currency = "USD";
+    this.currency = "AUD";
   }
 
   /**

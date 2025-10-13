@@ -8,7 +8,7 @@
   const AUTH_CART_KEY = "thc_portal_cart_auth_v1";
   const PRODUCT_CACHE_KEY = "thc_portal_last_product_v1";
 
-  const defaultState = () => ({ items: [], currency: "USD" });
+  const defaultState = () => ({ items: [], currency: "AUD" });
 
   const listeners = new Set();
   let state = defaultState();
@@ -39,7 +39,7 @@
         const parsed = JSON.parse(storage.getItem(key) || "null");
         if (parsed && Array.isArray(parsed.items)) {
           return {
-            currency: parsed.currency || "USD",
+            currency: parsed.currency || "AUD",
             items: parsed.items.map((item) => ({ ...item })),
           };
         }
@@ -59,7 +59,7 @@
 
     if (!primary && !secondary) return defaultState();
 
-    const merged = { currency: (primary?.currency || secondary?.currency || "USD"), items: [] };
+    const merged = { currency: (primary?.currency || secondary?.currency || "AUD"), items: [] };
     const byId = new Map();
     const pushAll = (src) => {
       if (!src) return;
@@ -196,7 +196,7 @@
 
   const setState = (nextState) => {
     state = {
-      currency: nextState?.currency || "USD",
+      currency: nextState?.currency || "AUD",
       items: Array.isArray(nextState?.items)
         ? nextState.items.map((item) => ({ 
             ...item,
