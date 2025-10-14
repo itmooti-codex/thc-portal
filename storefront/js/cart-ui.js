@@ -219,6 +219,13 @@
         card.querySelector(".view-product-link")?.getAttribute("href") ||
         "product.html",
     };
+    product.paymentId = card.dataset.productPaymentId || "";
+    if (card.dataset.scriptId)
+      product.scriptId = card.dataset.scriptId;
+    if (card.dataset.retailGst)
+      product.retailGst = toNum(card.dataset.retailGst);
+    if (card.dataset.wholesalePrice)
+      product.wholesalePrice = toNum(card.dataset.wholesalePrice);
     const parsedPrice = Number(priceAttr);
     product.price = Number.isFinite(parsedPrice)
       ? parsedPrice
@@ -269,7 +276,9 @@
               ? `<div class="text-sm text-gray-600">${item.brand}</div>`
               : ""
           }
-          <div class="text-sm font-medium">${money(item.price)}</div>
+          <div class="text-sm font-medium">${money(
+            (Number(item.price) || 0) + (Number(item.retailGst) || 0)
+          )}</div>
           <div class="mt-2 inline-flex items-center gap-2">
             <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${
               item.id
@@ -293,11 +302,11 @@
         itemsContainer.appendChild(row);
       });
     }
-    const subtotal = state.items.reduce(
-      (total, item) =>
-        total + (Number(item.price) || 0) * (Number(item.qty) || 0),
-      0
-    );
+    const subtotal = state.items.reduce((total, item) => {
+      const unit =
+        (Number(item.price) || 0) + (Number(item.retailGst) || 0);
+      return total + unit * (Number(item.qty) || 0);
+    }, 0);
     let discount = 0;
     let total = subtotal;
     try {
@@ -345,16 +354,21 @@
     items.forEach((item) => {
       const id = String(item.id);
       inCart.add(id);
+      const priceValue =
+        (typeof item.price === "number" ? item.price : toNum(item.price)) +
+        (typeof item.retailGst === "number"
+          ? item.retailGst
+          : toNum(item.retailGst));
       inCart.add(
         toSignature(
           item.name || "",
           item.brand || "",
-          typeof item.price === "number"
+          Number.isFinite(priceValue)
             ? new Intl.NumberFormat(undefined, {
                 style: "currency",
                 currency: "AUD",
-              }).format(item.price)
-            : String(item.price || "")
+              }).format(priceValue)
+            : String(priceValue || "")
         )
       );
     });
@@ -497,7 +511,10 @@
       if (!hasCart) return;
       const id = decr.dataset.id;
       const item = Cart.getItem(id);
-      if (item) Cart.updateQuantity(id, Math.max(0, item.qty - 1));
+      if (item)
+        Cart.updateQuantity(id, Math.max(0, item.qty - 1)).catch((err) => {
+          console.error("Cart update failed", err);
+        });
       return;
     }
 
@@ -506,20 +523,27 @@
       if (!hasCart) return;
       const id = incr.dataset.id;
       const item = Cart.getItem(id);
-      if (item) Cart.updateQuantity(id, item.qty + 1);
+      if (item)
+        Cart.updateQuantity(id, item.qty + 1).catch((err) => {
+          console.error("Cart update failed", err);
+        });
       return;
     }
 
     const remove = target.closest(".remove-item");
     if (remove) {
       if (!hasCart) return;
-      Cart.removeItem(remove.dataset.id);
+      Cart.removeItem(remove.dataset.id).catch((err) => {
+        console.error("Cart remove failed", err);
+      });
       return;
     }
 
     if (target.closest(".clear-cart")) {
       if (!hasCart) return;
-      Cart.clear();
+      Cart.clear().catch((err) => {
+        console.error("Cart clear failed", err);
+      });
       return;
     }
 
@@ -550,7 +574,9 @@
     if (!input || typeof Cart === "undefined") return;
     const id = input.dataset.id;
     const value = Math.max(0, parseInt(input.value || "0", 10) || 0);
-    Cart.updateQuantity(id, value);
+    Cart.updateQuantity(id, value).catch((err) => {
+      console.error("Cart update failed", err);
+    });
   });
 
   document.addEventListener("keydown", (event) => {

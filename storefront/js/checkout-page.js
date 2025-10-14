@@ -417,9 +417,10 @@
         productId: item.productId || item.id, // productId now contains the payment ID
         name: item.name,
         quantity: item.qty,
-        price: item.price,
+        price:
+          (Number(item.price) || 0) + (Number(item.retailGst) || 0),
         taxable: true, // Default to taxable
-        requiresShipping: true, // Default to requiring shipping
+        requiresShipping: item.requiresShipping !== false, // Default to requiring shipping
       }));
 
       // Get selected shipping type
@@ -467,11 +468,11 @@
   const FREE_SHIPPING_THRESHOLD = 200;
 
   const getCartSubtotal = (cartState = Cart.getState()) =>
-    cartState.items.reduce(
-      (total, item) =>
-        total + (Number(item.price) || 0) * (Number(item.qty) || 0),
-      0
-    );
+    cartState.items.reduce((total, item) => {
+      const unit =
+        (Number(item.price) || 0) + (Number(item.retailGst) || 0);
+      return total + unit * (Number(item.qty) || 0);
+    }, 0);
 
   const normaliseShippingType = (type) => {
     if (!type) return null;
@@ -622,7 +623,7 @@
               : ""
           }
           <div class="text-sm font-medium text-gray-900">${money(
-            item.price
+            (Number(item.price) || 0) + (Number(item.retailGst) || 0)
           )}</div>
           <div class="mt-2 inline-flex items-center gap-2">
             <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${
@@ -1536,9 +1537,21 @@
       productId: item.productId || item.id, // Use payment ID for backend
       name: item.name,
       quantity: item.qty,
-      price: item.price,
+      price:
+        (Number(item.price) || 0) + (Number(item.retailGst) || 0),
       taxable: true,
-      requiresShipping: true,
+      requiresShipping: item.requiresShipping !== false,
+    }));
+
+    const dispenseMeta = cartState.items.map((item) => ({
+      productId: item.productId || item.id,
+      productUniqueId: item.id,
+      dispenseId: item.dispenseId || null,
+      quantity: item.qty,
+      retailPrice: Number(item.price) || 0,
+      retailGst: Number(item.retailGst) || 0,
+      wholesalePrice: Number(item.wholesalePrice) || 0,
+      scriptId: item.scriptId || null,
     }));
 
     const finalOffer = await buildOffer(
@@ -1556,6 +1569,7 @@
       external_order_id: `WEB-${Date.now()}`,
       invoice_template: invoiceTemplateId,
       gateway_id: paymentGatewayId,
+      dispenses: dispenseMeta,
     };
 
     return await processTransaction(transactionData);

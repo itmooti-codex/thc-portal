@@ -16,10 +16,108 @@
 
   const isBrowser = typeof window !== "undefined";
 
+  const safeString = (value) => {
+    if (value === null || value === undefined) return "";
+    return String(value).trim();
+  };
+
+  const getConfig = () => {
+    if (!isBrowser) return {};
+    try {
+      return window.StorefrontConfig || {};
+    } catch {
+      return {};
+    }
+  };
+
+  const getRoot = () => {
+    if (!isBrowser) return null;
+    try {
+      return document.querySelector(".get-url");
+    } catch {
+      return null;
+    }
+  };
+
+  const getPatientToPayId = () => {
+    const config = getConfig();
+    const raw =
+      config.patientToPayId !== undefined && config.patientToPayId !== null
+        ? config.patientToPayId
+        : config.loggedInContactId;
+    return safeString(raw);
+  };
+
+  const getPharmacyToDispenseId = () => {
+    const config = getConfig();
+    return safeString(config.dispensePharmacyId);
+  };
+
+  const DISPENSE_STATUS = {
+    IN_CART: "149",
+    CANCELLED: "146",
+    PAID: "152",
+  };
+
+  const getApiBase = () => {
+    if (!isBrowser) return "";
+    try {
+      const winBase = window.ENV?.API_BASE;
+      const dataBase = getRoot()?.dataset?.apiBase;
+      const metaBase = document
+        .querySelector('meta[name="api-base"]')
+        ?.getAttribute("content");
+      const base = winBase || dataBase || metaBase || "http://localhost:3001";
+      return new URL(base, window.location.href).toString().replace(/\/$/, "");
+    } catch {
+      return "http://localhost:3001";
+    }
+  };
+
+  const callDispenseApi = async (endpoint, options = {}) => {
+    if (!isBrowser) throw new Error("Dispense API unavailable in this context");
+    const base = getApiBase();
+    const url = `${base}${endpoint}`;
+    const response = await fetch(url, {
+      headers: { "Content-Type": "application/json" },
+      ...options,
+    });
+    if (!response.ok) {
+      let message = `Request failed (${response.status})`;
+      try {
+        const data = await response.json();
+        if (data?.error) message = `${data.error} (${response.status})`;
+      } catch {}
+      throw new Error(message);
+    }
+    try {
+      return await response.json();
+    } catch {
+      return null;
+    }
+  };
+
+  const toNumber = (value, fallback = 0) => {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : fallback;
+  };
+
+  const toQuantity = (value, fallback = 1) => {
+    const qty = Math.round(toNumber(value, fallback));
+    return qty > 0 ? qty : fallback;
+  };
+
+  const isDispenseSyncEnabled = () =>
+    isAuthenticated() && !!getPatientToPayId();
+
+  let remoteSyncPromise = null;
+
   const isAuthenticated = () => {
     if (!isBrowser) return false;
+    const patientId = getPatientToPayId();
+    if (patientId) return true;
     try {
-      const root = document.querySelector(".get-url");
+      const root = getRoot();
       return root?.dataset?.auth === "true";
     } catch {
       return false;
@@ -109,41 +207,277 @@
   };
 
   const ensureInit = async () => {
-    if (initialized) return cloneState();
-    state = loadFromStorage();
-    initialized = true;
-    // Normalize persistence to the current auth store so future reads are consistent
-    persist();
-    notify();
+    if (!initialized) {
+      state = loadFromStorage();
+      initialized = true;
+      if (!isDispenseSyncEnabled()) {
+        persist();
+        notify();
+      }
+    }
+    if (isDispenseSyncEnabled()) {
+      const before = JSON.stringify(sortItems(state.items));
+      await syncRemoteState({ force: true });
+      const after = JSON.stringify(sortItems(state.items));
+      if (before === after) {
+        persist();
+        notify();
+      }
+    }
     return cloneState();
   };
 
   const normaliseProduct = (product) => {
     if (!product || !product.id) throw new Error("Product requires an id");
-    return {
+    const result = {
       id: String(product.id),
       productId: String(product.productId || product.id), // Store payment ID separately
       name: product.name || "Untitled",
-      price: Number(product.price) || 0,
+      price: toNumber(product.price, 0),
       image: product.image || "",
       brand: product.brand || "",
       description: product.description || "",
       url: product.url || "",
     };
+    if (product.paymentId) result.paymentId = safeString(product.paymentId);
+    if (product.dispenseId) result.dispenseId = safeString(product.dispenseId);
+    if (product.scriptId) result.scriptId = safeString(product.scriptId);
+    result.retailGst = toNumber(product.retailGst, 0);
+    result.wholesalePrice = toNumber(product.wholesalePrice, 0);
+    if (product.requiresShipping === false) result.requiresShipping = false;
+    if (product.paymentProductId)
+      result.paymentProductId = safeString(product.paymentProductId);
+    return result;
   };
 
   const findIndex = (id) => state.items.findIndex((item) => item.id === id);
 
+  const normaliseRemoteItem = (remote) => {
+    if (!remote) return null;
+    try {
+      const idCandidate =
+        remote.id || remote.cartId || remote.productId || remote.dispenseId;
+      const productIdCandidate =
+        remote.productId || remote.paymentId || remote.id || idCandidate;
+      const base = normaliseProduct({
+        id: idCandidate || productIdCandidate || remote.dispenseId,
+        productId: productIdCandidate || idCandidate,
+        name: remote.name,
+        price: remote.price,
+        image: remote.image,
+        brand: remote.brand,
+        description: remote.description,
+        url: remote.url,
+        dispenseId: remote.dispenseId || remote.id,
+        scriptId: remote.scriptId,
+        retailGst: remote.retailGst,
+        wholesalePrice: remote.wholesalePrice,
+        paymentId: remote.paymentId || remote.payment_id,
+        paymentProductId: remote.paymentProductId,
+      });
+      base.qty = toQuantity(remote.qty ?? remote.quantity ?? remote.count ?? 1, 1);
+      if (remote.requiresShipping === false) base.requiresShipping = false;
+      if (remote.currency) base.currency = remote.currency;
+      if (!base.id) base.id = base.productId;
+      return base;
+    } catch (err) {
+      console.warn("Remote item normalisation failed", err, remote);
+      return null;
+    }
+  };
+
+  const sortItems = (items) =>
+    Array.isArray(items)
+      ? [...items].sort((a, b) =>
+          String(a?.id || a?.dispenseId || "").localeCompare(
+            String(b?.id || b?.dispenseId || "")
+          )
+        )
+      : [];
+
+  const itemsEqual = (a, b) => {
+    if (!Array.isArray(a) || !Array.isArray(b)) return false;
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) {
+      const ia = a[i];
+      const ib = b[i];
+      const keys = new Set([...Object.keys(ia), ...Object.keys(ib)]);
+      for (const key of keys) {
+        const va = ia[key];
+        const vb = ib[key];
+        if (typeof va === "number" && typeof vb === "number") {
+          if (Math.abs(va - vb) > 0.0001) return false;
+        } else if (String(va ?? "") !== String(vb ?? "")) {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
+  const syncRemoteState = async ({ force = false } = {}) => {
+    if (!isDispenseSyncEnabled()) return cloneState();
+    if (remoteSyncPromise && !force) return remoteSyncPromise;
+    remoteSyncPromise = (async () => {
+      try {
+        const patientId = getPatientToPayId();
+        if (!patientId) return cloneState();
+        const params = `?contactId=${encodeURIComponent(patientId)}`;
+        const response = await callDispenseApi(`/api-thc/dispenses${params}`);
+        const remoteItemsRaw = Array.isArray(response?.items)
+          ? response.items
+          : [];
+        const remoteItems = sortItems(
+          remoteItemsRaw.map((item) => normaliseRemoteItem(item)).filter(Boolean)
+        );
+        const currentItems = sortItems(cloneState().items);
+        const changed = !itemsEqual(currentItems, remoteItems);
+        if (changed) {
+          state = {
+            ...state,
+            items: remoteItems,
+          };
+          persist();
+          notify();
+        }
+        return cloneState();
+      } catch (err) {
+        console.warn("Dispense sync failed", err);
+        return cloneState();
+      } finally {
+        remoteSyncPromise = null;
+      }
+    })();
+    return remoteSyncPromise;
+  };
+
+  const createRemoteDispense = async (product, qty) => {
+    const patientId = getPatientToPayId();
+    if (!patientId) throw new Error("Missing patient id for dispense creation");
+    const payload = {
+      contactId: patientId,
+      productId: String(product.id),
+      paymentId: product.productId,
+      quantity: toQuantity(qty, 1),
+      retailPrice: toNumber(product.price, 0),
+      retailGst: toNumber(product.retailGst, 0),
+      wholesalePrice: toNumber(product.wholesalePrice, 0),
+      scriptId: safeString(product.scriptId || "") || undefined,
+      pharmacyId: getPharmacyToDispenseId() || undefined,
+    };
+    const response = await callDispenseApi("/api-thc/dispenses", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    if (response?.item) {
+      return { ...response, item: normaliseRemoteItem(response.item) };
+    }
+    return response || {};
+  };
+
+  const updateRemoteDispense = async (dispenseId, updates = {}) => {
+    if (!dispenseId) throw new Error("Missing dispense id for update");
+    const payload = {};
+    if (updates.quantity !== undefined)
+      payload.quantity = toQuantity(updates.quantity, 1);
+    if (updates.status) payload.status = String(updates.status);
+    if (updates.retailPrice !== undefined)
+      payload.retailPrice = toNumber(updates.retailPrice, 0);
+    if (updates.retailGst !== undefined)
+      payload.retailGst = toNumber(updates.retailGst, 0);
+    if (updates.wholesalePrice !== undefined)
+      payload.wholesalePrice = toNumber(updates.wholesalePrice, 0);
+    if (updates.scriptId !== undefined)
+      payload.scriptId = safeString(updates.scriptId) || undefined;
+    const patientId = getPatientToPayId();
+    if (patientId) payload.contactId = patientId;
+    const pharmacyId = getPharmacyToDispenseId();
+    if (pharmacyId) payload.pharmacyId = pharmacyId;
+    const response = await callDispenseApi(
+      `/api-thc/dispenses/${encodeURIComponent(dispenseId)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }
+    );
+    if (response?.item) {
+      return { ...response, item: normaliseRemoteItem(response.item) };
+    }
+    return response || {};
+  };
+
+  const updateRemoteQuantity = async (item, qty, baseProduct) => {
+    const targetQty = toQuantity(qty, 1);
+    const productData = baseProduct ? normaliseProduct(baseProduct) : item;
+    await updateRemoteDispense(item.dispenseId, {
+      quantity: targetQty,
+      retailPrice: productData.price,
+      retailGst: productData.retailGst,
+      wholesalePrice: productData.wholesalePrice,
+      scriptId: productData.scriptId,
+    });
+    return targetQty;
+  };
+
+  const cancelRemoteDispense = async (item) => {
+    await updateRemoteDispense(item.dispenseId, {
+      status: DISPENSE_STATUS.CANCELLED,
+    });
+  };
+
   const addItem = async (product, qty = 1) => {
     await ensureInit();
     const item = normaliseProduct(product);
-    const count = Number(qty) || 1;
+    const count = toQuantity(qty, 1);
     const idx = findIndex(item.id);
-    if (idx >= 0) {
-      state.items[idx].qty = Math.max(1, (state.items[idx].qty || 0) + count);
+
+    if (isDispenseSyncEnabled()) {
+      if (idx >= 0) {
+        const existing = state.items[idx];
+        const nextQty = toQuantity((existing.qty || 0) + count, count);
+        if (existing.dispenseId) {
+          await updateRemoteQuantity(existing, nextQty, { ...existing, ...item });
+          state.items[idx] = {
+            ...existing,
+            ...item,
+            qty: nextQty,
+            dispenseId: existing.dispenseId,
+          };
+        } else {
+          const created = await createRemoteDispense({ ...existing, ...item }, nextQty);
+          const remoteItem = created?.item || null;
+          const merged = {
+            ...existing,
+            ...item,
+            ...(remoteItem || {}),
+            qty: remoteItem?.qty ?? nextQty,
+          };
+          if (!merged.dispenseId && created?.dispenseId)
+            merged.dispenseId = created.dispenseId;
+          state.items[idx] = merged;
+        }
+      } else {
+        const created = await createRemoteDispense(item, count);
+        const remoteItem = created?.item || null;
+        const merged = {
+          ...item,
+          ...(remoteItem || {}),
+          qty: remoteItem?.qty ?? count,
+        };
+        if (!merged.dispenseId && created?.dispenseId)
+          merged.dispenseId = created.dispenseId;
+        state.items.push(merged);
+      }
     } else {
-      state.items.push({ ...item, qty: Math.max(1, count) });
+      if (idx >= 0) {
+        const existing = state.items[idx];
+        const nextQty = Math.max(1, (existing.qty || 0) + count);
+        state.items[idx] = { ...existing, ...item, qty: nextQty };
+      } else {
+        state.items.push({ ...item, qty: Math.max(1, count) });
+      }
     }
+
     persist();
     notify();
     return cloneState();
@@ -153,12 +487,30 @@
     await ensureInit();
     const idx = findIndex(String(id));
     if (idx < 0) return cloneState();
-    const nextQty = Math.max(0, Number(qty) || 0);
-    if (nextQty === 0) {
-      state.items.splice(idx, 1);
+    const rawQty = Number(qty);
+    const nextQty = rawQty <= 0 ? 0 : toQuantity(rawQty, 1);
+    const item = state.items[idx];
+
+    if (isDispenseSyncEnabled()) {
+      if (nextQty === 0) {
+        if (item.dispenseId) {
+          await cancelRemoteDispense(item);
+        }
+        state.items.splice(idx, 1);
+      } else {
+        if (item.dispenseId) {
+          await updateRemoteQuantity(item, nextQty, item);
+        }
+        state.items[idx] = { ...item, qty: nextQty };
+      }
     } else {
-      state.items[idx].qty = nextQty;
+      if (nextQty === 0) {
+        state.items.splice(idx, 1);
+      } else {
+        state.items[idx] = { ...item, qty: nextQty };
+      }
     }
+
     persist();
     notify();
     return cloneState();
@@ -168,6 +520,12 @@
 
   const clear = async () => {
     await ensureInit();
+    if (isDispenseSyncEnabled()) {
+      const cancellable = state.items.filter((item) => item.dispenseId);
+      await Promise.allSettled(
+        cancellable.map((item) => cancelRemoteDispense(item))
+      );
+    }
     state = defaultState();
     persist();
     notify();
@@ -178,10 +536,10 @@
     state.items.reduce((total, item) => total + (Number(item.qty) || 0), 0);
 
   const getSubtotal = () =>
-    state.items.reduce(
-      (total, item) => total + (Number(item.price) || 0) * (Number(item.qty) || 0),
-      0
-    );
+    state.items.reduce((total, item) => {
+      const unitPrice = toNumber(item.price, 0) + toNumber(item.retailGst, 0);
+      return total + unitPrice * (Number(item.qty) || 0);
+    }, 0);
 
   const getItem = (id) => {
     const idx = findIndex(String(id));
@@ -195,14 +553,35 @@
   };
 
   const setState = (nextState) => {
+    const items = Array.isArray(nextState?.items)
+      ? nextState.items
+          .map((item) => {
+            try {
+              const idCandidate =
+                item.id || item.productId || item.dispenseId || item.paymentId;
+              const base = normaliseProduct({
+                ...item,
+                id: idCandidate,
+                productId: item.productId || idCandidate,
+                dispenseId: item.dispenseId,
+                scriptId: item.scriptId,
+                retailGst: item.retailGst,
+                wholesalePrice: item.wholesalePrice,
+              });
+              base.qty = toQuantity(item.qty, 1);
+              if (item.requiresShipping === false)
+                base.requiresShipping = false;
+              if (item.dispenseId) base.dispenseId = safeString(item.dispenseId);
+              return base;
+            } catch {
+              return null;
+            }
+          })
+          .filter(Boolean)
+      : [];
     state = {
       currency: nextState?.currency || "AUD",
-      items: Array.isArray(nextState?.items)
-        ? nextState.items.map((item) => ({ 
-            ...item,
-            productId: item.productId || item.id // Ensure productId is set
-          }))
-        : [],
+      items,
     };
     persist();
     notify();

@@ -68,6 +68,138 @@ const handleError = (err, req, res, next) => {
   res.status(500).json({ error: "Internal server error" });
 };
 
+const safeString = (value) => {
+  if (value === null || value === undefined) return "";
+  return String(value).trim();
+};
+
+const toNumber = (value, fallback = 0) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+};
+
+const toQuantity = (value, fallback = 1) => {
+  const qty = Math.round(toNumber(value, fallback));
+  return qty > 0 ? qty : fallback;
+};
+
+const formatPrice = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return undefined;
+  return (Math.round(num * 100) / 100).toFixed(2);
+};
+
+const parsePriceToNumber = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return undefined;
+  return Math.round(num * 100) / 100;
+};
+
+const pickString = (...values) => {
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed) return trimmed;
+    }
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
+    }
+    if (typeof value === "object") {
+      const nested = pickString(
+        value.value,
+        value.label,
+        value.name,
+        value.title,
+        value.display
+      );
+      if (nested) return nested;
+    }
+  }
+  return "";
+};
+
+const normalizeDispenseRow = (row = {}) => {
+  const dispenseId = safeString(row.id);
+  const productId = pickString(
+    row.f2790,
+    row.f2301,
+    row.productId,
+    row.product_id,
+    row.productID,
+    row.product
+  );
+  const itemId = safeString(productId || dispenseId);
+  if (!itemId) return null;
+  const qty = toQuantity(
+    row.f2838 ?? row.quantity ?? row.qty ?? row.count ?? 1,
+    1
+  );
+  const retailPrice = parsePriceToNumber(row.f2302 ?? row.retailPrice ?? row.price);
+  const retailGst = parsePriceToNumber(row.f2806 ?? row.retailGst ?? row.gst);
+  const wholesalePrice = parsePriceToNumber(
+    row.f2303 ?? row.wholesalePrice ?? row.wholesale_price
+  );
+  const name = pickString(
+    row.name,
+    row.f2301_name,
+    row.f2301_label,
+    row.f2301,
+    row.product_name,
+    row.item_name,
+    row.title,
+    row.unique_id
+  );
+  const brand = pickString(row.brand, row.product_brand);
+  const scriptId = pickString(row.f2251, row.scriptId);
+
+  return {
+    id: itemId,
+    productId: productId || itemId,
+    name: name || `Dispense #${dispenseId || itemId}`,
+    qty,
+    price: retailPrice ?? 0,
+    retailGst: retailGst ?? 0,
+    wholesalePrice: wholesalePrice ?? 0,
+    brand,
+    dispenseId: dispenseId || itemId,
+    scriptId: scriptId || null,
+    paymentId: productId || null,
+  };
+};
+
+const updateDispenses = async (updates = [], { status, contactId } = {}) => {
+  if (!Array.isArray(updates) || !updates.length) return;
+  const requests = updates
+    .map((update) => {
+      const id = safeString(update?.id);
+      if (!id) return null;
+      const payload = { id };
+      if (status) payload.f2261 = safeString(status);
+      if (contactId) payload.f2787 = safeString(contactId);
+      if (update.quantity !== undefined)
+        payload.f2838 = String(toQuantity(update.quantity, 1));
+      if (update.retailPrice !== undefined)
+        payload.f2302 = formatPrice(update.retailPrice);
+      if (update.retailGst !== undefined)
+        payload.f2806 = formatPrice(update.retailGst);
+      if (update.wholesalePrice !== undefined)
+        payload.f2303 = formatPrice(update.wholesalePrice);
+      if (update.scriptId !== undefined && update.scriptId !== null) {
+        const script = safeString(update.scriptId);
+        if (script) payload.f2251 = script;
+      }
+      if (update.pharmacyId) payload.f2290 = safeString(update.pharmacyId);
+      return ontraportRequest("/Dispenses", {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+    })
+    .filter(Boolean);
+  if (!requests.length) return;
+  await Promise.allSettled(requests);
+};
+
 // Health check
 app.get("/api-thc/health", (_req, res) => {
   res.json({ ok: true });
@@ -219,6 +351,156 @@ app.get("/api-thc/contact/:id/credit-cards", async (req, res) => {
   }
 });
 
+app.get("/api-thc/dispenses", async (req, res) => {
+  try {
+    const { contactId, status } = req.query || {};
+    if (!contactId) {
+      return res.status(400).json({ error: "contactId is required" });
+    }
+
+    const condition = [
+      {
+        field: { field: "f2787" },
+        op: "=",
+        value: { value: safeString(contactId) }
+      }
+    ];
+
+    const statusId = safeString(status || DISPENSE_STATUS_IN_CART);
+    if (statusId) {
+      condition.push("AND");
+      condition.push({
+        field: { field: "f2261" },
+        op: "=",
+        value: { value: statusId }
+      });
+    }
+
+    const encoded = encodeURIComponent(JSON.stringify(condition));
+    const response = await ontraportRequest(
+      `/Dispenses?range=200&count=false&condition=${encoded}`
+    );
+    const rows = Array.isArray(response?.data) ? response.data : [];
+    const items = rows.map((row) => normalizeDispenseRow(row)).filter(Boolean);
+    res.json({ items });
+  } catch (err) {
+    handleError(err, req, res);
+  }
+});
+
+app.post("/api-thc/dispenses", async (req, res) => {
+  try {
+    const {
+      contactId,
+      productId,
+      paymentId,
+      quantity,
+      retailPrice,
+      retailGst,
+      wholesalePrice,
+      scriptId,
+      pharmacyId,
+    } = req.body || {};
+
+    if (!contactId) {
+      return res.status(400).json({ error: "contactId is required" });
+    }
+    if (!productId) {
+      return res.status(400).json({ error: "productId is required" });
+    }
+
+    const payload = {
+      f2787: safeString(contactId),
+      f2290: safeString(pharmacyId),
+      f2261: DISPENSE_STATUS_IN_CART,
+      f2838: String(toQuantity(quantity, 1)),
+      f2302: formatPrice(retailPrice),
+      f2806: formatPrice(retailGst),
+      f2303: formatPrice(wholesalePrice),
+      f2251: safeString(scriptId) || undefined,
+      f2301: safeString(productId),
+      f2790: safeString(paymentId || productId),
+    };
+
+    Object.keys(payload).forEach((key) => {
+      if (payload[key] === undefined || payload[key] === "") {
+        delete payload[key];
+      }
+    });
+
+    const response = await ontraportRequest("/Dispenses", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    const createdId =
+      response?.data?.id ||
+      response?.data?.attrs?.id ||
+      (Array.isArray(response?.data) && response.data[0]?.id) ||
+      response?.id ||
+      null;
+    const rawItem =
+      response?.data?.attrs ||
+      (Array.isArray(response?.data) ? response.data[0] : null);
+    const item = normalizeDispenseRow(rawItem || { ...payload, id: createdId });
+
+    res.json({
+      success: true,
+      dispenseId: createdId ? safeString(createdId) : null,
+      item,
+    });
+  } catch (err) {
+    handleError(err, req, res);
+  }
+});
+
+app.put("/api-thc/dispenses/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ error: "dispense id is required" });
+    }
+
+    const {
+      quantity,
+      status,
+      retailPrice,
+      retailGst,
+      wholesalePrice,
+      scriptId,
+      contactId,
+      pharmacyId,
+    } = req.body || {};
+
+    const payload = { id: safeString(id) };
+    if (quantity !== undefined) payload.f2838 = String(toQuantity(quantity, 1));
+    if (status) payload.f2261 = safeString(status);
+    if (retailPrice !== undefined) payload.f2302 = formatPrice(retailPrice);
+    if (retailGst !== undefined) payload.f2806 = formatPrice(retailGst);
+    if (wholesalePrice !== undefined)
+      payload.f2303 = formatPrice(wholesalePrice);
+    if (scriptId !== undefined && scriptId !== null) {
+      const script = safeString(scriptId);
+      if (script) payload.f2251 = script;
+    }
+    if (contactId) payload.f2787 = safeString(contactId);
+    if (pharmacyId) payload.f2290 = safeString(pharmacyId);
+
+    const response = await ontraportRequest("/Dispenses", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+
+    const rawItem =
+      response?.data?.attrs ||
+      (Array.isArray(response?.data) ? response.data[0] : null);
+    const item = normalizeDispenseRow(rawItem || { ...payload });
+    res.json({ success: true, item });
+  } catch (err) {
+    handleError(err, req, res);
+  }
+});
+
 // Coupon validation endpoint
 app.post("/api-thc/coupons/validate", async (req, res) => {
   try {
@@ -296,6 +578,8 @@ app.post("/api-thc/offer/build", async (req, res) => {
 
 const STARTRACK_MATCHER = /star\s*track/i;
 const STARTRACK_OPTION_ID = "328";
+const DISPENSE_STATUS_IN_CART = "149";
+const DISPENSE_STATUS_CANCELLED = "146";
 const DISPENSE_STATUS_PAID = "152";
 
 const createDispenses = async ({ contactId, offer }) => {
@@ -617,12 +901,66 @@ app.post("/api-thc/transaction/process", async (req, res) => {
       payer?.contactId,
     ].find((value) => value != null && value !== "");
 
-    createDispenses({
-      contactId: dispenseContactId,
-      offer: offerForDispense,
-    }).catch((err) => {
-      console.error("[Dispense] creation failed", err);
+    const dispensesMeta = Array.isArray(req.body?.dispenses)
+      ? req.body.dispenses
+      : [];
+
+    const updates = [];
+    const productsWithExistingDispense = new Set();
+
+    dispensesMeta.forEach((entry) => {
+      if (!entry) return;
+      const dispenseId = safeString(entry.dispenseId);
+      const productKey = safeString(
+        entry.productUniqueId || entry.productId || entry.product_id || entry.id
+      );
+      if (dispenseId) {
+        updates.push({
+          id: dispenseId,
+          quantity: entry.quantity,
+          retailPrice: entry.retailPrice,
+          retailGst: entry.retailGst,
+          wholesalePrice: entry.wholesalePrice,
+          scriptId: entry.scriptId,
+          pharmacyId: entry.pharmacyId,
+        });
+        if (productKey) productsWithExistingDispense.add(productKey);
+      }
     });
+
+    if (updates.length) {
+      try {
+        await updateDispenses(updates, {
+          status: DISPENSE_STATUS_PAID,
+          contactId: dispenseContactId,
+        });
+      } catch (err) {
+        console.error("[Dispense] update failed", err);
+      }
+    }
+
+    const productsForCreation = Array.isArray(offerForDispense?.products)
+      ? offerForDispense.products.filter((product) => {
+          const key = safeString(
+            product.original_product_id ||
+              product.product_id ||
+              product.id ||
+              product.payment_id ||
+              product.Payment_ID
+          );
+          if (!key) return true;
+          return !productsWithExistingDispense.has(key);
+        })
+      : [];
+
+    if (productsForCreation.length) {
+      createDispenses({
+        contactId: dispenseContactId,
+        offer: { ...offerForDispense, products: productsForCreation },
+      }).catch((err) => {
+        console.error("[Dispense] creation failed", err);
+      });
+    }
     
     res.json({
       success: true,
