@@ -39,13 +39,88 @@
     }
   };
 
+  const datasetPatientId = () => {
+    if (!isBrowser) return "";
+    const keys = [
+      "patientToPayId",
+      "patientToPayID",
+      "patientId",
+      "patientID",
+      "patientid",
+      "patientUid",
+      "patientUID",
+      "patientuid",
+      "varPatientuid",
+      "loggedInContactId",
+      "contactId",
+      "contactID",
+      "contactid",
+    ];
+    const selectors = [
+      ".get-url",
+      "[data-patient-to-pay-id]",
+      "[data-patient-id]",
+      "[data-patientid]",
+      "[data-patient_uid]",
+      "[data-patientuid]",
+      "[data-var-patientuid]",
+      "[data-logged-in-contact-id]",
+      "[data-contact-id]",
+      "[data-contactid]",
+    ];
+    for (const selector of selectors) {
+      let el = null;
+      if (selector === ".get-url") {
+        el = getRoot();
+      } else {
+        try {
+          el = document.querySelector(selector);
+        } catch {
+          el = null;
+        }
+      }
+      if (!el || !el.dataset) continue;
+      for (const key of keys) {
+        if (Object.prototype.hasOwnProperty.call(el.dataset, key)) {
+          const value = safeString(el.dataset[key]);
+          if (value) return value;
+        }
+      }
+    }
+    return "";
+  };
+
+  const envPatientId = () => {
+    if (!isBrowser) return "";
+    try {
+      const candidates = [
+        window.ENV?.patientToPayId,
+        window.ENV?.patientId,
+        window.patientToPayId,
+        window.patientId,
+        window.loggedInContactId,
+      ];
+      for (const candidate of candidates) {
+        const value = safeString(candidate);
+        if (value) return value;
+      }
+    } catch {
+      return "";
+    }
+    return "";
+  };
+
   const getPatientToPayId = () => {
     const config = getConfig();
-    const raw =
+    const rawConfig =
       config.patientToPayId !== undefined && config.patientToPayId !== null
         ? config.patientToPayId
         : config.loggedInContactId;
-    return safeString(raw);
+    const fromConfig = safeString(rawConfig);
+    if (fromConfig) return fromConfig;
+    const fromEnv = envPatientId();
+    if (fromEnv) return fromEnv;
+    return datasetPatientId();
   };
 
   const getPharmacyToDispenseId = () => {
@@ -652,10 +727,29 @@
 
   if (isBrowser) {
     window.Cart = cartInterface;
-    if (isDispenseSyncEnabled()) {
+
+    const triggerInit = () =>
       ensureInit().catch((err) =>
         console.warn("Initial cart sync failed", err)
       );
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", triggerInit, { once: true });
+    } else {
+      triggerInit();
+    }
+
+    if (!isDispenseSyncEnabled()) {
+      let retries = 0;
+      const interval = window.setInterval(() => {
+        if (isDispenseSyncEnabled()) {
+          window.clearInterval(interval);
+          triggerInit();
+        } else if (retries >= 10) {
+          window.clearInterval(interval);
+        }
+        retries += 1;
+      }, 300);
     }
   }
 })();
