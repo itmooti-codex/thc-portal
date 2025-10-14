@@ -480,10 +480,11 @@
       const qty = Math.max(1, parseInt(qtyInput?.value || "1", 10) || 1);
       addBtn.disabled = true;
       const originalLabel = addBtn.textContent;
-      addBtn.textContent = "Adding…";
+      addBtn.textContent = "Adding...";
       try {
         await Cart.addItem(product, qty);
         if (qtyInput) qtyInput.value = "1";
+        syncAddButtons();
         openCart();
       } catch (err) {
         console.error("Add to cart failed", err);

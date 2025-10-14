@@ -152,6 +152,9 @@ const normalizeDispenseRow = (row = {}) => {
   );
   const brand = pickString(row.brand, row.product_brand);
   const scriptId = pickString(row.f2251, row.scriptId);
+  const status = safeString(row.f2261 ?? row.status);
+  const statusLabel = pickString(row.f2261_label, row.statusLabel, row.status_name);
+  const uniqueId = safeString(row.unique_id);
 
   return {
     id: itemId,
@@ -165,6 +168,9 @@ const normalizeDispenseRow = (row = {}) => {
     dispenseId: dispenseId || itemId,
     scriptId: scriptId || null,
     paymentId: productId || null,
+    status: status || null,
+    statusLabel: statusLabel || null,
+    uniqueId: uniqueId || null,
   };
 };
 

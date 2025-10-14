@@ -10,6 +10,88 @@
 
   const defaultState = () => ({ items: [], currency: "AUD" });
 
+  const CANCELLED_CACHE_KEY = "thc_portal_cancelled_dispenses_v1";
+  const CANCELLED_CACHE_MAX_AGE = 1000 * 60 * 60 * 24; // 24 hours
+
+  let cancelledDispensesCache = null;
+
+  const nowMs = () => Date.now();
+
+  const readCancelledDispenses = () => {
+    if (!isBrowser) return {};
+    if (cancelledDispensesCache) return cancelledDispensesCache;
+    try {
+      const raw = sessionStorage.getItem(CANCELLED_CACHE_KEY);
+      if (!raw) {
+        cancelledDispensesCache = {};
+        return cancelledDispensesCache;
+      }
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        cancelledDispensesCache = parsed;
+        return cancelledDispensesCache;
+      }
+    } catch (err) {
+      console.warn("Cancelled dispense cache parse failed", err);
+    }
+    cancelledDispensesCache = {};
+    return cancelledDispensesCache;
+  };
+
+  const writeCancelledDispenses = (cache) => {
+    if (!isBrowser) return;
+    cancelledDispensesCache = cache;
+    try {
+      sessionStorage.setItem(CANCELLED_CACHE_KEY, JSON.stringify(cache));
+    } catch (err) {
+      console.warn("Cancelled dispense cache persist failed", err);
+    }
+  };
+
+  const pruneCancelledDispenses = () => {
+    const cache = readCancelledDispenses();
+    const cutoff = nowMs() - CANCELLED_CACHE_MAX_AGE;
+    let changed = false;
+    Object.keys(cache).forEach((key) => {
+      const ts = Number(cache[key]) || 0;
+      if (!ts || ts < cutoff) {
+        delete cache[key];
+        changed = true;
+      }
+    });
+    if (changed) writeCancelledDispenses({ ...cache });
+    return cache;
+  };
+
+  const markDispenseCancelled = (dispenseId) => {
+    if (!dispenseId) return;
+    const cache = pruneCancelledDispenses();
+    cache[String(dispenseId)] = nowMs();
+    writeCancelledDispenses({ ...cache });
+  };
+
+  const unmarkDispenseCancelled = (dispenseId) => {
+    if (!dispenseId) return;
+    const cache = pruneCancelledDispenses();
+    if (cache[String(dispenseId)]) {
+      delete cache[String(dispenseId)];
+      writeCancelledDispenses({ ...cache });
+    }
+  };
+
+  const isDispenseMarkedCancelled = (dispenseId) => {
+    if (!dispenseId) return false;
+    const cache = pruneCancelledDispenses();
+    const ts = Number(cache[String(dispenseId)]) || 0;
+    if (!ts) return false;
+    if (nowMs() - ts > CANCELLED_CACHE_MAX_AGE) {
+      delete cache[String(dispenseId)];
+      writeCancelledDispenses({ ...cache });
+      return false;
+    }
+    return true;
+  };
+
   const listeners = new Set();
   let state = defaultState();
   let initialized = false;
@@ -322,6 +404,9 @@
     if (product.requiresShipping === false) result.requiresShipping = false;
     if (product.paymentProductId)
       result.paymentProductId = safeString(product.paymentProductId);
+    if (product.status) result.status = safeString(product.status);
+    if (product.statusLabel) result.statusLabel = safeString(product.statusLabel);
+    if (product.uniqueId) result.uniqueId = safeString(product.uniqueId);
     return result;
   };
 
@@ -349,11 +434,18 @@
         wholesalePrice: remote.wholesalePrice,
         paymentId: remote.paymentId || remote.payment_id,
         paymentProductId: remote.paymentProductId,
+        status: remote.status,
+        statusLabel: remote.statusLabel,
+        uniqueId: remote.uniqueId,
       });
       base.qty = toQuantity(remote.qty ?? remote.quantity ?? remote.count ?? 1, 1);
       if (remote.requiresShipping === false) base.requiresShipping = false;
       if (remote.currency) base.currency = remote.currency;
       if (!base.id) base.id = base.productId;
+      if (remote.status) base.status = safeString(remote.status);
+      if (remote.statusLabel)
+        base.statusLabel = safeString(remote.statusLabel);
+      if (remote.uniqueId) base.uniqueId = safeString(remote.uniqueId);
       return base;
     } catch (err) {
       console.warn("Remote item normalisation failed", err, remote);
@@ -410,8 +502,27 @@
           ? response.items
           : [];
         const remoteItems = sortItems(
-          remoteItemsRaw.map((item) => normaliseRemoteItem(item)).filter(Boolean)
+          remoteItemsRaw
+            .map((item) => normaliseRemoteItem(item))
+            .filter((item) => {
+              if (!item) return false;
+              if (item.dispenseId) {
+                // Drop dispenses we recently cancelled even if the API still returns them
+                if (isDispenseMarkedCancelled(item.dispenseId)) {
+                  return false;
+                }
+              }
+              if (item.status) {
+                if (item.status !== DISPENSE_STATUS.IN_CART) {
+                  return false;
+                }
+              }
+              return true;
+            })
         );
+        remoteItems.forEach((item) => {
+          if (item?.dispenseId) unmarkDispenseCancelled(item.dispenseId);
+        });
         const currentItems = sortItems(cloneState().items);
         const changed = !itemsEqual(currentItems, remoteItems);
         if (changed) {
@@ -505,6 +616,7 @@
     await updateRemoteDispense(item.dispenseId, {
       status: DISPENSE_STATUS.CANCELLED,
     });
+    markDispenseCancelled(item.dispenseId);
   };
 
   const addItem = async (product, qty = 1) => {
@@ -536,6 +648,7 @@
           };
           if (!merged.dispenseId && created?.dispenseId)
             merged.dispenseId = created.dispenseId;
+          if (merged.dispenseId) unmarkDispenseCancelled(merged.dispenseId);
           state.items[idx] = merged;
         }
       } else {
@@ -548,6 +661,7 @@
         };
         if (!merged.dispenseId && created?.dispenseId)
           merged.dispenseId = created.dispenseId;
+        if (merged.dispenseId) unmarkDispenseCancelled(merged.dispenseId);
         state.items.push(merged);
       }
     } else {
@@ -584,6 +698,7 @@
           await updateRemoteQuantity(item, nextQty, item);
         }
         state.items[idx] = { ...item, qty: nextQty };
+        if (item.dispenseId) unmarkDispenseCancelled(item.dispenseId);
       }
     } else {
       if (nextQty === 0) {
