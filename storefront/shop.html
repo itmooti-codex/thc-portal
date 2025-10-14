@@ -35,6 +35,10 @@
         box-shadow: 0 0 0 2px rgb(59 130 246 / 0.5);
         border-color: rgb(59 130 246);
       }
+
+      [data-catalog-panel][hidden] {
+        display: none !important;
+      }
     </style>
   </head>
 
@@ -111,11 +115,47 @@
         >
           No products match your search.
         </p>
+
+        <!-- Catalog Tabs -->
         <div
+          class="flex items-center gap-2 mt-8 mb-6"
+          role="tablist"
+          aria-label="Catalog sections"
+        >
+          <button
+            type="button"
+            id="catalog-tab-items"
+            class="catalog-tab-btn inline-flex items-center justify-center rounded-xl border px-5 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 bg-neutral-900 text-white border-neutral-900"
+            data-catalog-tab="items"
+            aria-controls="catalog-items-grid"
+            aria-selected="true"
+            role="tab"
+          >
+            Items
+          </button>
+          <button
+            type="button"
+            id="catalog-tab-scripts"
+            class="catalog-tab-btn inline-flex items-center justify-center rounded-xl border px-5 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+            data-catalog-tab="scripts"
+            aria-controls="catalog-scripts-grid"
+            aria-selected="false"
+            role="tab"
+          >
+            Scripts
+          </button>
+        </div>
+
+        <!-- Items Grid -->
+        <div
+          id="catalog-items-grid"
           class="w-full !grid gap-4 sm:gap-5 lg:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3"
           data-dynamic-list="6_rB4C6cWF_UIIiEZuJts"
           data-entity="thc"
           data-entity-key="sKALpYiOd9z3eI8GLVaJe"
+          data-catalog-panel="items"
+          role="tabpanel"
+          aria-labelledby="catalog-tab-items"
         >
           <div
             class="product-card p-4 bg-white rounded-2xl shadow-md hover:shadow-xl transition-transform duration-150 ease-out hover:-translate-y-0.5 overflow-hidden h-full flex flex-col"
@@ -126,6 +166,8 @@
             data-product-desc="[description]"
             data-product-image="[image]"
             data-product-payment-id="[Product_ID_Payment]"
+            data-retail-gst = "[itemGST]"
+            data-wholesale-price = "[itemWholseSalePrice]" 
           >
             <a
               href="[Storefront_Product_Detail_Page_URL]"
@@ -171,10 +213,81 @@
             </div>
           </div>
         </div>
-      </main>
-      
-      <!-- Scripts Grid -->
 
+        <!-- Scripts Grid -->
+        <div
+          id="catalog-scripts-grid"
+          class="w-full !grid gap-4 sm:gap-5 lg:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3"
+          data-dynamic-list="U2npi3Em5o_i4PsgrEWRm"
+          data-entity="thc"
+          data-entity-key="sKALpYiOd9z3eI8GLVaJe"
+          data-limit="10"
+          data-var-patientuid="EV7U000"
+          data-catalog-panel="scripts"
+          role="tabpanel"
+          aria-labelledby="catalog-tab-scripts"
+          hidden
+        >
+          <div
+            class="product-card p-4 bg-white rounded-2xl shadow-md hover:shadow-xl transition-transform duration-150 ease-out hover:-translate-y-0.5 overflow-hidden h-full flex flex-col"
+            data-product-id="[product_uid]"
+            data-product-name="[item_name]"
+            data-product-brand="[brand]"
+            data-product-price="[price]"
+            data-product-desc="[description]"
+            data-product-image="[image]"
+            data-product-payment-id="[Product_ID_Payment]"
+            data-script-id = "[script_id]"
+            data-retail-gst = "[itemGST]"
+            data-wholesale-price = "itemWholseSalePrice]" 
+          >
+            <a
+              href="[Storefront_Product_Detail_Page_URL]"
+              class="block w-[200px] m-auto view-product-link"
+              data-product-id="[product_uid]"
+            >
+              <img
+                class="block w-full h-auto aspect-[4/3] object-cover"
+                src="[image]"
+                alt="[item_name]"
+                loading="lazy"
+              />
+            </a>
+            <div class="p-4 flex flex-col gap-2 flex-1">
+              <div class="text-sm font-semibold text-black/70 product-brand">
+                [brand]
+              </div>
+              <h3 class="text-lg font-bold leading-snug product-name">
+                [item_name]
+              </h3>
+              <div class="text-base font-semibold text-gray-900 product-price">
+                $[price]
+              </div>
+              <p
+                class="text-sm text-gray-700 overflow-hidden product-desc line-clamp-3"
+              >
+                [description]
+              </p>
+              <div class="mt-auto flex items-center gap-2 pt-2">
+                <a
+                  href="[Storefront_Product_Detail_Page_URL]"
+                  data-product-id="[product_uid]"
+                  class="view-product-btn inline-flex items-center justify-center px-4 py-3 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition"
+                  >View</a
+                >
+                <button
+                  class="add-to-cart-btn flex-1 inline-flex items-center justify-center px-4 py-3 rounded-xl bg-neutral-900 text-white font-semibold hover:bg-neutral-700 transition-colors"
+                  data-product-id="[product_uid]"
+                >
+                  Add to Cart
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Scripts Grid -->
     </div>
     <script src="js/utils.js"></script>
     <script src="js/cart-state.js"></script>
