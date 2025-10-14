@@ -103,6 +103,15 @@
     return String(value).trim();
   };
 
+  const PLACEHOLDER_RE = /^\[[^\]]*\]$/;
+
+  const cleanedString = (value) => {
+    const str = safeString(value);
+    if (!str) return "";
+    if (PLACEHOLDER_RE.test(str)) return "";
+    return str;
+  };
+
   const getConfig = () => {
     if (!isBrowser) return {};
     try {
@@ -164,7 +173,7 @@
       if (!el || !el.dataset) continue;
       for (const key of keys) {
         if (Object.prototype.hasOwnProperty.call(el.dataset, key)) {
-          const value = safeString(el.dataset[key]);
+          const value = cleanedString(el.dataset[key]);
           if (value) return value;
         }
       }
@@ -183,7 +192,7 @@
         window.loggedInContactId,
       ];
       for (const candidate of candidates) {
-        const value = safeString(candidate);
+        const value = cleanedString(candidate);
         if (value) return value;
       }
     } catch {
@@ -198,16 +207,79 @@
       config.patientToPayId !== undefined && config.patientToPayId !== null
         ? config.patientToPayId
         : config.loggedInContactId;
-    const fromConfig = safeString(rawConfig);
+    const fromConfig = cleanedString(rawConfig);
     if (fromConfig) return fromConfig;
     const fromEnv = envPatientId();
     if (fromEnv) return fromEnv;
     return datasetPatientId();
   };
 
+  const datasetContactId = () => {
+    if (!isBrowser) return "";
+    const selectors = [
+      ".get-url",
+      "[data-logged-in-contact-id]",
+      "[data-contact-id]",
+      "[data-contactid]",
+    ];
+    const keys = ["loggedInContactId", "contactId", "contactID", "contactid"];
+    for (const selector of selectors) {
+      let el = null;
+      if (selector === ".get-url") {
+        el = getRoot();
+      } else {
+        try {
+          el = document.querySelector(selector);
+        } catch {
+          el = null;
+        }
+      }
+      if (!el?.dataset) continue;
+      for (const key of keys) {
+        if (Object.prototype.hasOwnProperty.call(el.dataset, key)) {
+          const value = cleanedString(el.dataset[key]);
+          if (value) return value;
+        }
+      }
+    }
+    return "";
+  };
+
+  const envContactId = () => {
+    if (!isBrowser) return "";
+    try {
+      const candidates = [
+        window.ENV?.loggedInContactId,
+        window.ENV?.contactId,
+        window.loggedInContactId,
+        window.contactId,
+      ];
+      for (const candidate of candidates) {
+        const value = cleanedString(candidate);
+        if (value) return value;
+      }
+    } catch {
+      return "";
+    }
+    return "";
+  };
+
+  const getDispenseContactId = () => {
+    const config = getConfig();
+    const fromConfig = cleanedString(config.loggedInContactId);
+    if (fromConfig) return fromConfig;
+    const fromEnv = envContactId();
+    if (fromEnv) return fromEnv;
+    const fromDataset = datasetContactId();
+    if (fromDataset) return fromDataset;
+    const patient = getPatientToPayId();
+    if (patient) return patient;
+    return "";
+  };
+
   const getPharmacyToDispenseId = () => {
     const config = getConfig();
-    return safeString(config.dispensePharmacyId);
+    return cleanedString(config.dispensePharmacyId);
   };
 
   const DISPENSE_STATUS = {
@@ -396,17 +468,23 @@
       description: product.description || "",
       url: product.url || "",
     };
-    if (product.paymentId) result.paymentId = safeString(product.paymentId);
-    if (product.dispenseId) result.dispenseId = safeString(product.dispenseId);
-    if (product.scriptId) result.scriptId = safeString(product.scriptId);
+    const paymentId = cleanedString(product.paymentId);
+    if (paymentId) result.paymentId = paymentId;
+    const dispenseId = cleanedString(product.dispenseId);
+    if (dispenseId) result.dispenseId = dispenseId;
+    const scriptId = cleanedString(product.scriptId);
+    if (scriptId) result.scriptId = scriptId;
     result.retailGst = toNumber(product.retailGst, 0);
     result.wholesalePrice = toNumber(product.wholesalePrice, 0);
     if (product.requiresShipping === false) result.requiresShipping = false;
-    if (product.paymentProductId)
-      result.paymentProductId = safeString(product.paymentProductId);
-    if (product.status) result.status = safeString(product.status);
-    if (product.statusLabel) result.statusLabel = safeString(product.statusLabel);
-    if (product.uniqueId) result.uniqueId = safeString(product.uniqueId);
+    const paymentProductId = cleanedString(product.paymentProductId);
+    if (paymentProductId) result.paymentProductId = paymentProductId;
+    const status = cleanedString(product.status);
+    if (status) result.status = status;
+    const statusLabel = cleanedString(product.statusLabel);
+    if (statusLabel) result.statusLabel = statusLabel;
+    const uniqueId = cleanedString(product.uniqueId);
+    if (uniqueId) result.uniqueId = uniqueId;
     return result;
   };
 
@@ -547,15 +625,22 @@
   const createRemoteDispense = async (product, qty) => {
     const patientId = getPatientToPayId();
     if (!patientId) throw new Error("Missing patient id for dispense creation");
+    const contactId = getDispenseContactId();
+    if (!contactId) throw new Error("Missing contact id for dispense creation");
+    const productId = cleanedString(
+      product.productId || product.paymentId || product.id
+    );
+    if (!productId) throw new Error("Missing product id for dispense creation");
+    const paymentId = cleanedString(product.paymentId) || productId;
     const payload = {
-      contactId: patientId,
-      productId: String(product.id),
-      paymentId: product.productId,
+      contactId,
+      productId,
+      paymentId,
       quantity: toQuantity(qty, 1),
       retailPrice: toNumber(product.price, 0),
       retailGst: toNumber(product.retailGst, 0),
       wholesalePrice: toNumber(product.wholesalePrice, 0),
-      scriptId: safeString(product.scriptId || "") || undefined,
+      scriptId: cleanedString(product.scriptId || "") || undefined,
       pharmacyId: getPharmacyToDispenseId() || undefined,
     };
     const response = await callDispenseApi("/api-thc/dispenses", {
@@ -581,9 +666,9 @@
     if (updates.wholesalePrice !== undefined)
       payload.wholesalePrice = toNumber(updates.wholesalePrice, 0);
     if (updates.scriptId !== undefined)
-      payload.scriptId = safeString(updates.scriptId) || undefined;
-    const patientId = getPatientToPayId();
-    if (patientId) payload.contactId = patientId;
+      payload.scriptId = cleanedString(updates.scriptId) || undefined;
+    const contactId = getDispenseContactId();
+    if (contactId) payload.contactId = contactId;
     const pharmacyId = getPharmacyToDispenseId();
     if (pharmacyId) payload.pharmacyId = pharmacyId;
     const response = await callDispenseApi(

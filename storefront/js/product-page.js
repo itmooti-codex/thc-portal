@@ -93,11 +93,20 @@
       }
     };
 
-    assignDataset("productId", snapshot.id || snapshot.productId);
-    assignDataset(
-      "productPaymentId",
-      snapshot.productId || snapshot.paymentId || snapshot.id
-    );
+    const canonicalProductId =
+      snapshot.productPaymentId ||
+      snapshot.paymentId ||
+      snapshot.productId ||
+      snapshot.id;
+    const uniqueProductId =
+      snapshot.uniqueId && snapshot.uniqueId !== canonicalProductId
+        ? snapshot.uniqueId
+        : snapshot.id && snapshot.id !== canonicalProductId
+        ? snapshot.id
+        : "";
+    assignDataset("productPaymentId", canonicalProductId);
+    assignDataset("productId", canonicalProductId);
+    if (uniqueProductId) assignDataset("productUniqueId", uniqueProductId);
     assignDataset("productName", snapshot.name);
     assignDataset("productBrand", snapshot.brand);
     assignDataset("productDesc", snapshot.description);

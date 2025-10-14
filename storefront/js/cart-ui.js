@@ -195,10 +195,25 @@
   const extractProduct = (card) => {
     if (!card) return null;
     const priceAttr = card.dataset.productPrice;
+    const normalizeDataValue = (value) => {
+      if (value === null || value === undefined) return "";
+      const str = String(value).trim();
+      if (!str) return "";
+      if (/^\[[^\]]*\]$/.test(str)) return "";
+      return str;
+    };
+    const rawPaymentId = normalizeDataValue(card.dataset.productPaymentId);
+    const rawProductId = normalizeDataValue(card.dataset.productId);
+    const canonicalId = rawPaymentId || rawProductId || safeId(card);
+    if (card.dataset) {
+      card.dataset.productPaymentId = rawPaymentId || canonicalId;
+      card.dataset.productId = canonicalId;
+    }
+    const uniqueId =
+      rawProductId && rawProductId !== canonicalId ? rawProductId : "";
     const product = {
-      id: card.dataset.productId || safeId(card),
-      productId:
-        card.dataset.productPaymentId || card.dataset.productId || safeId(card), // Use payment ID for backend
+      id: canonicalId,
+      productId: canonicalId,
       name:
         card.dataset.productName ||
         card.querySelector(".product-name")?.textContent?.trim() ||
@@ -219,7 +234,8 @@
         card.querySelector(".view-product-link")?.getAttribute("href") ||
         "product.html",
     };
-    product.paymentId = card.dataset.productPaymentId || "";
+    product.paymentId = rawPaymentId || canonicalId;
+    if (uniqueId) product.uniqueId = uniqueId;
     if (card.dataset.scriptId)
       product.scriptId = card.dataset.scriptId;
     if (card.dataset.retailGst)
@@ -264,7 +280,8 @@
     } else {
       state.items.forEach((item) => {
         const row = document.createElement("div");
-        row.className = "p-4 flex gap-3 items-center";
+        row.className = "p-4 flex gap-3 items-center cart-item-row";
+        row.setAttribute("data-cart-row", item.id);
         row.innerHTML = `
         <img src="${item.image}" alt="${
           item.name
@@ -290,6 +307,7 @@
               item.id
             }" aria-label="Increase quantity">+</button>
           </div>
+          <div class="item-status text-xs text-gray-500 mt-2 hidden" data-role="item-status">Removing…</div>
         </div>
         <button class="remove-item w-9 h-9 rounded-lg hover:bg-gray-100" data-id="${
           item.id
@@ -377,7 +395,9 @@
     buttons.forEach((btn) => {
       // Prefer explicit dataset id if present; only fallback to signature-derived ids if the id starts with sig:
       const explicitId =
+        btn.dataset?.productPaymentId ||
         btn.dataset?.productId ||
+        btn.closest(".product-card")?.dataset?.productPaymentId ||
         btn.closest(".product-card")?.dataset?.productId ||
         "";
       const computedId = explicitId || safeId(btn);
@@ -476,12 +496,21 @@
       const card = addBtn.closest(".product-card");
       const product = extractProduct(card);
       if (!product) return;
+      if (addBtn.dataset) {
+        addBtn.dataset.productId = product.id;
+        addBtn.dataset.productPaymentId = product.productId || product.id;
+      }
       const qtyInput = card?.querySelector(".product-qty-input");
       const qty = Math.max(1, parseInt(qtyInput?.value || "1", 10) || 1);
       addBtn.disabled = true;
       const originalLabel = addBtn.textContent;
+      addBtn.dataset.loading = "true";
+      addBtn.classList.add("cursor-wait", "opacity-70");
       addBtn.textContent = "Adding...";
       try {
+        if (typeof requestAnimationFrame === "function") {
+          await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+        }
         await Cart.addItem(product, qty);
         if (qtyInput) qtyInput.value = "1";
         syncAddButtons();
@@ -490,9 +519,13 @@
         console.error("Add to cart failed", err);
         addBtn.disabled = false;
         addBtn.textContent = originalLabel;
+        addBtn.classList.remove("cursor-wait", "opacity-70");
+        addBtn.dataset.loading = "false";
         alert("Unable to add item to cart. Please try again.");
         return;
       }
+      addBtn.classList.remove("cursor-wait", "opacity-70");
+      addBtn.dataset.loading = "false";
       return;
     }
 
@@ -533,9 +566,26 @@
 
     const remove = target.closest(".remove-item");
     if (remove) {
-      if (!hasCart) return;
+      if (!hasCart || remove.disabled) return;
+      const row = remove.closest("[data-cart-row]");
+      const status = row?.querySelector("[data-role='item-status']");
+      const originalContent = remove.innerHTML;
+      remove.disabled = true;
+      remove.dataset.loading = "true";
+      remove.classList.add("cursor-wait", "opacity-60");
+      if (row) row.classList.add("opacity-60");
+      if (status) status.classList.remove("hidden");
+      remove.innerHTML =
+        '<span class="flex items-center gap-2 text-xs font-semibold text-gray-600"><span class="h-2 w-2 rounded-full bg-gray-400 animate-pulse"></span>Removing…</span>';
       Cart.removeItem(remove.dataset.id).catch((err) => {
         console.error("Cart remove failed", err);
+        remove.disabled = false;
+        remove.dataset.loading = "false";
+        remove.classList.remove("cursor-wait", "opacity-60");
+        remove.innerHTML = originalContent;
+        if (row) row.classList.remove("opacity-60");
+        if (status) status.classList.add("hidden");
+        alert("Unable to remove item. Please try again.");
       });
       return;
     }
