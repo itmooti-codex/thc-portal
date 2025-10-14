@@ -322,8 +322,15 @@
       try {
         const patientId = getPatientToPayId();
         if (!patientId) return cloneState();
-        const params = `?contactId=${encodeURIComponent(patientId)}`;
-        const response = await callDispenseApi(`/api-thc/dispenses${params}`);
+        const params = [`contactId=${encodeURIComponent(patientId)}`];
+        if (DISPENSE_STATUS.IN_CART) {
+          params.push(
+            `status=${encodeURIComponent(DISPENSE_STATUS.IN_CART)}`
+          );
+        }
+        const response = await callDispenseApi(
+          `/api-thc/dispenses?${params.join("&")}`
+        );
         const remoteItemsRaw = Array.isArray(response?.items)
           ? response.items
           : [];
@@ -645,5 +652,10 @@
 
   if (isBrowser) {
     window.Cart = cartInterface;
+    if (isDispenseSyncEnabled()) {
+      ensureInit().catch((err) =>
+        console.warn("Initial cart sync failed", err)
+      );
+    }
   }
 })();
