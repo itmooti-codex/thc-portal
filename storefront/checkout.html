@@ -447,7 +447,15 @@
                                 </div>
                                 <div class="flex items-center justify-between">
                                     <dt>Shipping</dt>
-                                    <dd class="summary-shipping font-medium text-gray-900">$0.00</dd>
+                                    <dd class="summary-shipping font-medium text-gray-900">Select shipping</dd>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <dt>Card fee (incl GST)</dt>
+                                    <dd class="summary-processing font-medium text-gray-900">$0.00</dd>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <dt>GST total</dt>
+                                    <dd class="summary-gst font-medium text-gray-900">$0.00</dd>
                                 </div>
                                 <div class="flex items-center justify-between">
                                     <dt>Discount</dt>
@@ -458,6 +466,7 @@
                                     <dd class="summary-total">$0.00</dd>
                                 </div>
                             </dl>
+                            <p class="summary-processing-note mt-2 text-xs text-gray-500 leading-snug hidden"></p>
                         </section>
                         <section class="rounded-3xl bg-white shadow-sm border border-gray-100 p-6 space-y-3 text-sm text-gray-600">
                             <h3 class="font-semibold text-gray-900">Need help?</h3>
@@ -468,7 +477,7 @@
                     </aside>
                 </div>
             </div>
-            <section class="border-t border-gray-200/60 bg-white/30">
+            <section class="border-t border-gray-200/60 bg-white/30" data-checkout-products>
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div>
@@ -485,6 +494,7 @@
                     </div>
                     <p id="search_empty" class="hidden text-sm text-gray-500">No products match your search.</p>
                     <div class="w-full !grid gap-4 sm:gap-5 lg:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3"
+                        data-checkout-products-grid
                         data-dynamic-list="6_rB4C6cWF_UIIiEZuJts" data-entity="thc" data-entity-key="sKALpYiOd9z3eI8GLVaJe">
                         <div class="product-card p-4 bg-white rounded-2xl shadow-md hover:shadow-xl transition-transform duration-150 ease-out hover:-translate-y-0.5 overflow-hidden h-full flex flex-col"
                             data-product-id="[product_uid]" data-product-name="[item_name]" data-product-brand="[brand]"
@@ -518,6 +528,7 @@
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/cart-state.js"></script>
+    <script src="js/dispense-service.js"></script>
     <script src="js/cart-ui.js"></script>
     <script src="js/catalog-page.js"></script>
     <script src="js/checkout-page.js"></script>

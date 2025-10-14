@@ -20,10 +20,29 @@
     if (!isBrowser) return false;
     try {
       const root = document.querySelector(".get-url");
-      return root?.dataset?.auth === "true";
-    } catch {
-      return false;
-    }
+      if (root?.dataset?.auth === "true") return true;
+      const contactAttr =
+        root?.dataset?.contactId ||
+        root?.dataset?.contactid ||
+        root?.dataset?.contact ||
+        root?.dataset?.userId;
+      if (contactAttr != null && String(contactAttr).trim().length) {
+        return true;
+      }
+    } catch {}
+    try {
+      const config = window.StorefrontConfig || {};
+      const contactId =
+        config.loggedInContactId ??
+        config.contactId ??
+        config.customerId ??
+        config.userId ??
+        config.memberId;
+      if (contactId != null && String(contactId).trim().length) {
+        return true;
+      }
+    } catch {}
+    return false;
   };
 
   const cloneState = (src = state) => ({
@@ -75,6 +94,23 @@
           existing.description = existing.description || it.description;
           existing.url = existing.url || it.url;
           existing.productId = existing.productId || it.productId;
+          if (existing.scriptId == null && it.scriptId != null) {
+            existing.scriptId = it.scriptId;
+          }
+          if (existing.isScript == null && it.isScript != null) {
+            existing.isScript = it.isScript;
+          } else if (existing.isScript !== true && existing.scriptId) {
+            existing.isScript = true;
+          }
+          if (!existing.dispenseId && it.dispenseId) {
+            existing.dispenseId = it.dispenseId;
+          }
+          if (!existing.dispenseStatus && it.dispenseStatus) {
+            existing.dispenseStatus = it.dispenseStatus;
+          }
+          if (!existing.dispenseStatusId && it.dispenseStatusId) {
+            existing.dispenseStatusId = it.dispenseStatusId;
+          }
         } else {
           byId.set(id, { ...it, id });
         }
@@ -120,7 +156,7 @@
 
   const normaliseProduct = (product) => {
     if (!product || !product.id) throw new Error("Product requires an id");
-    return {
+    const normalised = {
       id: String(product.id),
       productId: String(product.productId || product.id), // Store payment ID separately
       name: product.name || "Untitled",
@@ -130,6 +166,30 @@
       description: product.description || "",
       url: product.url || "",
     };
+    const optionalKeys = [
+      "scriptId",
+      "dispenseId",
+      "dispenseStatus",
+      "dispenseStatusId",
+      "dispenseStatusLabel",
+      "retailGst",
+      "wholesalePrice",
+      "requiresShipping",
+    ];
+    optionalKeys.forEach((key) => {
+      if (product[key] !== undefined) {
+        normalised[key] = product[key];
+      }
+    });
+    if (product.isScript !== undefined) {
+      normalised.isScript = Boolean(product.isScript);
+    } else if (product.scriptId) {
+      normalised.isScript = true;
+    }
+    if (!normalised.dispenseStatus && product.dispenseStatusLabel) {
+      normalised.dispenseStatus = product.dispenseStatusLabel;
+    }
+    return normalised;
   };
 
   const findIndex = (id) => state.items.findIndex((item) => item.id === id);
@@ -165,6 +225,106 @@
   };
 
   const removeItem = async (id) => updateQuantity(id, 0);
+
+  const updateItemMetadata = async (id, patch = {}) => {
+    await ensureInit();
+    const targetId = String(id);
+    const idx = findIndex(targetId);
+    if (idx < 0 || !patch || typeof patch !== "object") {
+      return cloneState();
+    }
+    const current = state.items[idx] || {};
+    const next = { ...current };
+    let changed = false;
+
+    const assign = (key, value) => {
+      if (value === undefined) return;
+      if (value === null) {
+        if (next[key] !== undefined) {
+          delete next[key];
+          changed = true;
+        }
+        return;
+      }
+      if (next[key] !== value) {
+        next[key] = value;
+        changed = true;
+      }
+    };
+
+    if (patch.isScript !== undefined) {
+      assign("isScript", Boolean(patch.isScript));
+    }
+
+    if (patch.scriptId !== undefined) {
+      const scriptId = patch.scriptId === null
+        ? null
+        : String(patch.scriptId).trim() || null;
+      assign("scriptId", scriptId);
+      if (scriptId && next.isScript !== true) {
+        assign("isScript", true);
+      }
+    }
+
+    if (patch.dispenseId !== undefined) {
+      const dispenseId =
+        patch.dispenseId === null
+          ? null
+          : String(patch.dispenseId).trim() || null;
+      assign("dispenseId", dispenseId);
+    }
+
+    if (patch.dispenseStatusId !== undefined) {
+      const statusId =
+        patch.dispenseStatusId === null
+          ? null
+          : String(patch.dispenseStatusId).trim() || null;
+      assign("dispenseStatusId", statusId);
+    }
+
+    if (patch.dispenseStatus !== undefined) {
+      const status =
+        patch.dispenseStatus === null
+          ? null
+          : String(patch.dispenseStatus).trim() || null;
+      assign("dispenseStatus", status);
+    }
+
+    if (patch.dispenseStatusLabel !== undefined) {
+      const statusLabel =
+        patch.dispenseStatusLabel === null
+          ? null
+          : String(patch.dispenseStatusLabel).trim() || null;
+      assign("dispenseStatusLabel", statusLabel);
+    }
+
+    const passthroughKeys = [
+      "retailGst",
+      "wholesalePrice",
+      "requiresShipping",
+      "productId",
+      "price",
+      "name",
+      "brand",
+      "image",
+      "description",
+      "url",
+    ];
+    passthroughKeys.forEach((key) => {
+      if (Object.prototype.hasOwnProperty.call(patch, key)) {
+        assign(key, patch[key]);
+      }
+    });
+
+    if (!next.productId) next.productId = next.id || targetId;
+
+    if (changed) {
+      state.items[idx] = next;
+      persist();
+      notify();
+    }
+    return cloneState();
+  };
 
   const clear = async () => {
     await ensureInit();
@@ -247,6 +407,7 @@
     addItem,
     updateQuantity,
     removeItem,
+    updateItemMetadata,
     clear,
     getState: () => cloneState(),
     getItem,

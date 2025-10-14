@@ -142,7 +142,7 @@
             aria-selected="false"
             role="tab"
           >
-            Scripts
+            My Scripts
           </button>
         </div>
 
@@ -226,6 +226,7 @@
           data-catalog-panel="scripts"
           role="tabpanel"
           aria-labelledby="catalog-tab-scripts"
+          data-op="subscribe"
           hidden
         >
           <div
@@ -239,7 +240,9 @@
             data-product-payment-id="[Product_ID_Payment]"
             data-script-id = "[script_id]"
             data-retail-gst = "[itemGST]"
-            data-wholesale-price = "itemWholeSalePrice]" 
+            data-wholesale-price = "[itemWholeSalePrice]" 
+            data-dispense-status = "[dispenseStatus]"
+            data-dispense-id = "[dispenseID]"
           >
             <a
               href="[Storefront_Product_Detail_Page_URL]"
@@ -289,8 +292,10 @@
 
       <!-- Scripts Grid -->
     </div>
+    <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/cart-state.js"></script>
+    <script src="js/dispense-service.js"></script>
     <script src="js/cart-ui.js"></script>
     <script src="js/catalog-page.js"></script>
   </body>

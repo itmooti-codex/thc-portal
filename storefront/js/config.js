@@ -1,7 +1,9 @@
-// const loggedInContactIdFromOp = "546";
-// const paymentGatewayIdFromOp = 1;
-// const invoiceTemplateIdFromOp = 1;
-// const shippingTypeIdsFromOp = [1, 2];
+const loggedInContactIdFromOp = "249";
+const paymentGatewayIdFromOp = 1;
+const invoiceTemplateIdFromOp = 1;
+const shippingTypeIdsFromOp = [1, 2];
+const pharmacyToDispenseIdFromOp = "123";
+
 
 (() => {
   const defaults = {

@@ -294,95 +294,201 @@ app.post("/api-thc/offer/build", async (req, res) => {
   }
 });
 
-const STARTRACK_MATCHER = /star\s*track/i;
-const STARTRACK_OPTION_ID = "328";
-const DISPENSE_STATUS_PAID = "152";
+const DISPENSE_STATUS_LABELS = {
+  "146": "Cancelled",
+  "147": "In Transit",
+  "148": "Confirmed - In Progress",
+  "149": "In Cart",
+  "151": "Payment Processing",
+  "152": "Paid",
+  "326": "Sent – Awaiting Confirmation",
+  "327": "Payment Issue",
+  "605": "Tracking Added",
+  "675": "On Hold",
+  "677": "Fulfilled",
+};
+const DISPENSE_STATUS_BY_NAME = Object.entries(DISPENSE_STATUS_LABELS).reduce(
+  (map, [id, label]) => {
+    if (label) map[label.toLowerCase()] = id;
+    return map;
+  },
+  {}
+);
 
-const createDispenses = async ({ contactId, offer }) => {
-  if (!contactId) return;
-  const products = Array.isArray(offer?.products) ? offer.products : [];
-  if (!products.length) return;
+const normaliseScriptRecord = (record, fallbackId) => {
+  if (!record) return null;
+  const scriptId =
+    String(
+      record.id ??
+        record.ID ??
+        record.script_id ??
+        record.Script_ID ??
+        record.f2790 ??
+        fallbackId ??
+        ""
+    ).trim() || null;
 
-  const shippingOptions = Array.isArray(offer?.shipping) ? offer.shipping : [];
-  const hasStartrack = shippingOptions.some((option) => {
-    if (!option) return false;
-    if (option.option_id) {
-      const id = String(option.option_id).trim();
-      if (id === STARTRACK_OPTION_ID) return true;
-    }
-    if (option.id) {
-      const id = String(option.id).trim();
-      if (id === STARTRACK_OPTION_ID) return true;
-    }
-    const name = String(option.name || "");
-    return STARTRACK_MATCHER.test(name);
-  });
+  const dispenseIdCandidates = [
+    record.dispenseID,
+    record.dispenseId,
+    record.Dispense_ID,
+    record.DispenseId,
+    record.dispense_id,
+    record.current_dispense_id,
+    record.f2791,
+    record.f2792,
+  ];
+  const dispenseId =
+    dispenseIdCandidates
+      .map((value) => (value == null ? "" : String(value).trim()))
+      .find((value) => value.length) || null;
 
-  const basePayload = {
-    f2261: DISPENSE_STATUS_PAID,
-    f2787: String(contactId),
-  };
+  const statusTextCandidates = [
+    record.dispenseStatus,
+    record.Dispense_Status,
+    record.dispense_status,
+    record.current_dispense_status,
+  ];
+  let statusLabel =
+    statusTextCandidates
+      .map((value) => (value == null ? "" : String(value).trim()))
+      .find((value) => value.length) || null;
 
-  if (hasStartrack) {
-    basePayload.f2708 = STARTRACK_OPTION_ID;
+  const statusIdCandidates = [
+    record.dispenseStatusId,
+    record.dispense_status_id,
+    record.f2261,
+    record.F2261,
+  ]
+    .map((value) => (value == null ? "" : String(value).trim()))
+    .filter((value) => value.length);
+
+  let statusId =
+    statusIdCandidates.find((value) => DISPENSE_STATUS_LABELS[value]) || null;
+  if (!statusId && statusLabel) {
+    statusId = DISPENSE_STATUS_BY_NAME[statusLabel.toLowerCase()] || null;
+  } else if (!statusLabel && statusId) {
+    statusLabel = DISPENSE_STATUS_LABELS[statusId] || null;
   }
 
-  const payloads = products
-    .map((product) => {
-      if (!product) return null;
-      const productId = String(
-        product.original_product_id ||
-          product.product_id ||
-          product.id ||
-          ""
-      ).trim();
-      if (!productId) return null;
-
-      const quantityRaw = Number(product.quantity);
-      const quantity = Number.isFinite(quantityRaw) && quantityRaw > 0 ? quantityRaw : 1;
-
-      const priceCandidate = [
-        product.original_price,
-        product.unit_price,
-        product.price,
-        product.amount,
-        product.total,
-      ].find((value) => {
-        const num = Number(value);
-        return Number.isFinite(num);
-      });
-      const unitPrice = Number(priceCandidate);
-      const formattedPrice = Number.isFinite(unitPrice)
-        ? (Math.round(unitPrice * 100) / 100).toFixed(2)
-        : undefined;
-
-      const payload = {
-        ...basePayload,
-        f2301: productId,
-        f2790: productId,
-        f2838: quantity,
-      };
-
-      if (formattedPrice !== undefined) {
-        payload.f2302 = formattedPrice;
-      }
-
-      return payload;
-    })
-    .filter(Boolean);
-
-  if (!payloads.length) return;
-
-  const requests = payloads.map((payload) =>
-    ontraportRequest("/Dispenses", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    })
-  );
-
-  await Promise.allSettled(requests);
+  return {
+    id: scriptId,
+    dispenseId,
+    dispenseStatusId: statusId,
+    dispenseStatusLabel: statusLabel,
+    raw: record,
+  };
 };
 
+const fetchScriptRecord = async (scriptId) => {
+  if (!scriptId) return null;
+  const id = String(scriptId).trim();
+  if (!id) return null;
+
+  const query = new URLSearchParams({ id });
+  const response = await ontraportRequest(`/Scripts?${query.toString()}`);
+  const data = response?.data ?? response;
+  const record = Array.isArray(data) ? data[0] : data;
+  return normaliseScriptRecord(record, id);
+};
+
+const resolveDispenseStatusId = (input) => {
+  if (!input && input !== 0) return null;
+  const raw = String(input).trim();
+  if (!raw) return null;
+  if (DISPENSE_STATUS_LABELS[raw]) return raw;
+  const lower = raw.toLowerCase();
+  return DISPENSE_STATUS_BY_NAME[lower] || null;
+};
+
+app.get("/api-thc/scripts/:scriptId", async (req, res) => {
+  try {
+    const scriptId = String(req.params.scriptId || "").trim();
+    if (!scriptId) {
+      return res.status(400).json({ error: "scriptId is required" });
+    }
+
+    const script = await fetchScriptRecord(scriptId);
+    if (!script) {
+      return res.status(404).json({ error: "Script not found" });
+    }
+
+    res.json({ success: true, script });
+  } catch (err) {
+    handleError(err, req, res);
+  }
+});
+
+app.post("/api-thc/scripts/:scriptId/dispense", async (req, res) => {
+  try {
+    const scriptId = String(req.params.scriptId || "").trim();
+    if (!scriptId) {
+      return res.status(400).json({ error: "scriptId is required" });
+    }
+
+    const body = new URLSearchParams({ id: scriptId, f3163: "1" }).toString();
+    await ontraportRequest("/Scripts", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+    });
+
+    let script = null;
+    try {
+      script = await fetchScriptRecord(scriptId);
+    } catch (innerErr) {
+      console.warn("[Dispense] fetch after trigger failed", innerErr);
+    }
+
+    res.json({ success: true, script });
+  } catch (err) {
+    handleError(err, req, res);
+  }
+});
+
+app.put("/api-thc/dispenses/:dispenseId/status", async (req, res) => {
+  try {
+    const dispenseId = String(req.params.dispenseId || "").trim();
+    if (!dispenseId) {
+      return res.status(400).json({ error: "dispenseId is required" });
+    }
+
+    const { status, statusId } = req.body || {};
+    const resolvedStatusId =
+      resolveDispenseStatusId(statusId) || resolveDispenseStatusId(status);
+
+    if (!resolvedStatusId) {
+      return res
+        .status(400)
+        .json({ error: "A valid dispense status is required" });
+    }
+
+    const body = new URLSearchParams({
+      id: dispenseId,
+      f2261: resolvedStatusId,
+    }).toString();
+    await ontraportRequest("/Dispenses", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+    });
+
+    res.json({
+      success: true,
+      statusId: resolvedStatusId,
+      statusLabel: DISPENSE_STATUS_LABELS[resolvedStatusId] || null,
+    });
+  } catch (err) {
+    handleError(err, req, res);
+  }
+});
+
+const STARTRACK_MATCHER = /star\s*track/i;
+const STARTRACK_OPTION_ID = "328";
 
 // Transaction processing endpoint
 app.post("/api-thc/transaction/process", async (req, res) => {
@@ -402,8 +508,6 @@ app.post("/api-thc/transaction/process", async (req, res) => {
     if (!contactId || !billing_address || !payer || !offer) {
       return res.status(400).json({ error: "Missing required fields" });
     }
-
-    const offerForDispense = JSON.parse(JSON.stringify(offer || {}));
 
     // Helper: translate payment ids to Ontraport product ids when possible
     const translatePaymentToProductIds = async (lineItems = []) => {
@@ -594,34 +698,6 @@ app.post("/api-thc/transaction/process", async (req, res) => {
     const data = await ontraportRequest("/transaction/processManual", {
       method: "POST",
       body: JSON.stringify(payload),
-    });
-
-    const dispenseContactId = [
-      contactId,
-      data?.contact_id,
-      data?.order?.contact_id,
-      data?.order?.contactId,
-      data?.order?.contact?.id,
-      data?.order?.contact?.ID,
-      data?.order?.contact?.contact_id,
-      data?.order?.payer?.id,
-      data?.order?.payer?.ID,
-      data?.payer_id,
-      data?.payer?.id,
-      data?.payer?.ID,
-      payer?.contact_id,
-      payer?.id,
-      payer?.ID,
-      payer?.contact?.id,
-      payer?.contact?.ID,
-      payer?.contactId,
-    ].find((value) => value != null && value !== "");
-
-    createDispenses({
-      contactId: dispenseContactId,
-      offer: offerForDispense,
-    }).catch((err) => {
-      console.error("[Dispense] creation failed", err);
     });
     
     res.json({

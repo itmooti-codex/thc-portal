@@ -72,6 +72,26 @@
 
   showLoader("Preparing checkout…");
 
+  const debounce = (fn, delay = 150) => {
+    let timer;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), delay);
+    };
+  };
+
+  const debugLog = (...args) => {
+    if (typeof window !== "undefined" && window.__CHECKOUT_DEBUG) {
+      try {
+        console.log("[Checkout]", ...args);
+      } catch (err) {
+        try {
+          console.log("[Checkout] (log failed)", err);
+        } catch {}
+      }
+    }
+  };
+
   const getApiBase = () => {
     // Priority: window.ENV.API_BASE > .get-url[data-api-base] > meta[name="api-base"]
     try {
@@ -281,6 +301,7 @@
     steps: ["contact", "address", "payment", "review"],
     stepIndex: 0,
     shippingMethod: "",
+    shippingSelectionConfirmed: false,
     coupon: null,
     couponMeta: null,
     freeShipping: false,
@@ -304,6 +325,25 @@
         if (!checkoutState.selectedPaymentSource) {
           checkoutState.selectedPaymentSource = "new";
         }
+        if (checkoutState.couponMeta) {
+          const meta = checkoutState.couponMeta;
+          const normalizedType = normaliseCouponType(
+            meta.normalizedType || meta.type || meta.discount_type
+          );
+          const normalizedValue = normaliseCouponValue(
+            meta.normalizedValue !== undefined && meta.normalizedValue !== null
+              ? meta.normalizedValue
+              : meta.value !== undefined && meta.value !== null
+              ? meta.value
+              : meta.discount_value
+          );
+          checkoutState.couponMeta.normalizedType = normalizedType;
+          checkoutState.couponMeta.normalizedValue = normalizedValue;
+          if (normalizedType === "shipping") {
+            checkoutState.freeShipping = true;
+          }
+          debugLog("Loaded coupon from storage", checkoutState.couponMeta);
+        }
       }
     } catch (err) {
       console.warn("Failed to load checkout state:", err);
@@ -318,6 +358,131 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(persistable));
     } catch (err) {
       console.warn("Failed to save checkout state:", err);
+    }
+  };
+
+  const getDispenseService = () => {
+    try {
+      return window.DispenseService || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const DISPENSE_STATUS_IDS = Object.assign(
+    {
+      CANCELLED: "146",
+      IN_CART: "149",
+      PAID: "152",
+    },
+    getDispenseService()?.statusIds || {}
+  );
+  const DISPENSE_STATUS_LABELS = Object.assign(
+    {
+      "146": "Cancelled",
+      "149": "In Cart",
+      "152": "Paid",
+    },
+    getDispenseService()?.statusLabels || {}
+  );
+
+  const resolveDispenseStatusId = (value) => {
+    if (value === null || value === undefined) return null;
+    const raw = String(value).trim();
+    if (!raw) return null;
+    if (DISPENSE_STATUS_LABELS[raw]) return raw;
+    const upper = raw.toUpperCase();
+    if (DISPENSE_STATUS_IDS[upper]) return DISPENSE_STATUS_IDS[upper];
+    const lower = raw.toLowerCase();
+    const fromLabels = Object.entries(DISPENSE_STATUS_LABELS).find(
+      ([, label]) => typeof label === "string" && label.toLowerCase() === lower
+    );
+    return fromLabels ? fromLabels[0] : null;
+  };
+
+  const shouldUpdateDispenses = () => {
+    const service = getDispenseService();
+    if (!service) return false;
+    if (typeof Cart === "undefined") return false;
+    try {
+      if (typeof Cart.isAuthenticated === "function") {
+        return Cart.isAuthenticated();
+      }
+    } catch {}
+    const config = window.StorefrontConfig || {};
+    const contactId = config.loggedInContactId;
+    if (contactId === null || contactId === undefined) return false;
+    return String(contactId).trim().length > 0;
+  };
+
+  const ensureScriptDispenseMetadata = async (item) => {
+    if (!item || (!item.isScript && !item.scriptId)) return item;
+    const service = getDispenseService();
+    if (!service) return item;
+    let next = { ...item };
+    const needsLookup =
+      !next.dispenseId || !next.dispenseStatusId || !next.dispenseStatus;
+    if (needsLookup && next.scriptId) {
+      try {
+        const meta =
+          typeof service.waitForScriptDispense === "function"
+            ? await service.waitForScriptDispense(next.scriptId, {
+                attempts: 5,
+                delayMs: 800,
+              })
+            : await service.fetchScript(next.scriptId);
+        if (meta) {
+          if (meta.dispenseId) next.dispenseId = meta.dispenseId;
+          if (meta.dispenseStatusId)
+            next.dispenseStatusId = meta.dispenseStatusId;
+          if (meta.dispenseStatusLabel)
+            next.dispenseStatus = meta.dispenseStatusLabel;
+          next.isScript = true;
+          if (typeof Cart.updateItemMetadata === "function") {
+            await Cart.updateItemMetadata(next.id || item.id, {
+              isScript: true,
+              scriptId: next.scriptId,
+              dispenseId: next.dispenseId,
+              dispenseStatusId: next.dispenseStatusId,
+              dispenseStatus: next.dispenseStatus,
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Failed to refresh script metadata", err);
+      }
+    }
+    return next;
+  };
+
+  const updateCartDispenses = async (statusKeyOrId) => {
+    if (!shouldUpdateDispenses()) return;
+    const service = getDispenseService();
+    if (!service) return;
+    const statusId =
+      resolveDispenseStatusId(statusKeyOrId) ||
+      resolveDispenseStatusId(service.statusIds?.[statusKeyOrId]);
+    if (!statusId) return;
+    const label =
+      DISPENSE_STATUS_LABELS[statusId] ||
+      (service.statusLabels && service.statusLabels[statusId]) ||
+      null;
+    const cartState = Cart.getState();
+    for (const item of cartState.items) {
+      if (!item || (!item.isScript && !item.scriptId)) continue;
+      const enriched = await ensureScriptDispenseMetadata(item);
+      if (!enriched.dispenseId) continue;
+      try {
+        await service.updateDispenseStatus(enriched.dispenseId, statusId);
+        if (typeof Cart.updateItemMetadata === "function") {
+          await Cart.updateItemMetadata(enriched.id || item.id, {
+            dispenseStatusId: statusId,
+            dispenseStatus: label || enriched.dispenseStatus || "",
+          });
+        }
+      } catch (err) {
+        console.error("Failed to update dispense status", err);
+      }
     }
   };
 
@@ -358,6 +523,10 @@
     express: 14.95,
   };
 
+  const CARD_FEE_RATE = 0.018;
+  const CARD_FEE_FIXED = 0.3;
+  const CARD_FEE_GST_RATE = 0.1;
+
   const knownCoupons = {
     SAVE10: {
       type: "percent",
@@ -381,8 +550,65 @@
     list: $use(".checkout-summary"),
     subtotal: $use(".summary-subtotal"),
     shipping: $use(".summary-shipping"),
+    processing: $use(".summary-processing"),
+    processingNote: $use(".summary-processing-note"),
+    gst: $use(".summary-gst"),
     discount: $use(".summary-discount"),
     total: $use(".summary-total"),
+  };
+
+  const checkoutProductsSection = document.querySelector(
+    "[data-checkout-products]"
+  );
+  const checkoutProductsGrid = checkoutProductsSection?.querySelector(
+    "[data-checkout-products-grid]"
+  );
+  const checkoutSearchInput = byId("product_search");
+  const checkoutSearchClear = byId("product_search_clear");
+  const checkoutSearchEmpty = byId("search_empty");
+  let checkoutSearchQuery = "";
+
+  const filterCheckoutProducts = (query = "") => {
+    if (!checkoutProductsGrid) return;
+    checkoutSearchQuery = query;
+    const q = query.trim().toLowerCase();
+    let matches = 0;
+    checkoutProductsGrid.querySelectorAll(".product-card").forEach((card) => {
+      const name =
+        card.querySelector(".product-name")?.textContent?.toLowerCase() || "";
+      const brand =
+        card.querySelector(".product-brand")?.textContent?.toLowerCase() || "";
+      const show = !q || name.includes(q) || brand.includes(q);
+      card.classList.toggle("hidden", !show);
+      if (show) matches++;
+    });
+    if (checkoutSearchClear)
+      checkoutSearchClear.classList.toggle("hidden", !q);
+    if (checkoutSearchEmpty)
+      checkoutSearchEmpty.classList.toggle("hidden", !!matches || !q);
+  };
+
+  const initCheckoutSearch = () => {
+    if (!checkoutProductsGrid || !checkoutSearchInput) return;
+    const runFilter = debounce((value) => filterCheckoutProducts(value), 120);
+    filterCheckoutProducts(checkoutSearchInput.value || "");
+    checkoutSearchInput.addEventListener("input", (event) => {
+      runFilter(event.target.value || "");
+    });
+    if (checkoutSearchClear) {
+      checkoutSearchClear.addEventListener("click", () => {
+        checkoutSearchInput.value = "";
+        filterCheckoutProducts("");
+        checkoutSearchInput.focus();
+      });
+    }
+    const observer = new MutationObserver(() => {
+      filterCheckoutProducts(checkoutSearchQuery);
+    });
+    observer.observe(checkoutProductsGrid, {
+      childList: true,
+      subtree: true,
+    });
   };
 
   const cartEmptyNotice = document.querySelector("[data-cart-empty-notice]");
@@ -429,6 +655,11 @@
       }
 
       // Build offer with backend
+      debugLog("updateOffer request", {
+        couponMeta: checkoutState.couponMeta,
+        shippingType,
+        cartItems,
+      });
       const offer = await buildOffer(
         { items: cartItems },
         checkoutState.couponMeta,
@@ -436,12 +667,17 @@
       );
 
       checkoutState.currentOffer = offer;
+      debugLog("updateOffer success", offer);
       try {
         localStorage.setItem("checkout:offer", JSON.stringify(offer));
       } catch {}
       renderSummary();
     } catch (err) {
       console.error("Failed to update offer:", err);
+      debugLog("updateOffer fallback", {
+        error: err?.message,
+        couponMeta: checkoutState.couponMeta,
+      });
       // Fallback to client-side calculation
       const cartState = Cart.getState();
       const totals = calcTotals(cartState);
@@ -472,6 +708,70 @@
         total + (Number(item.price) || 0) * (Number(item.qty) || 0),
       0
     );
+
+  const getCartItemTax = (cartState = Cart.getState()) =>
+    cartState.items.reduce((total, item) => {
+      const unitTax = Number(item.retailGst);
+      const qty = Number(item.qty) || 0;
+      if (!Number.isFinite(unitTax) || unitTax <= 0 || qty <= 0) return total;
+      return total + unitTax * qty;
+    }, 0);
+
+  const normaliseCouponType = (input) => {
+    const raw = String(input || "").toLowerCase();
+    if (raw === "shipping" || raw === "free_shipping") return "shipping";
+    if (["percent", "percentage", "percent_off"].includes(raw)) return "percent";
+    if (
+      [
+        "fixed",
+        "fixed_amount",
+        "amount",
+        "price",
+        "dollar",
+        "value",
+      ].includes(raw)
+    )
+      return "fixed";
+    return raw;
+  };
+
+  const normaliseMoneyValue = (value) => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+    if (typeof value === "string") {
+      const cleaned = value
+        .replace(/[^0-9.,-]/g, "")
+        .replace(/,/g, ".");
+      const parsed = parseFloat(cleaned);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const normaliseCouponValue = normaliseMoneyValue;
+
+  const interpretCouponMeta = (meta) => {
+    if (!meta) return null;
+    const type = normaliseCouponType(
+      meta.normalizedType || meta.type || meta.discount_type
+    );
+    let rawValue = normaliseCouponValue(
+      meta.normalizedValue !== undefined && meta.normalizedValue !== null
+        ? meta.normalizedValue
+        : meta.value !== undefined && meta.value !== null
+        ? meta.value
+        : meta.discount_value
+    );
+    const percentValue =
+      type === "percent"
+        ? rawValue > 1
+          ? rawValue / 100
+          : rawValue
+        : 0;
+    const percent = type === "percent" ? (rawValue > 1 ? rawValue / 100 : rawValue) : 0;
+    return { type, rawValue, percent };
+  };
 
   const normaliseShippingType = (type) => {
     if (!type) return null;
@@ -576,8 +876,12 @@
     return ensureNoneOption(baseList);
   };
 
-  const calcTotals = (cartState) => {
-    const subtotal = getCartSubtotal(cartState);
+  const roundCurrency = (value) =>
+    Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+
+  const calcTotals = (cartState = Cart.getState()) => {
+    let subtotal = roundCurrency(getCartSubtotal(cartState));
+    const itemTax = roundCurrency(getCartItemTax(cartState));
     let baseShipping = 0;
     const selected = getSelectedShippingType();
     if (selected && String(selected.id) !== NONE_SHIPPING_ID) {
@@ -585,99 +889,248 @@
     } else if (!selected && checkoutState.shippingMethod) {
       baseShipping = shippingRates[checkoutState.shippingMethod] || 0;
     }
-    const shipping = checkoutState.freeShipping ? 0 : baseShipping;
+
+    let rawShipping = roundCurrency(
+      checkoutState.freeShipping ? 0 : baseShipping
+    );
+    const hasSingleOption =
+      Array.isArray(checkoutState.shippingTypes) &&
+      checkoutState.shippingTypes.filter(Boolean).length <= 1;
+    let shippingConfirmed =
+      checkoutState.shippingSelectionConfirmed ||
+      checkoutState.shippingMethod === NONE_SHIPPING_ID ||
+      (checkoutState.shippingMethod && hasSingleOption);
+    let shipping = shippingConfirmed ? rawShipping : 0;
     let discount = 0;
-    const meta = checkoutState.couponMeta;
+    let usedOffer = false;
+    const meta = interpretCouponMeta(checkoutState.couponMeta);
     if (meta) {
-      if (meta.type === "percent") discount = subtotal * meta.value;
-      if (meta.type === "fixed") discount = meta.value;
+      debugLog("calcTotals: applying coupon meta", {
+        meta,
+        subtotal,
+        rawShipping,
+        shippingConfirmed,
+      });
+      if (meta.type === "percent") {
+        discount = subtotal * meta.percent;
+      } else if (meta.type === "fixed") {
+        discount = meta.rawValue;
+      }
     }
-    discount = Math.min(discount, subtotal);
-    const total = subtotal + shipping - discount;
-    return { subtotal, shipping, discount, total };
+
+    let offerSubTotal = null;
+    let offerGrandTotal = null;
+    const offer = checkoutState.currentOffer;
+    if (offer) {
+      offerSubTotal = normaliseMoneyValue(offer.subTotal);
+      offerGrandTotal = normaliseMoneyValue(offer.grandTotal);
+      const offerShippingTotal = Array.isArray(offer.shipping)
+        ? offer.shipping.reduce(
+            (sum, entry) => sum + normaliseMoneyValue(entry?.price),
+            0
+          )
+        : 0;
+      if (
+        Number.isFinite(offerSubTotal) &&
+        Number.isFinite(offerGrandTotal)
+      ) {
+        const offerDiscount = roundCurrency(
+          Math.max(0, offerSubTotal + offerShippingTotal - offerGrandTotal)
+        );
+        subtotal = roundCurrency(offerSubTotal);
+        rawShipping = roundCurrency(offerShippingTotal);
+        shippingConfirmed = true;
+        shipping = rawShipping;
+        discount = roundCurrency(Math.max(offerDiscount, discount));
+        usedOffer = true;
+        debugLog("calcTotals: using offer overrides", {
+          offerSubTotal: subtotal,
+          offerGrandTotal,
+          offerShippingTotal: rawShipping,
+          offerDiscount: discount,
+        });
+      }
+    }
+
+    discount = roundCurrency(Math.min(Math.max(discount, 0), subtotal));
+
+    const totalBeforeFees = roundCurrency(subtotal + shipping - discount + itemTax);
+    const cardFeeBase = Math.max(0, totalBeforeFees);
+    const cardFeeExGst = cardFeeBase > 0 ? roundCurrency(cardFeeBase * CARD_FEE_RATE + CARD_FEE_FIXED) : 0;
+    const cardFeeGst = cardFeeExGst > 0 ? roundCurrency(cardFeeExGst * CARD_FEE_GST_RATE) : 0;
+    const cardFeeTotal = roundCurrency(cardFeeExGst + cardFeeGst);
+    const taxTotal = roundCurrency(itemTax + cardFeeGst);
+    const total = roundCurrency(subtotal + shipping - discount + taxTotal + cardFeeExGst);
+
+    debugLog("calcTotals result", {
+      subtotal,
+      shipping,
+      rawShipping,
+      shippingConfirmed,
+      discount,
+      itemTax,
+      cardFeeExGst,
+      cardFeeGst,
+      cardFeeTotal,
+      taxTotal,
+      total,
+      offerSubTotal,
+      offerGrandTotal,
+      usedOffer,
+    });
+
+    return {
+      subtotal,
+      shipping,
+      rawShipping,
+      shippingConfirmed,
+      discount,
+      itemTax,
+      taxTotal,
+      cardFeeBase,
+      cardFeeExGst,
+      cardFeeGst,
+      cardFeeTotal,
+      totalBeforeFees,
+      total,
+      usedOffer,
+      offerSubTotal: offerSubTotal !== null ? roundCurrency(offerSubTotal) : null,
+      offerGrandTotal: offerGrandTotal !== null ? roundCurrency(offerGrandTotal) : null,
+    };
   };
 
   const renderSummary = () => {
     if (!summaryEls.list || typeof Cart === "undefined") return;
     const cartState = Cart.getState();
+    const currentStep = checkoutState.steps[checkoutState.stepIndex] || "";
+    const readOnly = currentStep === "review";
     summaryEls.list.innerHTML = "";
+
     if (!cartState.items.length) {
       summaryEls.list.innerHTML =
         '<div class="p-4 text-sm text-gray-500">Your cart is empty.</div>';
     } else {
       cartState.items.forEach((item) => {
         const row = document.createElement("div");
-        row.className = "py-4 flex gap-3 items-center";
+        row.className = "py-4 flex gap-3 items-start";
+        const qty = Number(item.qty) || 0;
+        const unitPrice = Number(item.price) || 0;
+        const lineTotal = unitPrice * qty;
+        const brandLine = item.brand
+          ? `<div class="text-xs text-gray-500">${item.brand}</div>`
+          : "";
+        const qtyControls = readOnly
+          ? `<div class="mt-2 flex items-center justify-between text-xs text-gray-500">
+              <span>Qty ${qty}</span>
+              <span class="text-sm font-semibold text-gray-900">${money(lineTotal)}</span>
+            </div>`
+          : `<div class="mt-2 flex items-center gap-2">
+              <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${item.id}" aria-label="Decrease quantity">−</button>
+              <input class="qty-input w-12 text-center rounded-lg border px-2 py-1" value="${qty}" data-id="${item.id}" inputmode="numeric" aria-label="Quantity"/>
+              <button class="qty-incr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${item.id}" aria-label="Increase quantity">+</button>
+            </div>
+            <div class="mt-2 text-sm font-semibold text-gray-900">${money(lineTotal)}</div>`;
+        const removeButton = readOnly
+          ? ""
+          : `<button class="remove-item w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center mt-1" data-id="${item.id}" aria-label="Remove item">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5">
+                <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/>
+              </svg>
+            </button>`;
         row.innerHTML = `
-        <img src="${item.image}" alt="${
-          item.name
-        }" class="w-16 h-16 rounded-lg object-cover"/>
-        <div class="flex-1 min-w-0">
-          <div class="font-semibold text-sm sm:text-base truncate">${
-            item.name
-          }</div>
-          ${
-            item.brand
-              ? `<div class=\"text-xs text-gray-500\">${item.brand}</div>`
-              : ""
-          }
-          <div class="text-sm font-medium text-gray-900">${money(
-            item.price
-          )}</div>
-          <div class="mt-2 inline-flex items-center gap-2">
-            <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${
-              item.id
-            }" aria-label="Decrease quantity">−</button>
-            <input class="qty-input w-12 text-center rounded-lg border px-2 py-1" value="${
-              item.qty
-            }" data-id="${item.id}" inputmode="numeric" aria-label="Quantity"/>
-            <button class="qty-incr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${
-              item.id
-            }" aria-label="Increase quantity">+</button>
+          <img src="${item.image}" alt="${item.name}" class="w-16 h-16 rounded-lg object-cover flex-shrink-0"/>
+          <div class="flex-1 min-w-0">
+            <div class="font-semibold text-sm sm:text-base truncate">${item.name}</div>
+            ${brandLine}
+            <div class="text-xs text-gray-500">Unit price ${money(unitPrice)}</div>
+            ${qtyControls}
           </div>
-        </div>
-        <button class="remove-item w-9 h-9 rounded-lg hover:bg-gray-100" data-id="${
-          item.id
-        }" aria-label="Remove item">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5">
-            <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
-            <path d="M10 11v6M14 11v6"/>
-          </svg>
-        </button>`;
+          ${removeButton}
+        `;
         summaryEls.list.appendChild(row);
       });
     }
 
-    // Use backend offer if available, otherwise fallback to client calculation
-    if (checkoutState.currentOffer) {
-      const offer = checkoutState.currentOffer;
-      summaryEls.subtotal.textContent = money(offer.subTotal);
-      const shippingPrice =
-        offer.shipping && offer.shipping.length > 0
-          ? Number(offer.shipping[0].price) || 0
-          : null;
-      summaryEls.shipping.textContent = offer.hasShipping
-        ? shippingPrice !== null
-          ? shippingPrice > 0
-            ? money(shippingPrice)
-            : "Free"
-          : "Calculated at checkout"
-        : "Free";
-      summaryEls.discount.textContent = money(
-        offer.subTotal -
-          (offer.grandTotal -
-            (offer.shipping && offer.shipping.length > 0
-              ? offer.shipping[0].price
-              : 0))
-      );
-      summaryEls.total.textContent = money(offer.grandTotal);
-    } else {
-      const totals = calcTotals(cartState);
+    const totals = calcTotals(cartState);
+    checkoutState.financials = totals;
+
+    if (summaryEls.subtotal)
       summaryEls.subtotal.textContent = money(totals.subtotal);
-      summaryEls.shipping.textContent =
-        totals.shipping > 0 ? money(totals.shipping) : "Free";
-      summaryEls.discount.textContent = money(-totals.discount);
-      summaryEls.total.textContent = money(Math.max(totals.total, 0));
+
+    const selectedShipping = getSelectedShippingType();
+    let shippingLabel = "Select shipping";
+    if (checkoutState.shippingMethod === NONE_SHIPPING_ID) {
+      shippingLabel = "No shipping";
+    } else if (checkoutState.freeShipping) {
+      shippingLabel = "Free";
+    } else if (
+      totals.shippingConfirmed &&
+      selectedShipping &&
+      String(selectedShipping.id) !== NONE_SHIPPING_ID
+    ) {
+      shippingLabel = totals.rawShipping > 0 ? money(totals.rawShipping) : "Free";
+    } else if (totals.shippingConfirmed) {
+      shippingLabel = totals.rawShipping > 0 ? money(totals.rawShipping) : "Free";
+    }
+    if (summaryEls.shipping) summaryEls.shipping.textContent = shippingLabel;
+
+    if (summaryEls.processing)
+      summaryEls.processing.textContent = totals.cardFeeTotal
+        ? money(totals.cardFeeTotal)
+        : money(0);
+
+    if (summaryEls.gst) summaryEls.gst.textContent = money(totals.taxTotal);
+
+    const processingNote = totals.cardFeeTotal > 0
+      ? `This transaction includes a credit card processing fee of 1.8% + A$0.30 per transaction. Credit card fee = ${money(totals.cardFeeExGst)} + 10% GST ${money(totals.cardFeeGst)} = ${money(totals.cardFeeTotal)}.`
+      : "";
+
+    if (summaryEls.processingNote) {
+      if (processingNote) {
+        summaryEls.processingNote.textContent = processingNote;
+        summaryEls.processingNote.classList.remove("hidden");
+      } else {
+        summaryEls.processingNote.textContent = "";
+        summaryEls.processingNote.classList.add("hidden");
+      }
+    }
+
+    const discountDisplay =
+      totals.discount > 0
+        ? `-${money(totals.discount).replace(/^-/, "")}`
+        : "-$0.00";
+
+    if (summaryEls.discount) {
+      summaryEls.discount.textContent = discountDisplay;
+    }
+
+    if (summaryEls.total) summaryEls.total.textContent = money(totals.total);
+
+    window.__checkoutSummary = {
+      totals,
+      shippingLabel,
+      discountDisplay,
+      processingNote,
+    };
+    window.__checkoutTotals = totals;
+    debugLog("renderSummary totals", {
+      totals,
+      shippingLabel,
+      discountDisplay,
+    });
+
+    if (
+      typeof window !== "undefined" &&
+      window.StorefrontCartUI &&
+      typeof window.StorefrontCartUI.renderCart === "function" &&
+      typeof Cart !== "undefined"
+    ) {
+      try {
+        window.StorefrontCartUI.renderCart(Cart.getState());
+      } catch (err) {
+        debugLog("renderSummary: renderCart refresh failed", err);
+      }
     }
 
     updateStepControlsForCart();
@@ -1167,6 +1620,24 @@
     });
   };
 
+  const setReviewMode = (on) => {
+    const productsSection = document.querySelector("[data-checkout-products]");
+    if (productsSection) productsSection.classList.toggle("hidden", on);
+    if (checkoutSearchInput) {
+      checkoutSearchInput.disabled = on;
+      checkoutSearchInput.classList.toggle("opacity-50", on);
+    }
+    if (checkoutSearchClear) {
+      checkoutSearchClear.disabled = on;
+      if (on) checkoutSearchClear.classList.add("hidden");
+      else if (checkoutSearchInput && checkoutSearchInput.value)
+        checkoutSearchClear.classList.remove("hidden");
+    }
+    if (!on && checkoutProductsGrid) {
+      filterCheckoutProducts(checkoutSearchInput?.value || "");
+    }
+  };
+
   const renderStep = () => {
     const current = checkoutState.steps[checkoutState.stepIndex];
     $$use(".step").forEach((el) => el.classList.add("hidden"));
@@ -1182,6 +1653,8 @@
       "hidden",
       checkoutState.stepIndex < checkoutState.steps.length - 1
     );
+    setReviewMode(current === "review");
+    renderSummary();
     if (current === "review") buildReview();
   };
 
@@ -1293,6 +1766,21 @@
       paymentLines.push("Shipping: No shipping selected");
     }
     if (meta) paymentLines.push(`Coupon: ${meta.code}`);
+    const financials = checkoutState.financials || calcTotals();
+    if (financials.cardFeeTotal > 0) {
+      paymentLines.push(
+        `Card fee: ${money(financials.cardFeeTotal)} (incl GST ${money(financials.cardFeeGst)})`
+      );
+      paymentLines.push(
+        `<span class="text-xs text-gray-500">This transaction includes a credit card processing fee of 1.8% + A$0.30 per transaction.</span>`
+      );
+      paymentLines.push(
+        `<span class="text-xs text-gray-500">Credit card fee = ${money(financials.cardFeeExGst)} + 10% GST ${money(financials.cardFeeGst)} = ${money(financials.cardFeeTotal)}</span>`
+      );
+    }
+    if (financials.taxTotal > 0) {
+      paymentLines.push(`GST total: ${money(financials.taxTotal)}`);
+    }
     $("#review_payment").innerHTML = paymentLines
       .filter(Boolean)
       .map((line) => `<div>${line}</div>`)
@@ -1303,6 +1791,18 @@
   const couponInput = byId("coupon_code");
   const couponFeedback = byId("coupon_feedback");
   const couponInputWrapper = couponInput?.closest(".input-wrapper");
+
+  const hydrateCouponUI = () => {
+    if (!couponInput) return;
+    const meta = checkoutState.couponMeta;
+    if (meta) {
+      couponInput.value = meta.code || "";
+      setCouponButtonState({ applied: true });
+    } else {
+      if (!couponInput.value) couponInput.value = "";
+      setCouponButtonState({ applied: false });
+    }
+  };
 
   const getCouponButton = () =>
     document.querySelector(".apply-coupon");
@@ -1367,6 +1867,8 @@
     checkoutState.freeShipping = false;
     setCouponButtonState({ applied: false });
     setCouponVisualState("neutral", message);
+    saveCheckoutState();
+    hydrateCouponUI();
   };
 
   const removeCoupon = async ({ message = "Coupon removed." } = {}) => {
@@ -1375,6 +1877,8 @@
     if (couponInput) couponInput.value = "";
     setCouponButtonState({ applied: false });
     setCouponVisualState("neutral", message);
+    saveCheckoutState();
+    hydrateCouponUI();
     await updateOffer();
   };
 
@@ -1405,24 +1909,36 @@
         cartProductIds
       );
 
+      debugLog("applyCoupon response", result);
+
       if (result.applied) {
+        const normalizedType = normaliseCouponType(
+          result.applied.discount_type
+        );
+        const rawValue = normaliseCouponValue(
+          result.applied.discount_value
+        );
         checkoutState.couponMeta = {
           code: result.applied.coupon_code,
           type: result.applied.discount_type,
           value: result.applied.discount_value,
+          normalizedType,
+          normalizedValue: rawValue,
           product_selection: result.applied.product_selection,
           applicable_products: Array.isArray(result.applied.applicable_products)
             ? result.applied.applicable_products.map(String)
             : undefined,
           recurring: result.applied.recurring,
         };
-        checkoutState.freeShipping =
-          result.applied.discount_type === "shipping";
+        checkoutState.freeShipping = normalizedType === "shipping";
+        debugLog("applyCoupon normalized meta", checkoutState.couponMeta);
         setCouponVisualState(
           "success",
           result.applied.message || "Coupon applied successfully!"
         );
         setCouponButtonState({ applied: true });
+        saveCheckoutState();
+        hydrateCouponUI();
       } else {
         const reason = result.reasons[code];
         let message = "Invalid coupon code";
@@ -1447,6 +1963,8 @@
         checkoutState.freeShipping = false;
         setCouponButtonState({ applied: false });
         setCouponVisualState("error", message);
+        saveCheckoutState();
+        hydrateCouponUI();
       }
     } catch (err) {
       console.error("Coupon validation failed:", err);
@@ -1457,6 +1975,8 @@
         "error",
         "Failed to validate coupon. Please try again."
       );
+      saveCheckoutState();
+      hydrateCouponUI();
     } finally {
       setCouponButtonState({
         loading: false,
@@ -1633,8 +2153,18 @@
           shippingContainer.appendChild(label);
         });
 
-        checkoutState.shippingMethod = preferred ||
-          (resolvedTypes[0] ? String(resolvedTypes[0].id) : "");
+        const previousMethod = checkoutState.shippingMethod
+          ? String(checkoutState.shippingMethod)
+          : "";
+        const nextMethod =
+          preferred || (resolvedTypes[0] ? String(resolvedTypes[0].id) : "");
+        checkoutState.shippingMethod = nextMethod;
+        if (previousMethod && previousMethod !== nextMethod) {
+          checkoutState.shippingSelectionConfirmed = false;
+        }
+        if (nextMethod === NONE_SHIPPING_ID) {
+          checkoutState.shippingSelectionConfirmed = true;
+        }
         await updateOffer();
       }
     } catch (err) {
@@ -1837,9 +2367,16 @@
       }
 
       processOrder()
-        .then((result) => {
+        .then(async (result) => {
           // Clear cart and state
-          Cart.clear();
+          if (shouldUpdateDispenses()) {
+            try {
+              await updateCartDispenses("PAID");
+            } catch (err) {
+              console.error("Failed to mark dispenses as paid", err);
+            }
+          }
+          await Cart.clear();
           localStorage.removeItem(STORAGE_KEY);
           localStorage.removeItem(`${STORAGE_KEY}:form`);
 
@@ -1916,10 +2453,17 @@
     }
     if (target.name === "shipping_method") {
       checkoutState.shippingMethod = target.value || "";
+      checkoutState.shippingSelectionConfirmed = true;
+      const couponType = checkoutState.couponMeta
+        ? normaliseCouponType(
+            checkoutState.couponMeta.normalizedType ||
+              checkoutState.couponMeta.type ||
+              checkoutState.couponMeta.discount_type
+          )
+        : "";
       if (
         checkoutState.shippingMethod !== NONE_SHIPPING_ID &&
-        (!checkoutState.couponMeta ||
-          checkoutState.couponMeta.type !== "shipping")
+        couponType !== "shipping"
       ) {
         checkoutState.freeShipping = false;
       }
@@ -1953,12 +2497,22 @@
 
       // Load saved state and form data
       loadCheckoutState();
+      hydrateCouponUI();
+      if (checkoutState.couponMeta) {
+        setCouponVisualState("success", "Coupon applied.");
+      } else {
+        setCouponVisualState("neutral", "");
+      }
       if (loggedInContactId) {
         checkoutState.contactId = loggedInContactId;
         saveCheckoutState();
       }
       applyPaymentSourceSelection({ save: false });
       loadFormData();
+      debugLog("Init after form load", {
+        couponMeta: checkoutState.couponMeta,
+        shippingMethod: checkoutState.shippingMethod,
+      });
 
       const prefValue =
         shippingOptionSelect?.value || checkoutState.shippingPreference || "";
@@ -2029,6 +2583,8 @@
       renderStepper();
       renderStep();
       updateStepControlsForCart();
+
+      initCheckoutSearch();
 
       Cart.subscribe(() => {
         renderSummary();

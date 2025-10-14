@@ -146,7 +146,7 @@
     return '';
   }
 
-  const FILTER_FIELDS = ['type', 'sub_type', 'dominance', 'lineage', 'status'];
+  const FILTER_FIELDS = ['type', 'sub_type', 'dominance', 'lineage', 'status', 'origin_country', 'organic'];
 
   let state = {
     items: [],         // [{ id, node, tokens, primaryTokens, filterValues, searchBlob, score }]
@@ -479,6 +479,15 @@
   function canonicalFilterValue(field, value) {
     if (!value) return '';
     if (field === 'status') return canonicalStatus(value);
+    if (field === 'origin_country') {
+      const code = canonicalCountryCode(value);
+      if (code) return code;
+    }
+    if (field === 'organic') {
+      const normalized = norm(value);
+      if (['organic', 'yes', 'true', '1'].includes(normalized)) return 'organic';
+      return '';
+    }
     return normalizeForSearch(value).replace(/\s+/g, '-');
   }
 
@@ -637,7 +646,9 @@
         sub_type: canonicalFilterValue('sub_type', subType),
         dominance: canonicalFilterValue('dominance', dominance),
         lineage: canonicalFilterValue('lineage', lineage),
-        status: canonicalFilterValue('status', status)
+        status: canonicalFilterValue('status', status),
+        origin_country: originCountryCode || canonicalFilterValue('origin_country', originCountryRaw),
+        organic: canonicalFilterValue('organic', isOrganic ? 'organic' : '')
       };
 
       const meta = parseCardMeta(card);

@@ -28,8 +28,12 @@
 
     <footer class="border-t p-4 space-y-4">
       <div class="flex justify-between text-sm"><span>Subtotal</span><span class="cart-subtotal">$0.00</span></div>
-      <div class="flex justify-between text-sm"><span>Shipping</span><span class="font-medium">Calculated at checkout</span></div>
+      <div class="flex justify-between text-sm"><span>Shipping</span><span class="cart-shipping font-medium">Select shipping</span></div>
+      <div class="flex justify-between text-sm"><span>Card fee (incl GST)</span><span class="cart-processing font-medium">$0.00</span></div>
+      <div class="flex justify-between text-sm"><span>GST total</span><span class="cart-gst font-medium">$0.00</span></div>
+      <div class="flex justify-between text-sm"><span>Discount</span><span class="cart-discount font-medium text-emerald-600">-$0.00</span></div>
       <div class="flex justify-between text-base font-bold"><span>Total</span><span class="cart-total">$0.00</span></div>
+      <p class="cart-processing-note text-xs text-gray-500 leading-snug hidden"></p>
       <div class="flex items-center justify-between gap-3">
         <button class="clear-cart px-4 py-2 rounded-xl border border-gray-300 hover:bg-gray-100">Clear Cart</button>
         <button class="cart-checkout px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700">Proceed to checkout</button>
@@ -51,19 +55,19 @@
     window.StorefrontCartConfig ||
     {};
 
-  const config = Object.assign(
-    {
-      checkoutUrl:
-        document.querySelector(".get-url")?.dataset?.checkoutUrl ||
-        document.body?.dataset?.checkoutUrl ||
-        initialConfig.checkoutUrl ||
-        "checkout.html",
-    },
-    initialConfig
-  );
+const config = Object.assign(
+  {
+    checkoutUrl:
+      document.querySelector(".get-url")?.dataset?.checkoutUrl ||
+      document.body?.dataset?.checkoutUrl ||
+      initialConfig.checkoutUrl ||
+      "checkout.html",
+  },
+  initialConfig
+);
 
-  // Debug flag (enable via ?sfDebug=1 or <body data-sf-debug="1">)
-  const DEBUG = (() => {
+// Debug flag (enable via ?sfDebug=1 or <body data-sf-debug="1">)
+const DEBUG = (() => {
     try {
       const url = new URL(window.location.href);
       if (url.searchParams.get("sfDebug") === "1") return true;
@@ -74,20 +78,282 @@
     } catch {
       return false;
     }
-  })();
+})();
 
-  const dlog = (...args) => {
-    if (!DEBUG) return;
+const dlog = (...args) => {
+  if (!DEBUG) return;
+  try {
+    console.debug("[SF-CartUI]", ...args);
+  } catch {}
+};
+
+  const debugLog = (...args) => {
+    if (typeof window !== "undefined" && window.__CHECKOUT_DEBUG) {
+      try {
+        console.log("[CartUI]", ...args);
+      } catch {}
+    }
+  };
+
+  const getDispenseService = () => {
     try {
-      console.debug("[SF-CartUI]", ...args);
+      return window.DispenseService || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const DEFAULT_DISPENSE_STATUS_IDS = {
+    CANCELLED: "146",
+    IN_CART: "149",
+    PAID: "152",
+  };
+  const DEFAULT_DISPENSE_STATUS_LABELS = {
+    "146": "Cancelled",
+    "149": "In Cart",
+    "152": "Paid",
+  };
+
+  const suppressedScriptIds = new Set();
+
+  const CARD_FEE_RATE = 0.018;
+  const CARD_FEE_FIXED = 0.3;
+  const CARD_FEE_GST_RATE = 0.1;
+
+  const roundCurrency = (value) =>
+    Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+
+  const formatMoney = (value) =>
+    typeof money === "function"
+      ? money(value)
+      : `$${(Number(value) || 0).toFixed(2)}`;
+
+  const getCartItemTaxValue = (items = []) =>
+    items.reduce((total, item) => {
+      const unitTax = Number(item.retailGst);
+      const qty = Number(item.qty) || 0;
+      if (!Number.isFinite(unitTax) || unitTax <= 0 || qty <= 0) return total;
+      return total + unitTax * qty;
+    }, 0);
+
+  const computeDrawerFallbackTotals = (state) => {
+    const items = Array.isArray(state?.items) ? state.items : [];
+    const subtotal = roundCurrency(
+      items.reduce(
+        (total, item) =>
+          total + (Number(item.price) || 0) * (Number(item.qty) || 0),
+        0
+      )
+    );
+    const itemTax = roundCurrency(getCartItemTaxValue(items));
+    const totalBeforeFees = roundCurrency(subtotal + itemTax);
+    const cardFeeExGst =
+      totalBeforeFees > 0
+        ? roundCurrency(totalBeforeFees * CARD_FEE_RATE + CARD_FEE_FIXED)
+        : 0;
+    const cardFeeGst = cardFeeExGst > 0 ? roundCurrency(cardFeeExGst * CARD_FEE_GST_RATE) : 0;
+    const cardFeeTotal = roundCurrency(cardFeeExGst + cardFeeGst);
+    const taxTotal = roundCurrency(itemTax + cardFeeGst);
+    const total = roundCurrency(subtotal + taxTotal + cardFeeExGst);
+    return {
+      subtotal,
+      shippingLabel: "Select shipping",
+      cardFeeExGst,
+      cardFeeGst,
+      cardFeeTotal,
+      taxTotal,
+      total,
+      discountDisplay: "-$0.00",
+      processingNote:
+        cardFeeTotal > 0
+          ? `This transaction includes a credit card processing fee of 1.8% + A$0.30 per transaction. Credit card fee = ${formatMoney(cardFeeExGst)} + 10% GST ${formatMoney(cardFeeGst)} = ${formatMoney(cardFeeTotal)}.`
+          : "",
+    };
+  };
+
+  const resolveDispenseStatusId = (value) => {
+    const service = getDispenseService();
+    const statusIds = Object.assign(
+      {},
+      DEFAULT_DISPENSE_STATUS_IDS,
+      service?.statusIds || {}
+    );
+    const statusLabels = Object.assign(
+      {},
+      DEFAULT_DISPENSE_STATUS_LABELS,
+      service?.statusLabels || {}
+    );
+    if (value == null) return null;
+    const raw = String(value).trim();
+    if (!raw) return null;
+    if (statusLabels[raw]) return raw;
+    const upper = raw.toUpperCase();
+    if (statusIds[upper]) return statusIds[upper];
+    const lower = raw.toLowerCase();
+    const fromLabels = Object.entries(statusLabels).find(
+      ([, label]) => typeof label === "string" && label.toLowerCase() === lower
+    );
+    if (fromLabels) return fromLabels[0];
+    return null;
+  };
+
+  const getDispenseStatusLabel = (statusIdOrLabel) => {
+    const service = getDispenseService();
+    const statusLabels = Object.assign(
+      {},
+      DEFAULT_DISPENSE_STATUS_LABELS,
+      service?.statusLabels || {}
+    );
+    if (!statusIdOrLabel && statusIdOrLabel !== 0) return null;
+    const raw = String(statusIdOrLabel).trim();
+    if (!raw) return null;
+    if (statusLabels[raw]) return statusLabels[raw];
+    const lower = raw.toLowerCase();
+    const match = Object.entries(statusLabels).find(
+      ([, label]) => typeof label === "string" && label.toLowerCase() === lower
+    );
+    return match ? match[1] : null;
+  };
+
+  const cssEscape = (value) => {
+    const str = String(value);
+    if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+      try {
+        return CSS.escape(str);
+      } catch {
+        return str.replace(/["\\]/g, "\\$&");
+      }
+    }
+    return str.replace(/["\\]/g, "\\$&");
+  };
+
+  const updateProductCardDataset = (productIds, patch = {}, options = {}) => {
+    const ids = Array.isArray(productIds) ? productIds : [productIds];
+    let updated = false;
+    ids.forEach((id) => {
+      if (!id && id !== 0) return;
+      const canonicalId = String(id);
+      const scriptIdFromPatch = Object.prototype.hasOwnProperty.call(
+        patch,
+        "scriptId"
+      )
+        ? patch.scriptId
+        : undefined;
+      if (Object.prototype.hasOwnProperty.call(patch, "suppressAutoSeed")) {
+        if (patch.suppressAutoSeed) {
+          suppressedScriptIds.add(canonicalId);
+          if (scriptIdFromPatch != null && scriptIdFromPatch !== "") {
+            suppressedScriptIds.add(String(scriptIdFromPatch));
+          }
+        } else {
+          suppressedScriptIds.delete(canonicalId);
+          if (scriptIdFromPatch != null && scriptIdFromPatch !== "") {
+            suppressedScriptIds.delete(String(scriptIdFromPatch));
+          }
+        }
+      }
+      const selector = `.product-card[data-product-id="${cssEscape(id)}"]`;
+      const cards = $$use(selector);
+      if (!cards.length) return;
+      cards.forEach((card) => {
+        if (!card.dataset.scriptId && !patch.force) return;
+        if (Object.prototype.hasOwnProperty.call(patch, "dispenseStatus")) {
+          const status = patch.dispenseStatus;
+          if (status === null || status === undefined || status === "") {
+            delete card.dataset.dispenseStatus;
+          } else {
+            card.dataset.dispenseStatus = String(status);
+          }
+          updated = true;
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, "dispenseStatusId")) {
+          const statusId = patch.dispenseStatusId;
+          if (statusId === null || statusId === undefined || statusId === "") {
+            delete card.dataset.dispenseStatusId;
+          } else {
+            card.dataset.dispenseStatusId = String(statusId);
+          }
+          updated = true;
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, "dispenseId")) {
+          const dispId = patch.dispenseId;
+          if (dispId === null || dispId === undefined || dispId === "") {
+            delete card.dataset.dispenseId;
+          } else {
+            card.dataset.dispenseId = String(dispId);
+          }
+          updated = true;
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, "suppressAutoSeed")) {
+          if (patch.suppressAutoSeed) {
+            card.dataset.dispenseSuppressed = "true";
+            if (card.dataset.scriptId) {
+              suppressedScriptIds.add(String(card.dataset.scriptId));
+            }
+          } else {
+            delete card.dataset.dispenseSuppressed;
+            if (card.dataset.scriptId) {
+              suppressedScriptIds.delete(String(card.dataset.scriptId));
+            }
+          }
+          updated = true;
+        }
+      });
+    });
+    if (updated && options.syncButtons) {
+      setTimeout(() => {
+        try {
+          syncAddButtons();
+        } catch (err) {
+          console.error("syncAddButtons failed after dataset update", err);
+        }
+      }, 0);
+    }
+  };
+
+  const isCartAuthenticated = () => {
+    let authed = false;
+    if (typeof window.Cart?.isAuthenticated === "function") {
+      try {
+        authed = Boolean(window.Cart.isAuthenticated());
+      } catch {
+        authed = false;
+      }
+    }
+    if (authed) return true;
+    try {
+      const root = document.querySelector(".get-url");
+      if (root?.dataset?.auth === "true") return true;
+      const contactAttr =
+        root?.dataset?.contactId ||
+        root?.dataset?.contactid ||
+        root?.dataset?.contact ||
+        root?.dataset?.userId;
+      if (contactAttr != null && String(contactAttr).trim().length) {
+        return true;
+      }
     } catch {}
+    const cfg = window.StorefrontConfig || {};
+    const contactId =
+      cfg.loggedInContactId ??
+      cfg.contactId ??
+      cfg.customerId ??
+      cfg.userId ??
+      cfg.memberId;
+    if (contactId === null || contactId === undefined) return false;
+    return String(contactId).trim().length > 0;
   };
 
   let overlayEl;
   let drawerEl;
   let itemsContainer;
   let subtotalEl;
+  let shippingEl;
+  let processingEl;
+  let gstEl;
+  let discountEl;
   let totalEl;
+  let processingNoteEl;
   let checkoutBtn;
 
   const ensureDrawer = () => {
@@ -104,7 +370,12 @@
 
     itemsContainer = document.querySelector(".cart-items");
     subtotalEl = document.querySelector(".cart-subtotal");
+    shippingEl = document.querySelector(".cart-shipping");
+    processingEl = document.querySelector(".cart-processing");
+    gstEl = document.querySelector(".cart-gst");
+    discountEl = document.querySelector(".cart-discount");
     totalEl = document.querySelector(".cart-total");
+    processingNoteEl = document.querySelector(".cart-processing-note");
     checkoutBtn = document.querySelector(".cart-checkout");
     dlog("ensureDrawer: elements", {
       hasOverlay: !!overlayEl,
@@ -223,7 +494,281 @@
     product.price = Number.isFinite(parsedPrice)
       ? parsedPrice
       : toNum(card.querySelector(".product-price")?.textContent || 0);
+
+    const retailGstRaw =
+      card.dataset.retailGst ||
+      card.dataset.retailgst ||
+      card.dataset.retailGstValue ||
+      "";
+    if (retailGstRaw !== undefined && retailGstRaw !== null && retailGstRaw !== "") {
+      const gst = Number(retailGstRaw);
+      if (Number.isFinite(gst)) product.retailGst = gst;
+    }
+
+    const wholesaleRaw =
+      card.dataset.wholesalePrice || card.dataset.wholesaleprice || "";
+    if (wholesaleRaw !== undefined && wholesaleRaw !== null && wholesaleRaw !== "") {
+      const wholesale = Number(wholesaleRaw);
+      if (Number.isFinite(wholesale)) product.wholesalePrice = wholesale;
+    }
+
+    const scriptIdRaw = card.dataset.scriptId || card.dataset.scriptID;
+    if (scriptIdRaw) {
+      const scriptId = String(scriptIdRaw).trim();
+      if (scriptId) {
+        product.isScript = true;
+        product.scriptId = scriptId;
+        const dispenseIdRaw =
+          card.dataset.dispenseId ||
+          card.dataset.dispenseID ||
+          card.dataset.dispenseid;
+        if (dispenseIdRaw != null) {
+          const dispenseId = String(dispenseIdRaw).trim();
+          if (dispenseId) product.dispenseId = dispenseId;
+        }
+        const dispenseStatusRaw =
+          card.dataset.dispenseStatus ||
+          card.dataset.dispensestatus ||
+          card.dataset.dispenseStatusLabel;
+        if (dispenseStatusRaw != null) {
+          const dispenseStatus = String(dispenseStatusRaw).trim();
+          if (dispenseStatus) {
+            product.dispenseStatus = dispenseStatus;
+            const statusIdFromText = resolveDispenseStatusId(dispenseStatus);
+            if (statusIdFromText) {
+              product.dispenseStatusId = statusIdFromText;
+            }
+          }
+        }
+        const dispenseStatusIdAttr =
+          card.dataset.dispenseStatusId || card.dataset.dispensestatusid;
+        if (dispenseStatusIdAttr != null) {
+          const statusId = resolveDispenseStatusId(dispenseStatusIdAttr);
+          if (statusId) {
+            product.dispenseStatusId = statusId;
+            if (!product.dispenseStatus) {
+              product.dispenseStatus = getDispenseStatusLabel(statusId);
+            }
+          }
+        }
+      }
+    }
     return product;
+  };
+
+  const shouldManageDispenses = () => !!getDispenseService();
+
+  const updateCartItemMetadata = async (id, patch) => {
+    if (!id || !patch || typeof window.Cart?.updateItemMetadata !== "function")
+      return null;
+    try {
+      return await window.Cart.updateItemMetadata(String(id), patch);
+    } catch (err) {
+      dlog("updateItemMetadata failed", err);
+      return null;
+    }
+  };
+
+  const attachScriptMetadata = (source, patch = {}) => {
+    if (!source || typeof source !== "object") return patch;
+    if (source.scriptId || source.script_id) {
+      patch.isScript = true;
+      patch.scriptId = String(source.scriptId || source.script_id).trim();
+    }
+    if (source.dispenseId || source.dispense_id) {
+      const val = String(source.dispenseId || source.dispense_id || "").trim();
+      if (val) patch.dispenseId = val;
+    }
+    if (source.dispenseStatusId || source.dispense_status_id) {
+      const statusId = resolveDispenseStatusId(
+        source.dispenseStatusId || source.dispense_status_id
+      );
+      if (statusId) {
+        patch.dispenseStatusId = statusId;
+        if (!patch.dispenseStatus) {
+          patch.dispenseStatus = getDispenseStatusLabel(statusId);
+        }
+      }
+    }
+    if (source.dispenseStatus || source.dispense_status) {
+      const statusLabel = String(
+        source.dispenseStatus || source.dispense_status || ""
+      ).trim();
+      if (statusLabel) {
+        patch.dispenseStatus = statusLabel;
+        const statusId = resolveDispenseStatusId(statusLabel);
+        if (statusId) patch.dispenseStatusId = statusId;
+      }
+    }
+    if (source.dispenseStatusLabel) {
+      const statusLabel = String(source.dispenseStatusLabel || "").trim();
+      if (statusLabel) {
+        patch.dispenseStatus = statusLabel;
+        const statusId = resolveDispenseStatusId(statusLabel);
+        if (statusId) patch.dispenseStatusId = statusId;
+      }
+    }
+    return patch;
+  };
+
+  const fetchScriptMeta = async (scriptId, options = {}) => {
+    const service = getDispenseService();
+    if (!service || !scriptId) return null;
+    const id = String(scriptId).trim();
+    if (!id) return null;
+    const attemptOptions = {
+      attempts: options.attempts ?? 4,
+      delayMs: options.delayMs ?? 700,
+    };
+    try {
+      if (options.awaitCreation && typeof service.ensureScriptDispense === "function") {
+        const result = await service.ensureScriptDispense(id, attemptOptions);
+        if (result) return result;
+      }
+      if (typeof service.waitForScriptDispense === "function") {
+        return await service.waitForScriptDispense(id, attemptOptions);
+      }
+      if (typeof service.fetchScript === "function") {
+        const response = await service.fetchScript(id);
+        return response?.script || response || null;
+      }
+    } catch (err) {
+      dlog("fetchScriptMeta failed", err);
+    }
+    return null;
+  };
+
+  const ensureScriptMetadata = async (target, { triggerCreation = false } = {}) => {
+    if (!shouldManageDispenses()) return null;
+    if (!target || typeof target !== "object") return null;
+    const scriptId = target.scriptId || target.script_id;
+    if (!scriptId) return null;
+    const meta = await fetchScriptMeta(scriptId, {
+      awaitCreation: triggerCreation,
+    });
+    if (!meta) return null;
+    const patch = attachScriptMetadata(
+      {
+        scriptId,
+        dispenseId: meta.dispenseId,
+        dispenseStatusId: meta.dispenseStatusId,
+        dispenseStatusLabel: meta.dispenseStatusLabel,
+      },
+      {}
+    );
+    if (target.id) {
+      patch.id = target.id;
+      await updateCartItemMetadata(target.id, patch);
+    }
+    return patch;
+  };
+
+  const syncScriptMetadataFromDom = async () => {
+    if (!window.Cart) return;
+    const cards = $$use(".product-card[data-script-id]");
+    if (!cards.length) return;
+    await Promise.all(
+      cards.map(async (card) => {
+        const product = extractProduct(card);
+        if (!product || !product.id) return;
+        const existing = window.Cart.getItem
+          ? window.Cart.getItem(product.id)
+          : null;
+        if (!existing) return;
+        const patch = attachScriptMetadata(product, { id: existing.id });
+        if (!patch || Object.keys(patch).length <= 1) return; // id + maybe script metadata
+        await updateCartItemMetadata(existing.id, patch);
+      })
+    );
+  };
+
+  const seedScriptsFromDom = async () => {
+    if (!window.Cart || !shouldManageDispenses()) return;
+    const cards = $$use(
+      '.product-card[data-script-id][data-dispense-status]'
+    );
+    if (!cards.length) return;
+    for (const card of cards) {
+      const product = extractProduct(card);
+      if (!product || !product.id || !product.isScript) continue;
+      const status = String(product.dispenseStatus || "").toLowerCase();
+      if (status !== "in cart") continue;
+      const existing = window.Cart.getItem
+        ? window.Cart.getItem(product.id)
+        : null;
+      if (!existing) {
+        try {
+          await window.Cart.addItem(product, 1);
+        } catch (err) {
+          dlog("seed addItem failed", err);
+        }
+      }
+      const targetId = existing?.id || product.id;
+      const patch = attachScriptMetadata(product, { id: targetId });
+      await updateCartItemMetadata(targetId, patch);
+    }
+  };
+
+  const ensureDispenseStatusForItem = async (item, { triggerCreation = false } = {}) => {
+    if (!item || !item.id) return item;
+    if (!item.isScript && !item.scriptId) return item;
+    const current = Object.assign({}, item);
+    if (!current.dispenseId || !current.dispenseStatusId || !current.dispenseStatus) {
+      const patch = await ensureScriptMetadata(current, { triggerCreation });
+      if (patch) {
+        Object.assign(current, patch);
+      }
+    }
+    return current;
+  };
+
+  const updateDispenseStatusForItem = async (item, statusKeyOrId) => {
+    if (!shouldManageDispenses()) return;
+    const service = getDispenseService();
+    if (!service) return;
+    const updatedItem = await ensureDispenseStatusForItem(item, {
+      triggerCreation: false,
+    });
+    const dispenseId = updatedItem?.dispenseId;
+    if (!dispenseId) {
+      throw new Error("Unable to resolve dispense for script");
+    }
+    const statusId =
+      resolveDispenseStatusId(statusKeyOrId) ||
+      resolveDispenseStatusId(
+        service.statusIds?.[statusKeyOrId]
+          ? service.statusIds[statusKeyOrId]
+          : statusKeyOrId
+      ) ||
+      resolveDispenseStatusId(statusKeyOrId);
+    if (!statusId) {
+      throw new Error("Unsupported dispense status");
+    }
+    await service.updateDispenseStatus(dispenseId, statusId);
+    await updateCartItemMetadata(item.id, {
+      dispenseStatusId: statusId,
+      dispenseStatus: getDispenseStatusLabel(statusId),
+    });
+    updateProductCardDataset(
+      [item.id, item.productId],
+      {
+        dispenseStatusId: statusId,
+        dispenseStatus: getDispenseStatusLabel(statusId),
+        dispenseId,
+        scriptId: item.scriptId,
+        suppressAutoSeed: String(statusId) === DEFAULT_DISPENSE_STATUS_IDS.CANCELLED,
+      },
+      { syncButtons: true }
+    );
+  };
+
+  const cancelScriptDispense = async (item) => {
+    if (!shouldManageDispenses()) return;
+    const statusId =
+      getDispenseService()?.statusIds?.CANCELLED ||
+      resolveDispenseStatusId("Cancelled") ||
+      DEFAULT_DISPENSE_STATUS_IDS.CANCELLED;
+    await updateDispenseStatusForItem(item, statusId);
   };
 
   /* ========= rendering ========= */
@@ -269,7 +814,7 @@
               ? `<div class="text-sm text-gray-600">${item.brand}</div>`
               : ""
           }
-          <div class="text-sm font-medium">${money(item.price)}</div>
+          <div class="text-sm font-medium">${formatMoney(item.price)}</div>
           <div class="mt-2 inline-flex items-center gap-2">
             <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${
               item.id
@@ -293,37 +838,62 @@
         itemsContainer.appendChild(row);
       });
     }
-    const subtotal = state.items.reduce(
-      (total, item) =>
-        total + (Number(item.price) || 0) * (Number(item.qty) || 0),
-      0
-    );
-    let discount = 0;
-    let total = subtotal;
-    try {
-      const offerRaw = localStorage.getItem("checkout:offer");
-      if (offerRaw) {
-        const offer = JSON.parse(offerRaw);
-        const shippingPrice =
-          offer && offer.shipping && offer.shipping.length > 0
-            ? Number(offer.shipping[0].price) || 0
-            : 0;
-        const usingOffer =
-          Number.isFinite(Number(offer?.subTotal)) &&
-          Number.isFinite(Number(offer?.grandTotal));
-        if (usingOffer) {
-          // Compute discount as subTotal - (grandTotal - shipping)
-          discount = Math.max(
-            0,
-            (Number(offer.subTotal) || 0) -
-              Math.max(0, (Number(offer.grandTotal) || 0) - shippingPrice)
-          );
-          total = Math.max(0, Number(offer.grandTotal) || 0);
+    const summaryContext = window.__checkoutSummary;
+    if (summaryContext && summaryContext.totals) {
+      const { totals, shippingLabel, discountDisplay, processingNote } = summaryContext;
+      debugLog("renderCart using checkoutSummary", {
+        totals,
+        shippingLabel,
+        discountDisplay,
+      });
+      if (subtotalEl) subtotalEl.textContent = formatMoney(totals.subtotal);
+      if (shippingEl)
+        shippingEl.textContent =
+          shippingLabel ||
+          (totals.shippingConfirmed
+            ? totals.rawShipping > 0
+              ? formatMoney(totals.rawShipping)
+              : "Free"
+            : "Select shipping");
+      if (processingEl)
+        processingEl.textContent = formatMoney(totals.cardFeeTotal);
+      if (gstEl) gstEl.textContent = formatMoney(totals.taxTotal);
+      if (discountEl)
+        discountEl.textContent =
+          discountDisplay ||
+          (totals.discount > 0
+            ? `-${formatMoney(totals.discount).replace(/^-/, "")}`
+            : "-$0.00");
+      if (totalEl) totalEl.textContent = formatMoney(totals.total);
+      if (processingNoteEl) {
+        if (processingNote) {
+          processingNoteEl.textContent = processingNote;
+          processingNoteEl.classList.remove("hidden");
+        } else {
+          processingNoteEl.textContent = "";
+          processingNoteEl.classList.add("hidden");
         }
       }
-    } catch {}
-    if (subtotalEl) subtotalEl.textContent = money(subtotal);
-    if (totalEl) totalEl.textContent = money(total);
+    } else {
+      const fallback = computeDrawerFallbackTotals(state);
+      debugLog("renderCart fallback totals", fallback);
+      if (subtotalEl) subtotalEl.textContent = formatMoney(fallback.subtotal);
+      if (shippingEl) shippingEl.textContent = fallback.shippingLabel;
+      if (processingEl)
+        processingEl.textContent = formatMoney(fallback.cardFeeTotal);
+      if (gstEl) gstEl.textContent = formatMoney(fallback.taxTotal);
+      if (discountEl) discountEl.textContent = fallback.discountDisplay;
+      if (totalEl) totalEl.textContent = formatMoney(fallback.total);
+      if (processingNoteEl) {
+        if (fallback.processingNote) {
+          processingNoteEl.textContent = fallback.processingNote;
+          processingNoteEl.classList.remove("hidden");
+        } else {
+          processingNoteEl.textContent = "";
+          processingNoteEl.classList.add("hidden");
+        }
+      }
+    }
     updateCheckoutButton(state);
     dlog(
       "renderCart: items",
@@ -359,18 +929,19 @@
       );
     });
     const buttons = $$use(".add-to-cart-btn");
+    const seedQueue = [];
     let matched = 0;
     buttons.forEach((btn) => {
+      const card = btn.closest(".product-card");
       // Prefer explicit dataset id if present; only fallback to signature-derived ids if the id starts with sig:
       const explicitId =
         btn.dataset?.productId ||
-        btn.closest(".product-card")?.dataset?.productId ||
+        card?.dataset?.productId ||
         "";
       const computedId = explicitId || safeId(btn);
       const idStr = String(computedId);
       let on = inCart.has(idStr);
       if (!on && idStr.startsWith("sig:")) {
-        const card = btn.closest(".product-card");
         const name =
           card?.querySelector(".product-name")?.textContent?.trim() || "";
         const brand =
@@ -379,6 +950,55 @@
           card?.querySelector(".product-price")?.textContent?.trim() || "";
         const sig = toSignature(name, brand, price);
         on = inCart.has(sig);
+      }
+      if (card) {
+        const scriptKey = card.dataset?.scriptId
+          ? String(card.dataset.scriptId)
+          : null;
+        if (
+          suppressedScriptIds.has(idStr) ||
+          (scriptKey && suppressedScriptIds.has(scriptKey))
+        ) {
+          card.dataset.dispenseSuppressed = "true";
+        }
+        if (
+          suppressedScriptIds.has(idStr) ||
+          (scriptKey && suppressedScriptIds.has(scriptKey))
+        ) {
+          on = false;
+        }
+      }
+      if (!on) {
+        const status =
+          card?.dataset?.dispenseStatus ||
+          card?.dataset?.dispensestatus ||
+          "";
+        const suppressed = card?.dataset?.dispenseSuppressed === "true";
+        if (!suppressed && typeof status === "string" && status.trim()) {
+          const lower = status.trim().toLowerCase();
+          if (lower === "in cart" || lower === "in-cart") {
+            on = true;
+            if (card && window.Cart) {
+              const product = extractProduct(card);
+              if (
+                product &&
+                product.id &&
+                !inCart.has(String(product.id)) &&
+                !inCart.has(
+                  toSignature(
+                    product.name,
+                    product.brand,
+                    typeof product.price === "number"
+                      ? String(product.price)
+                      : product.price || ""
+                  )
+                )
+              ) {
+                seedQueue.push(product);
+              }
+            }
+          }
+        }
       }
       btn.disabled = on;
       btn.textContent = on ? "Added ✓" : "Add to Cart";
@@ -395,6 +1015,37 @@
       buttonCount: buttons.length,
       matched,
     });
+    if (seedQueue.length && window.Cart) {
+      Promise.resolve().then(async () => {
+        for (const product of seedQueue) {
+          try {
+            await Cart.addItem(product, 1);
+            const patch = attachScriptMetadata(product, { id: product.id });
+            await updateCartItemMetadata(product.id, patch);
+            updateProductCardDataset(
+              [product.id, product.productId],
+              {
+                dispenseStatus: product.dispenseStatus || "In Cart",
+                dispenseStatusId: product.dispenseStatusId,
+                dispenseId: product.dispenseId,
+                scriptId: product.scriptId,
+                suppressAutoSeed: false,
+              },
+              { syncButtons: true }
+            );
+          } catch (err) {
+            console.error("Failed to seed script item into cart", err);
+          }
+        }
+      });
+    }
+    if (shouldManageDispenses()) {
+      try {
+        syncScriptMetadataFromDom();
+      } catch (err) {
+        dlog("syncScriptMetadataFromDom errored", err);
+      }
+    }
   };
 
   const getCheckoutUrl = () => {
@@ -469,6 +1120,53 @@
       addBtn.textContent = "Adding…";
       try {
         await Cart.addItem(product, qty);
+        if (product.isScript) {
+          updateProductCardDataset(
+            [product.id, product.productId],
+            {
+              dispenseStatus: product.dispenseStatus || "In Cart",
+              dispenseStatusId: product.dispenseStatusId,
+              dispenseId: product.dispenseId,
+              scriptId: product.scriptId,
+              suppressAutoSeed: false,
+            },
+            { syncButtons: true }
+          );
+          const patch = attachScriptMetadata(product, { id: product.id });
+          updateCartItemMetadata(product.id, patch);
+          if (shouldManageDispenses() && product.scriptId) {
+            fetchScriptMeta(product.scriptId, {
+              awaitCreation: !product.dispenseId,
+            })
+              .then((meta) => {
+                if (!meta) return;
+                const metaPatch = attachScriptMetadata(
+                  {
+                    scriptId: product.scriptId,
+                    dispenseId: meta.dispenseId,
+                    dispenseStatusId: meta.dispenseStatusId,
+                    dispenseStatusLabel: meta.dispenseStatusLabel,
+                  },
+                  { id: product.id }
+                );
+                updateCartItemMetadata(product.id, metaPatch);
+                updateProductCardDataset(
+                  [product.id, product.productId],
+                  {
+                    dispenseStatus: meta.dispenseStatusLabel || "In Cart",
+                    dispenseStatusId: meta.dispenseStatusId,
+                    dispenseId: meta.dispenseId,
+                    scriptId: product.scriptId,
+                    suppressAutoSeed: false,
+                  },
+                  { syncButtons: true }
+                );
+              })
+              .catch((err) => {
+                console.error("Script dispense create failed", err);
+              });
+          }
+        }
         if (qtyInput) qtyInput.value = "1";
         openCart();
       } catch (err) {
@@ -497,7 +1195,28 @@
       if (!hasCart) return;
       const id = decr.dataset.id;
       const item = Cart.getItem(id);
-      if (item) Cart.updateQuantity(id, Math.max(0, item.qty - 1));
+      if (item) {
+        const nextQty = Math.max(0, (Number(item.qty) || 0) - 1);
+        await Cart.updateQuantity(id, nextQty);
+        if (nextQty === 0 && (item.isScript || item.scriptId)) {
+          updateProductCardDataset(
+            [id, item.productId],
+            {
+              dispenseStatus: "Cancelled",
+              dispenseStatusId: null,
+              dispenseId: null,
+              scriptId: item.scriptId,
+              suppressAutoSeed: true,
+            },
+            { syncButtons: true }
+          );
+          if (shouldManageDispenses()) {
+            cancelScriptDispense(item).catch((err) => {
+              console.error("Cancel dispense failed", err);
+            });
+          }
+        }
+      }
       return;
     }
 
@@ -506,20 +1225,62 @@
       if (!hasCart) return;
       const id = incr.dataset.id;
       const item = Cart.getItem(id);
-      if (item) Cart.updateQuantity(id, item.qty + 1);
+      if (item) await Cart.updateQuantity(id, item.qty + 1);
       return;
     }
 
     const remove = target.closest(".remove-item");
     if (remove) {
       if (!hasCart) return;
-      Cart.removeItem(remove.dataset.id);
+      const id = remove.dataset.id;
+      const item = Cart.getItem(id);
+      if (item && (item.isScript || item.scriptId)) {
+        updateProductCardDataset(
+          [id, item.productId],
+          {
+            dispenseStatus: "Cancelled",
+            dispenseStatusId: null,
+            dispenseId: null,
+            scriptId: item.scriptId,
+            suppressAutoSeed: true,
+          },
+          { syncButtons: true }
+        );
+        if (shouldManageDispenses()) {
+          cancelScriptDispense(item).catch((err) => {
+            console.error("Cancel dispense failed", err);
+          });
+        }
+      }
+      await Cart.removeItem(id);
       return;
     }
 
     if (target.closest(".clear-cart")) {
       if (!hasCart) return;
-      Cart.clear();
+      const manage = shouldManageDispenses();
+      const state = Cart.getState();
+      state.items
+        .filter((item) => item && (item.isScript || item.scriptId))
+        .forEach((item) => {
+          updateProductCardDataset(
+            [item.id, item.productId],
+            {
+              dispenseStatus: "Cancelled",
+              dispenseStatusId: null,
+              dispenseId: null,
+              scriptId: item.scriptId,
+              suppressAutoSeed: true,
+            },
+            { syncButtons: true }
+          );
+          if (manage) {
+            cancelScriptDispense(item).catch((err) => {
+              console.error("Cancel dispense failed", err);
+            });
+          }
+        });
+      await Cart.clear();
       return;
     }
 
@@ -544,13 +1305,32 @@
     }
   });
 
-  document.addEventListener("change", (event) => {
+  document.addEventListener("change", async (event) => {
     ensureDrawer();
     const input = event.target.closest(".qty-input");
     if (!input || typeof Cart === "undefined") return;
     const id = input.dataset.id;
     const value = Math.max(0, parseInt(input.value || "0", 10) || 0);
-    Cart.updateQuantity(id, value);
+    const item = Cart.getItem(id);
+    if (value === 0 && item && (item.isScript || item.scriptId)) {
+      updateProductCardDataset(
+        [id, item.productId],
+        {
+          dispenseStatus: "Cancelled",
+          dispenseStatusId: null,
+          dispenseId: null,
+          scriptId: item.scriptId,
+          suppressAutoSeed: true,
+        },
+        { syncButtons: true }
+      );
+      if (shouldManageDispenses()) {
+        cancelScriptDispense(item).catch((err) => {
+          console.error("Cancel dispense failed", err);
+        });
+      }
+    }
+    await Cart.updateQuantity(id, value);
   });
 
   document.addEventListener("keydown", (event) => {
@@ -568,6 +1348,14 @@
     ensureDrawer();
     if (!window.Cart) return;
     await Cart.init();
+    if (shouldManageDispenses()) {
+      try {
+        await seedScriptsFromDom();
+        await syncScriptMetadataFromDom();
+      } catch (err) {
+        dlog("Initial script sync failed", err);
+      }
+    }
     const state = Cart.getState();
     renderCart(state);
     updateCount(state);
@@ -593,6 +1381,9 @@
       renderCart(next);
       updateCount(next);
       syncAddButtons();
+      if (!next.items.length) {
+        suppressedScriptIds.clear();
+      }
     });
   };
 
