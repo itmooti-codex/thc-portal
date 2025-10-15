@@ -116,6 +116,13 @@ const dlog = (...args) => {
 
   const suppressedScriptIds = new Set();
 
+  const parseCanDispenseFlag = (value) => {
+    if (value == null) return true;
+    const normalized = String(value).trim().toLowerCase();
+    if (!normalized) return true;
+    return !["false", "0", "no", "n"].includes(normalized);
+  };
+
   const CARD_FEE_RATE = 0.018;
   const CARD_FEE_FIXED = 0.3;
   const CARD_FEE_GST_RATE = 0.1;
@@ -803,6 +810,37 @@ const dlog = (...args) => {
       state.items.forEach((item) => {
         const row = document.createElement("div");
         row.className = "p-4 flex gap-3 items-center";
+        const isScriptItem = !!(item && (item.isScript || item.scriptId));
+        const qtyValue = isScriptItem
+          ? 1
+          : Math.max(1, Number(item.qty) || 1);
+        if (
+          isScriptItem &&
+          typeof Cart?.updateQuantity === "function" &&
+          Number(item.qty) !== 1
+        ) {
+          Promise.resolve().then(() => {
+            try {
+              const result = Cart.updateQuantity(item.id, 1);
+              if (result && typeof result.catch === "function") {
+                result.catch((err) => {
+                  dlog("Failed to normalise script quantity", err);
+                });
+              }
+            } catch (err) {
+              dlog("Failed to normalise script quantity", err);
+            }
+          });
+        }
+        const disableBtnAttrs = isScriptItem
+          ? ' disabled aria-disabled="true" tabindex="-1"'
+          : "";
+        const disableBtnClasses = isScriptItem
+          ? " opacity-50 cursor-not-allowed"
+          : "";
+        const qtyInputAttrs = isScriptItem
+          ? ' readonly aria-readonly="true"'
+          : "";
         row.innerHTML = `
         <img src="${item.image}" alt="${
           item.name
@@ -816,15 +854,15 @@ const dlog = (...args) => {
           }
           <div class="text-sm font-medium">${formatMoney(item.price)}</div>
           <div class="mt-2 inline-flex items-center gap-2">
-            <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${
+            <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100${disableBtnClasses}" data-id="${
               item.id
-            }" aria-label="Decrease quantity">−</button>
+            }" aria-label="Decrease quantity"${disableBtnAttrs}>−</button>
             <input class="qty-input w-12 text-center rounded-lg border px-2 py-1" value="${
-              item.qty
-            }" data-id="${item.id}" inputmode="numeric" aria-label="Quantity"/>
-            <button class="qty-incr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${
+              qtyValue
+            }" data-id="${item.id}" inputmode="numeric" aria-label="Quantity"${qtyInputAttrs}/>
+            <button class="qty-incr w-8 h-8 rounded-lg border hover:bg-gray-100${disableBtnClasses}" data-id="${
               item.id
-            }" aria-label="Increase quantity">+</button>
+            }" aria-label="Increase quantity"${disableBtnAttrs}>+</button>
           </div>
         </div>
         <button class="remove-item w-9 h-9 rounded-lg hover:bg-gray-100" data-id="${
@@ -968,7 +1006,9 @@ const dlog = (...args) => {
           on = false;
         }
       }
-      if (!on) {
+      const canDispense =
+        card ? parseCanDispenseFlag(card.dataset?.canDispense) : true;
+      if (!on && canDispense) {
         const status =
           card?.dataset?.dispenseStatus ||
           card?.dataset?.dispensestatus ||
@@ -1114,7 +1154,23 @@ const dlog = (...args) => {
       const product = extractProduct(card);
       if (!product) return;
       const qtyInput = card?.querySelector(".product-qty-input");
-      const qty = Math.max(1, parseInt(qtyInput?.value || "1", 10) || 1);
+      let qty = Math.max(1, parseInt(qtyInput?.value || "1", 10) || 1);
+      if (product.isScript) {
+        qty = 1;
+        if (qtyInput) {
+          qtyInput.value = "1";
+          qtyInput.setAttribute("readonly", "true");
+          qtyInput.setAttribute("aria-readonly", "true");
+        }
+        const decBtn = card?.querySelector(".product-qty-decr");
+        const incBtn = card?.querySelector(".product-qty-incr");
+        [decBtn, incBtn].forEach((btn) => {
+          if (!btn) return;
+          btn.setAttribute("disabled", "true");
+          btn.setAttribute("aria-disabled", "true");
+          btn.classList.add("opacity-50", "cursor-not-allowed");
+        });
+      }
       addBtn.disabled = true;
       const originalLabel = addBtn.textContent;
       addBtn.textContent = "Adding…";
@@ -1195,6 +1251,9 @@ const dlog = (...args) => {
       if (!hasCart) return;
       const id = decr.dataset.id;
       const item = Cart.getItem(id);
+      if (item && (item.isScript || item.scriptId)) {
+        return;
+      }
       if (item) {
         const nextQty = Math.max(0, (Number(item.qty) || 0) - 1);
         await Cart.updateQuantity(id, nextQty);
@@ -1225,6 +1284,9 @@ const dlog = (...args) => {
       if (!hasCart) return;
       const id = incr.dataset.id;
       const item = Cart.getItem(id);
+      if (item && (item.isScript || item.scriptId)) {
+        return;
+      }
       if (item) await Cart.updateQuantity(id, item.qty + 1);
       return;
     }
@@ -1310,8 +1372,15 @@ const dlog = (...args) => {
     const input = event.target.closest(".qty-input");
     if (!input || typeof Cart === "undefined") return;
     const id = input.dataset.id;
-    const value = Math.max(0, parseInt(input.value || "0", 10) || 0);
     const item = Cart.getItem(id);
+    if (item && (item.isScript || item.scriptId)) {
+      input.value = "1";
+      if (Number(item.qty) !== 1) {
+        await Cart.updateQuantity(id, 1);
+      }
+      return;
+    }
+    const value = Math.max(0, parseInt(input.value || "0", 10) || 0);
     if (value === 0 && item && (item.isScript || item.scriptId)) {
       updateProductCardDataset(
         [id, item.productId],
