@@ -51,6 +51,8 @@
       const dataBase = document.querySelector(".get-url")?.dataset?.apiBase;
       const metaBase = document.querySelector('meta[name="api-base"]')?.content;
       const base = winBase || dataBase || metaBase || "http://localhost:3001";
+      console.log("Detected API base URL:", base, winBase, dataBase, metaBase);
+      
       return base
         ? new URL(base, window.location.href).toString().replace(/\/$/, "")
         : "http://localhost:3001";
@@ -58,6 +60,8 @@
       return "http://localhost:3001";
     }
   };
+
+  console.log("getApiBase", getApiBase());
 
   const collectHeaders = (headers = {}, hasBody = false) => {
     const next = new Headers(headers);

@@ -392,11 +392,14 @@
 
   const getApiBase = () => {
     // Priority: window.ENV.API_BASE > .get-url[data-api-base] > meta[name="api-base"]
+    console.log("aa", window.ENV);
     try {
       const winBase = window.ENV?.API_BASE;
       const dataBase = document.querySelector(".get-url")?.dataset?.apiBase;
       const metaBase = document.querySelector('meta[name="api-base"]')?.content;
       const base = winBase || dataBase || metaBase || "http://localhost:3001";
+        console.log("Detected API base URL:", base, winBase, dataBase, metaBase);
+      
       return base
         ? new URL(base, window.location.href).toString().replace(/\/$/, "")
         : "http://localhost:3001";
