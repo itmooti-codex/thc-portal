@@ -130,6 +130,15 @@
         reasonEl.textContent =
           combinedReason || "This script is not ready to dispense.";
         reasonEl.style.display = "";
+        const productId = card.dataset?.productId?.trim();
+        if (productId && window.Cart?.getItem) {
+          const existing = window.Cart.getItem(productId);
+          if (existing) {
+            window.Cart.removeItem(existing.id || productId).catch((err) => {
+              console.warn("Failed to remove non-dispensable script", err);
+            });
+          }
+        }
       }
     });
   };

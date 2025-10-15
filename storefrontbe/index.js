@@ -150,9 +150,8 @@ app.post("/api-thc/contact/save", async (req, res) => {
     // 4. Return the contact ID from the response
     res.json({
       contactId: data?.data?.id || data?.data?.attrs?.id,
-      success: true
+      success: true,
     });
-
   } catch (err) {
     console.log("Contact save error:", err);
     handleError(err, req, res);
@@ -204,8 +203,8 @@ app.get("/api-thc/contact/:id/credit-cards", async (req, res) => {
       {
         field: { field: "contact_id" },
         op: "=",
-        value: { value: String(id) }
-      }
+        value: { value: String(id) },
+      },
     ];
     const condition = encodeURIComponent(JSON.stringify(conditionFilter));
     const response = await ontraportRequest(
@@ -295,17 +294,17 @@ app.post("/api-thc/offer/build", async (req, res) => {
 });
 
 const DISPENSE_STATUS_LABELS = {
-  "146": "Cancelled",
-  "147": "In Transit",
-  "148": "Confirmed - In Progress",
-  "149": "In Cart",
-  "151": "Payment Processing",
-  "152": "Paid",
-  "326": "Sent – Awaiting Confirmation",
-  "327": "Payment Issue",
-  "605": "Tracking Added",
-  "675": "On Hold",
-  "677": "Fulfilled",
+  146: "Cancelled",
+  147: "In Transit",
+  148: "Confirmed - In Progress",
+  149: "In Cart",
+  151: "Payment Processing",
+  152: "Paid",
+  326: "Sent – Awaiting Confirmation",
+  327: "Payment Issue",
+  605: "Tracking Added",
+  675: "On Hold",
+  677: "Fulfilled",
 };
 const DISPENSE_STATUS_BY_NAME = Object.entries(DISPENSE_STATUS_LABELS).reduce(
   (map, [id, label]) => {
@@ -314,6 +313,143 @@ const DISPENSE_STATUS_BY_NAME = Object.entries(DISPENSE_STATUS_LABELS).reduce(
   },
   {}
 );
+
+const normaliseDispenseRecord = (record) => {
+  if (!record) return null;
+  const rawId =
+    record.id ??
+    record.ID ??
+    record.dispense_id ??
+    record.Dispense_ID ??
+    record.unique_id ??
+    record.uniqueId;
+  const id = rawId != null ? String(rawId).trim() : "";
+  if (!id) return null;
+  const rawItemId =
+    record.f3183 ??
+    record.item_id ??
+    record.Item_ID ??
+    record.itemId ??
+    record.ItemId;
+  const itemId =
+    rawItemId != null && String(rawItemId).trim()
+      ? String(rawItemId).trim()
+      : null;
+  const statusIdCandidates = [
+    record.f2261,
+    record.dispense_status_id,
+    record.dispenseStatusId,
+    record.statusId,
+  ]
+    .map((value) => (value == null ? "" : String(value).trim()))
+    .filter(Boolean);
+  let statusId =
+    statusIdCandidates.find((value) => DISPENSE_STATUS_LABELS[value]) || null;
+  let statusLabel = null;
+  if (!statusId && statusIdCandidates.length) {
+    statusId = statusIdCandidates[0];
+  }
+  const statusLabelCandidates = [
+    record.dispense_status,
+    record.dispenseStatus,
+    record.dispense_status_label,
+    record.dispenseStatusLabel,
+    record.status,
+    record.Status,
+  ]
+    .map((value) => (value == null ? "" : String(value).trim()))
+    .filter(Boolean);
+  statusLabel =
+    statusLabelCandidates[0] ||
+    (statusId ? DISPENSE_STATUS_LABELS[statusId] : null) ||
+    null;
+  if (!statusId && statusLabel) {
+    statusId = DISPENSE_STATUS_BY_NAME[statusLabel.toLowerCase()] || null;
+  } else if (statusId && !statusLabel) {
+    statusLabel = DISPENSE_STATUS_LABELS[statusId] || null;
+  }
+  const quantityRaw = record.f2838 ?? record.quantity ?? record.qty;
+  const retailPriceRaw = record.f2302 ?? record.retail_price ?? record.price;
+  const retailGstRaw = record.f2806 ?? record.retail_gst ?? record.gst;
+  const wholesalePriceRaw = record.f2303 ?? record.wholesale_price;
+  const patientIdRaw =
+    record.f2787 ??
+    record.patient_id ??
+    record.patientId ??
+    record.contact_id ??
+    record.contactId;
+  const shippingCompanyRaw = record.f2708 ?? record.shipping_company;
+  const updatedRaw = record.dlm ?? record.date ?? record.updated_at;
+  return {
+    id,
+    itemId,
+    statusId: statusId || null,
+    statusLabel: statusLabel || null,
+    quantity:
+      quantityRaw !== undefined && quantityRaw !== null
+        ? Number(quantityRaw) || 0
+        : null,
+    retailPrice:
+      retailPriceRaw !== undefined && retailPriceRaw !== null
+        ? Number(retailPriceRaw) || 0
+        : null,
+    retailGst:
+      retailGstRaw !== undefined && retailGstRaw !== null
+        ? Number(retailGstRaw) || 0
+        : null,
+    wholesalePrice:
+      wholesalePriceRaw !== undefined && wholesalePriceRaw !== null
+        ? Number(wholesalePriceRaw) || 0
+        : null,
+    patientId:
+      patientIdRaw !== undefined && patientIdRaw !== null
+        ? String(patientIdRaw).trim() || null
+        : null,
+    shippingCompany:
+      shippingCompanyRaw !== undefined && shippingCompanyRaw !== null
+        ? String(shippingCompanyRaw).trim() || null
+        : null,
+    updated:
+      updatedRaw !== undefined && updatedRaw !== null
+        ? Number(updatedRaw) || null
+        : null,
+    raw: record,
+  };
+};
+
+const unwrapDispenseResponse = (payload) => {
+  if (!payload) return null;
+  if (payload.data) {
+    if (Array.isArray(payload.data) && payload.data.length) {
+      const record =
+        payload.data.find((entry) => entry && typeof entry === "object") ||
+        payload.data[0];
+      return normaliseDispenseRecord(record);
+    }
+    if (typeof payload.data === "object") {
+      return normaliseDispenseRecord(payload.data);
+    }
+  }
+  if (Array.isArray(payload) && payload.length) {
+    const record =
+      payload.find((entry) => entry && typeof entry === "object") || payload[0];
+    return normaliseDispenseRecord(record);
+  }
+  if (typeof payload === "object") {
+    return normaliseDispenseRecord(payload);
+  }
+  return null;
+};
+
+const buildConditionPayload = (filters = []) => {
+  const sequence = [];
+  filters.forEach((filter, index) => {
+    if (!filter || typeof filter !== "object") return;
+    if (index > 0) sequence.push("AND");
+    sequence.push(filter);
+  });
+  return JSON.stringify(sequence);
+};
 
 const normaliseScriptRecord = (record, fallbackId) => {
   if (!record) return null;
@@ -400,6 +536,245 @@ const resolveDispenseStatusId = (input) => {
   const lower = raw.toLowerCase();
   return DISPENSE_STATUS_BY_NAME[lower] || null;
 };
+
+app.get("/api-thc/dispenses", async (req, res) => {
+  try {
+    const {
+      contactId,
+      statusId,
+      statusIds,
+      limit = 100,
+      offset = 0,
+    } = req.query || {};
+    const patientId = contactId != null ? String(contactId).trim() : "";
+    if (!patientId) {
+      return res.status(400).json({ error: "contactId is required" });
+    }
+    const filters = [
+      {
+        field: { field: "f2787" },
+        op: "=",
+        value: { value: patientId },
+      },
+    ];
+    const statusList = [];
+    if (statusId != null && String(statusId).trim()) {
+      statusList.push(String(statusId).trim());
+    }
+    if (statusIds) {
+      const ids = Array.isArray(statusIds)
+        ? statusIds
+        : String(statusIds)
+            .split(",")
+            .map((part) => part.trim())
+            .filter(Boolean);
+      statusList.push(...ids);
+    }
+    const resolvedStatusIds = Array.from(
+      new Set(
+        statusList
+          .map((value) => resolveDispenseStatusId(value))
+          .filter(Boolean)
+      )
+    );
+    if (resolvedStatusIds.length === 1) {
+      filters.push({
+        field: { field: "f2261" },
+        op: "=",
+        value: { value: resolvedStatusIds[0] },
+      });
+    } else if (resolvedStatusIds.length > 1) {
+      filters.push({
+        field: { field: "f2261" },
+        op: "IN",
+        value: { value: resolvedStatusIds },
+      });
+    }
+    const query = new URLSearchParams({
+      range: String(Math.max(1, Math.min(200, Number(limit) || 100))),
+      start: String(Math.max(0, Number(offset) || 0)),
+      count: "false",
+      condition: buildConditionPayload(filters),
+    });
+    const response = await ontraportRequest(`/Dispenses?${query.toString()}`);
+    const rawData = Array.isArray(response?.data) ? response.data : [];
+    const dispenses = rawData
+      .map((record) => normaliseDispenseRecord(record))
+      .filter(
+        (entry) =>
+          entry &&
+          entry.itemId &&
+          entry.itemId !== "0" &&
+          entry.itemId.toLowerCase() !== "null"
+      )
+      .sort((a, b) => {
+        const aTime = a.updated || 0;
+        const bTime = b.updated || 0;
+        return bTime - aTime;
+      });
+    res.json({ dispenses });
+  } catch (err) {
+    handleError(err, req, res);
+  }
+});
+
+app.post("/api-thc/dispenses", async (req, res) => {
+  try {
+    const {
+      itemId,
+      contactId,
+      statusId,
+      status,
+      quantity,
+      retailPrice,
+      retailGst,
+      wholesalePrice,
+      shippingCompany,
+    } = req.body || {};
+    const resolvedItemId = itemId != null ? String(itemId).trim() : "";
+    if (!resolvedItemId) {
+      return res.status(400).json({ error: "itemId is required" });
+    }
+    const patientId = contactId != null ? String(contactId).trim() : "";
+    if (!patientId) {
+      return res.status(400).json({ error: "contactId is required" });
+    }
+    const resolvedStatusId =
+      resolveDispenseStatusId(statusId) ||
+      resolveDispenseStatusId(status) ||
+      "149";
+    const payload = {
+      f3183: resolvedItemId,
+      f2787: patientId,
+      f2261: resolvedStatusId,
+    };
+    if (quantity !== undefined) {
+      const qty = Number(quantity);
+      if (Number.isFinite(qty) && qty > 0) {
+        payload.f2838 = qty;
+      }
+    }
+    if (retailPrice !== undefined) {
+      const price = Number(retailPrice);
+      if (Number.isFinite(price)) {
+        payload.f2302 = price.toFixed(2);
+      }
+    }
+    if (retailGst !== undefined) {
+      const gst = Number(retailGst);
+      if (Number.isFinite(gst)) {
+        payload.f2806 = gst.toFixed(2);
+      }
+    }
+    if (wholesalePrice !== undefined) {
+      const wholesale = Number(wholesalePrice);
+      if (Number.isFinite(wholesale)) {
+        payload.f2303 = wholesale.toFixed(2);
+      }
+    }
+    if (shippingCompany !== undefined && shippingCompany !== null) {
+      const shippingId = String(shippingCompany).trim();
+      if (shippingId) {
+        payload.f2708 = shippingId;
+      }
+    }
+    const response = await ontraportRequest("/Dispenses", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    const dispense = unwrapDispenseResponse(response);
+    res.json({
+      success: true,
+      dispense,
+    });
+  } catch (err) {
+    handleError(err, req, res);
+  }
+});
+
+app.patch("/api-thc/dispenses/:dispenseId", async (req, res) => {
+  try {
+    const dispenseId = String(req.params.dispenseId || "").trim();
+    if (!dispenseId) {
+      return res.status(400).json({ error: "dispenseId is required" });
+    }
+    const {
+      status,
+      statusId,
+      quantity,
+      retailPrice,
+      retailGst,
+      wholesalePrice,
+      shippingCompany,
+      contactId,
+      patientId,
+    } = req.body || {};
+    const payload = { id: dispenseId };
+    const resolvedStatusId =
+      resolveDispenseStatusId(statusId) || resolveDispenseStatusId(status);
+    if (resolvedStatusId) {
+      payload.f2261 = resolvedStatusId;
+    }
+    if (quantity !== undefined) {
+      const qty = Number(quantity);
+      if (Number.isFinite(qty) && qty >= 0) {
+        payload.f2838 = qty;
+      }
+    }
+    if (retailPrice !== undefined) {
+      const price = Number(retailPrice);
+      if (Number.isFinite(price)) {
+        payload.f2302 = price.toFixed(2);
+      } else if (retailPrice === null) {
+        payload.f2302 = "";
+      }
+    }
+    if (retailGst !== undefined) {
+      const gst = Number(retailGst);
+      if (Number.isFinite(gst)) {
+        payload.f2806 = gst.toFixed(2);
+      } else if (retailGst === null) {
+        payload.f2806 = "";
+      }
+    }
+    if (wholesalePrice !== undefined) {
+      const wholesale = Number(wholesalePrice);
+      if (Number.isFinite(wholesale)) {
+        payload.f2303 = wholesale.toFixed(2);
+      } else if (wholesalePrice === null) {
+        payload.f2303 = "";
+      }
+    }
+    if (shippingCompany !== undefined) {
+      const shippingId =
+        shippingCompany === null ? "" : String(shippingCompany).trim();
+      payload.f2708 = shippingId;
+    }
+    const patientValue =
+      patientId != null
+        ? String(patientId).trim()
+        : contactId != null
+        ? String(contactId).trim()
+        : "";
+    if (patientValue) {
+      payload.f2787 = patientValue;
+    }
+    const response = await ontraportRequest("/Dispenses", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+    const dispense = unwrapDispenseResponse(response) || {
+      id: dispenseId,
+      statusId: payload.f2261 || null,
+    };
+    res.json({
+      success: true,
+      dispense,
+    });
+  } catch (err) {
+    handleError(err, req, res);
+  }
+});
 
 app.get("/api-thc/scripts/:scriptId", async (req, res) => {
   try {
@@ -699,7 +1074,7 @@ app.post("/api-thc/transaction/process", async (req, res) => {
       method: "POST",
       body: JSON.stringify(payload),
     });
-    
+
     res.json({
       success: true,
       transaction_id: data.transaction_id,

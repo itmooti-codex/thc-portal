@@ -162,6 +162,62 @@
     );
   };
 
+  const createItemDispense = async (payload = {}) => {
+    if (!payload || typeof payload !== "object") {
+      throw new Error("payload is required");
+    }
+    return await apiCall(`/api-thc/dispenses`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  };
+
+  const updateItemDispense = async (dispenseId, patch = {}) => {
+    if (!dispenseId) throw new Error("dispenseId is required");
+    const id = String(dispenseId).trim();
+    if (!id) throw new Error("dispenseId is required");
+    if (!patch || typeof patch !== "object") {
+      throw new Error("patch is required");
+    }
+    return await apiCall(`/api-thc/dispenses/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    });
+  };
+
+  const fetchItemDispenses = async (options = {}) => {
+    const contactId = options.contactId ?? options.patientId;
+    if (!contactId && contactId !== 0) return { dispenses: [] };
+    const params = new URLSearchParams();
+    params.set("contactId", String(contactId).trim());
+    if (options.limit != null) {
+      params.set("limit", String(options.limit));
+    }
+    if (options.offset != null) {
+      params.set("offset", String(options.offset));
+    }
+    if (options.statusIds) {
+      const list = Array.isArray(options.statusIds)
+        ? options.statusIds
+        : String(options.statusIds)
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean);
+      if (list.length) params.set("statusIds", list.join(","));
+    } else if (options.statusId != null) {
+      params.set("statusId", String(options.statusId));
+    } else if (options.status != null) {
+      params.set("statusId", String(options.status));
+    }
+    const query = params.toString();
+    return await apiCall(
+      `/api-thc/dispenses${query ? `?${query}` : ""}`
+    ).catch((err) => {
+      console.error("[DispenseService] fetchItemDispenses failed", err);
+      throw err;
+    });
+  };
+
   const service = {
     statusIds: STATUS_IDS,
     statusLabels: STATUS_LABELS,
@@ -171,6 +227,9 @@
     ensureScriptDispense,
     waitForScriptDispense,
     updateDispenseStatus,
+    createItemDispense,
+    updateItemDispense,
+    fetchItemDispenses,
   };
 
   window.DispenseService = Object.assign(

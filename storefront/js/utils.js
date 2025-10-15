@@ -72,6 +72,55 @@
     }
   };
 
+  let toastHost = null;
+  const ensureToastHost = () => {
+    if (toastHost) return toastHost;
+    toastHost = document.createElement("div");
+    toastHost.className =
+      "fixed inset-x-0 bottom-4 z-[10000] flex flex-col items-center gap-2";
+    document.body.appendChild(toastHost);
+    return toastHost;
+  };
+
+  const showToast = (message, options = {}) => {
+    if (!message) return null;
+    const host = ensureToastHost();
+    const {
+      type = "info",
+      duration = 4000,
+    } = options;
+    const baseClasses =
+      "pointer-events-auto max-w-md w-auto px-4 py-3 rounded-xl shadow-lg border text-sm font-medium transition transform duration-150 flex items-center gap-3";
+    const typeClasses = {
+      success: "bg-emerald-600/95 text-white border-emerald-500",
+      error: "bg-red-600/95 text-white border-red-500",
+      warning: "bg-amber-500/95 text-white border-amber-400",
+      info: "bg-neutral-900/95 text-white border-neutral-800",
+    };
+    const toast = document.createElement("div");
+    toast.className = `${baseClasses} ${typeClasses[type] || typeClasses.info} opacity-0 translate-y-2`;
+    toast.textContent = message;
+    host.appendChild(toast);
+    requestAnimationFrame(() => {
+      toast.classList.remove("opacity-0", "translate-y-2");
+      toast.classList.add("opacity-100", "translate-y-0");
+    });
+    const timeout = Number(duration) > 0 ? Number(duration) : 4000;
+    const remove = () => {
+      toast.classList.remove("opacity-100", "translate-y-0");
+      toast.classList.add("opacity-0", "-translate-y-1");
+      setTimeout(() => {
+        toast.remove();
+      }, 180);
+    };
+    const timer = setTimeout(remove, timeout);
+    toast.addEventListener("click", () => {
+      clearTimeout(timer);
+      remove();
+    });
+    return toast;
+  };
+
   const initCatalogTabs = () => {
     const tabButtons = $$(".catalog-tab-btn");
     const panels = $$("[data-catalog-panel]");
@@ -140,5 +189,6 @@
     hidePageLoader,
     withPageLoader,
     setPageLoaderMessage,
+    showToast,
   });
 })();

@@ -115,6 +115,8 @@ const dlog = (...args) => {
   };
 
   const suppressedScriptIds = new Set();
+  const seededItemDispenseIds = new Set();
+  const pendingItemDispenseSeeds = [];
 
   const parseCanDispenseFlag = (value) => {
     if (value == null) return true;
@@ -122,6 +124,16 @@ const dlog = (...args) => {
     if (!normalized) return true;
     return !["false", "0", "no", "n"].includes(normalized);
   };
+
+  const placeholderTokenRegex = /^\s*\[[^\]]*\]\s*$/;
+  const isMeaningfulText = (value) =>
+    typeof value === "string" &&
+    value.trim() !== "" &&
+    !placeholderTokenRegex.test(value);
+  const isMeaningfulImage = (value) =>
+    typeof value === "string" &&
+    value.trim() !== "" &&
+    !placeholderTokenRegex.test(value);
 
   const CARD_FEE_RATE = 0.018;
   const CARD_FEE_FIXED = 0.3;
@@ -176,6 +188,43 @@ const dlog = (...args) => {
           ? `This transaction includes a credit card processing fee of 1.8% + A$0.30 per transaction. Credit card fee = ${formatMoney(cardFeeExGst)} + 10% GST ${formatMoney(cardFeeGst)} = ${formatMoney(cardFeeTotal)}.`
           : "",
     };
+  };
+
+  const getContactId = () => {
+    try {
+      const config = window.StorefrontConfig || {};
+      const candidates = [
+        config.loggedInContactId,
+        config.contactId,
+        config.customerId,
+        config.userId,
+        config.memberId,
+      ];
+      for (const candidate of candidates) {
+        if (candidate !== undefined && candidate !== null) {
+          const value = String(candidate).trim();
+          if (value) return value;
+        }
+      }
+    } catch {}
+    try {
+      const root = document.querySelector(".get-url");
+      const dataset = root?.dataset || {};
+      const candidates = [
+        dataset.contactId,
+        dataset.contactid,
+        dataset.contact,
+        dataset.userId,
+        dataset.userid,
+      ];
+      for (const candidate of candidates) {
+        if (candidate !== undefined && candidate !== null) {
+          const value = String(candidate).trim();
+          if (value) return value;
+        }
+      }
+    } catch {}
+    return null;
   };
 
   const resolveDispenseStatusId = (value) => {
@@ -234,6 +283,28 @@ const dlog = (...args) => {
     return str.replace(/["\\]/g, "\\$&");
   };
 
+  const findProductCardByItemId = (itemId) => {
+    if (itemId === null || itemId === undefined) return null;
+    const raw = String(itemId).trim();
+    if (!raw) return null;
+    const escaped = cssEscape(raw);
+    const selectors = [
+      `.product-card[data-item-id="${escaped}"]`,
+      `.product-card[data-product-id="${escaped}"]`,
+      `.product-card[data-product-payment-id="${escaped}"]`,
+      `[data-item-id="${escaped}"]`,
+      `[data-product-id="${escaped}"]`,
+      `[data-product-payment-id="${escaped}"]`,
+    ];
+    for (const selector of selectors) {
+      const node = document.querySelector(selector);
+      if (!node) continue;
+      const card = node.closest(".product-card");
+      if (card) return card;
+    }
+    return null;
+  };
+
   const updateProductCardDataset = (productIds, patch = {}, options = {}) => {
     const ids = Array.isArray(productIds) ? productIds : [productIds];
     let updated = false;
@@ -288,6 +359,15 @@ const dlog = (...args) => {
             delete card.dataset.dispenseId;
           } else {
             card.dataset.dispenseId = String(dispId);
+          }
+          updated = true;
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, "dispenseItemId")) {
+          const itemId = patch.dispenseItemId;
+          if (itemId === null || itemId === undefined || itemId === "") {
+            delete card.dataset.itemId;
+          } else {
+            card.dataset.itemId = String(itemId);
           }
           updated = true;
         }
@@ -502,6 +582,25 @@ const dlog = (...args) => {
       ? parsedPrice
       : toNum(card.querySelector(".product-price")?.textContent || 0);
 
+    const explicitItemId = card.dataset.itemId;
+    if (explicitItemId && !/^\s*\[/.test(explicitItemId)) {
+      const trimmed = String(explicitItemId).trim();
+      if (trimmed) {
+        product.dispenseItemId = trimmed;
+        product.itemId = trimmed;
+      }
+    } else {
+      const fallbackItemId = card.dataset.productId;
+      if (
+        fallbackItemId &&
+        !fallbackItemId.startsWith("sig:") &&
+        !/^\s*\[/.test(fallbackItemId)
+      ) {
+        const trimmed = String(fallbackItemId).trim();
+        product.dispenseItemId = trimmed;
+      }
+    }
+
     const retailGstRaw =
       card.dataset.retailGst ||
       card.dataset.retailgst ||
@@ -645,6 +744,40 @@ const dlog = (...args) => {
     return null;
   };
 
+  const ITEM_DISPENSE_STATUS = {
+    IN_CART: DEFAULT_DISPENSE_STATUS_IDS.IN_CART || "149",
+    CANCELLED: DEFAULT_DISPENSE_STATUS_IDS.CANCELLED || "146",
+    PAID: DEFAULT_DISPENSE_STATUS_IDS.PAID || "152",
+  };
+
+  const shouldHandleItemDispenses = () =>
+    shouldManageDispenses() && !!getContactId();
+
+  const isScriptCartItem = (item) =>
+    !!(item && (item.isScript || item.scriptId));
+
+  const isItemDispenseCandidate = (item) =>
+    !!item && !isScriptCartItem(item);
+
+  const getDispenseItemId = (entity) => {
+    if (!entity) return null;
+    const candidates = [
+      entity.dispenseItemId,
+      entity.itemId,
+      entity.productId,
+      entity.id,
+    ];
+    for (const candidate of candidates) {
+      if (candidate !== undefined && candidate !== null) {
+        const value = String(candidate).trim();
+        if (value && !value.startsWith("sig:") && !/^\s*\[/.test(value)) {
+          return value;
+        }
+      }
+    }
+    return null;
+  };
+
   const ensureScriptMetadata = async (target, { triggerCreation = false } = {}) => {
     if (!shouldManageDispenses()) return null;
     if (!target || typeof target !== "object") return null;
@@ -698,6 +831,31 @@ const dlog = (...args) => {
     for (const card of cards) {
       const product = extractProduct(card);
       if (!product || !product.id || !product.isScript) continue;
+      const canDispense = parseCanDispenseFlag(card.dataset?.canDispense);
+      if (!canDispense) {
+        const existing = window.Cart.getItem
+          ? window.Cart.getItem(product.id)
+          : null;
+        if (existing) {
+          try {
+            await window.Cart.removeItem(existing.id || product.id);
+          } catch (err) {
+            dlog("seed removeItem failed", err);
+          }
+        }
+        updateProductCardDataset(
+          [product.id, product.productId],
+          {
+            dispenseStatus: "Cancelled",
+            dispenseStatusId: null,
+            dispenseId: null,
+            scriptId: product.scriptId,
+            suppressAutoSeed: true,
+          },
+          { syncButtons: true }
+        );
+        continue;
+      }
       const status = String(product.dispenseStatus || "").toLowerCase();
       if (status !== "in cart") continue;
       const existing = window.Cart.getItem
@@ -769,16 +927,598 @@ const dlog = (...args) => {
     );
   };
 
-  const cancelScriptDispense = async (item) => {
-    if (!shouldManageDispenses()) return;
-    const statusId =
-      getDispenseService()?.statusIds?.CANCELLED ||
-      resolveDispenseStatusId("Cancelled") ||
-      DEFAULT_DISPENSE_STATUS_IDS.CANCELLED;
-    await updateDispenseStatusForItem(item, statusId);
+const cancelScriptDispense = async (item) => {
+  if (!shouldManageDispenses()) return;
+  const statusId =
+    getDispenseService()?.statusIds?.CANCELLED ||
+    resolveDispenseStatusId("Cancelled") ||
+    DEFAULT_DISPENSE_STATUS_IDS.CANCELLED;
+  await updateDispenseStatusForItem(item, statusId);
+};
+
+  const syncItemDispenseForCartItem = async (
+    cartItem,
+    product = null,
+    options = {}
+  ) => {
+    if (!shouldHandleItemDispenses()) return;
+    if (!cartItem || isScriptCartItem(cartItem)) return;
+    const service = getDispenseService();
+    if (!service?.createItemDispense) return;
+    const contactId = getContactId();
+    if (!contactId) return;
+    const itemId =
+      getDispenseItemId(cartItem) ||
+      getDispenseItemId(product) ||
+      null;
+    if (!itemId) return;
+    const quantity = Math.max(1, Number(cartItem.qty) || 1);
+    const metadataPatch = {
+      dispenseItemId: itemId,
+      itemId,
+      contactId: getContactId(),
+    };
+    if (product?.retailGst !== undefined) {
+      metadataPatch.retailGst = product.retailGst;
+    }
+    if (product?.wholesalePrice !== undefined) {
+      metadataPatch.wholesalePrice = product.wholesalePrice;
+    }
+    if (product?.price !== undefined) {
+      metadataPatch.price = product.price;
+    }
+    if (cartItem.dispenseId) {
+      try {
+        await service.updateItemDispense(cartItem.dispenseId, {
+          quantity,
+          contactId,
+          patientId: contactId,
+        });
+      } catch (err) {
+        console.error("Item dispense quantity update failed", err);
+      }
+      await updateCartItemMetadata(cartItem.id, metadataPatch);
+      return;
+    }
+    if (options.skipCreate) {
+      await updateCartItemMetadata(cartItem.id, metadataPatch);
+      return;
+    }
+    try {
+      const response = await service.createItemDispense({
+        itemId,
+        contactId,
+        quantity,
+        retailPrice:
+          product?.price !== undefined ? product.price : cartItem.price,
+        retailGst:
+          product?.retailGst !== undefined
+            ? product.retailGst
+            : cartItem.retailGst,
+        wholesalePrice:
+          product?.wholesalePrice !== undefined
+            ? product.wholesalePrice
+            : cartItem.wholesalePrice,
+      });
+      const dispense = response?.dispense || response || {};
+      const newDispenseId =
+        dispense.id != null ? String(dispense.id).trim() : null;
+      const statusId =
+        dispense.statusId ||
+        ITEM_DISPENSE_STATUS.IN_CART;
+      const statusLabel =
+        dispense.statusLabel ||
+        getDispenseStatusLabel(statusId) ||
+        "In Cart";
+      await updateCartItemMetadata(cartItem.id, {
+        ...metadataPatch,
+        dispenseId: newDispenseId,
+        dispenseStatusId: statusId,
+        dispenseStatus: statusLabel,
+      });
+      updateProductCardDataset(
+        [cartItem.id, cartItem.productId, itemId],
+        {
+          force: true,
+          dispenseId: newDispenseId,
+          dispenseStatusId: statusId,
+          dispenseStatus: statusLabel,
+          dispenseItemId: itemId,
+        },
+        { syncButtons: true }
+      );
+      if (newDispenseId) {
+        seededItemDispenseIds.add(newDispenseId);
+      }
+    } catch (err) {
+      console.error("Item dispense create failed", err);
+    }
   };
 
-  /* ========= rendering ========= */
+  const updateItemDispenseQuantity = async (cartItem) => {
+    if (!shouldHandleItemDispenses()) return;
+    if (!cartItem || isScriptCartItem(cartItem)) return;
+    const service = getDispenseService();
+    if (!service?.updateItemDispense) return;
+    const quantity = Math.max(1, Number(cartItem.qty) || 1);
+    if (!cartItem.dispenseId) {
+      await syncItemDispenseForCartItem(cartItem);
+      return;
+    }
+    try {
+      await service.updateItemDispense(cartItem.dispenseId, {
+        quantity,
+        contactId: getContactId(),
+        patientId: getContactId(),
+      });
+    } catch (err) {
+      console.error("Item dispense quantity update failed", err);
+    }
+  };
+
+  const cancelItemDispense = async (cartItem) => {
+    if (!shouldHandleItemDispenses()) return;
+    if (!cartItem?.dispenseId) return;
+    const service = getDispenseService();
+    if (!service?.updateDispenseStatus) return;
+    const cancelStatus =
+      service.statusIds?.CANCELLED ||
+      ITEM_DISPENSE_STATUS.CANCELLED;
+    try {
+      await service.updateDispenseStatus(cartItem.dispenseId, cancelStatus);
+    } catch (err) {
+      console.error("Cancel item dispense failed", err);
+    }
+    const itemKey = getDispenseItemId(cartItem);
+    updateProductCardDataset(
+      [cartItem.id, cartItem.productId, itemKey],
+      {
+        force: true,
+        dispenseStatusId: null,
+        dispenseStatus: null,
+        dispenseId: null,
+        dispenseItemId: itemKey,
+      },
+      { syncButtons: true }
+    );
+    seededItemDispenseIds.delete(cartItem.dispenseId);
+  };
+
+  const enqueueItemDispenseSeed = (dispense) => {
+    if (!dispense || !dispense.id || !dispense.itemId) return;
+    if (dispense.itemId === "0" || dispense.itemId === 0) return;
+    if (seededItemDispenseIds.has(dispense.id)) return;
+    if (
+      pendingItemDispenseSeeds.some((entry) => entry.id === dispense.id)
+    )
+      return;
+    pendingItemDispenseSeeds.push(dispense);
+  };
+
+  const processItemDispenseSeeds = async () => {
+    if (!pendingItemDispenseSeeds.length) return;
+    if (!window.Cart) return;
+    const remaining = [];
+    const cartSnapshot = window.Cart.getState ? window.Cart.getState().items || [] : [];
+    for (const dispense of pendingItemDispenseSeeds) {
+      const itemId = dispense.itemId;
+      if (!itemId || itemId === "0") continue;
+      const normalizedItemId = String(itemId).trim();
+      const card = findProductCardByItemId(itemId);
+      let product = null;
+      const fallbackCartItem =
+        cartSnapshot.find((entry) => {
+          if (!entry) return false;
+          const key = getDispenseItemId(entry);
+          if (key && String(key).trim() === normalizedItemId) return true;
+          if (entry.itemId && String(entry.itemId).trim() === normalizedItemId)
+            return true;
+          if (entry.productId && String(entry.productId).trim() === normalizedItemId)
+            return true;
+          return false;
+        }) || window.Cart.getItem?.(normalizedItemId);
+      const quantity = Math.max(1, Number(dispense.quantity) || 1);
+      const existingByDispense = cartSnapshot.find((entry) => {
+        if (!entry) return false;
+        const key = getDispenseItemId(entry);
+        if (key && String(key).trim() === normalizedItemId) return true;
+        if (entry.itemId && String(entry.itemId).trim() === normalizedItemId)
+          return true;
+        if (entry.productId && String(entry.productId).trim() === normalizedItemId)
+          return true;
+        return false;
+      });
+      if (card) {
+        product = extractProduct(card);
+      }
+      if (!product) {
+        if (fallbackCartItem) {
+          product = {
+            ...fallbackCartItem,
+            id: fallbackCartItem.id,
+            productId: fallbackCartItem.productId || fallbackCartItem.id,
+            dispenseItemId:
+              fallbackCartItem.dispenseItemId ||
+              getDispenseItemId(fallbackCartItem) ||
+              normalizedItemId,
+            itemId:
+              fallbackCartItem.itemId ||
+              fallbackCartItem.dispenseItemId ||
+              normalizedItemId,
+            dispenseId: dispense.id,
+            dispenseStatus:
+              dispense.statusLabel ||
+              getDispenseStatusLabel(
+                dispense.statusId || ITEM_DISPENSE_STATUS.IN_CART
+              ) ||
+              fallbackCartItem.dispenseStatus,
+            dispenseStatusId:
+              dispense.statusId ||
+              fallbackCartItem.dispenseStatusId ||
+              ITEM_DISPENSE_STATUS.IN_CART,
+          };
+          if (!product.image) {
+            const fallbackCard = findProductCardByItemId(product.dispenseItemId);
+            if (fallbackCard) {
+              const img = fallbackCard.querySelector("img");
+              if (img?.src) product.image = img.src;
+            }
+          }
+        } else {
+          const fallbackName =
+            dispense.raw?.["f2251//f2232//f2225"] ||
+            dispense.raw?.name ||
+            `Item ${itemId}`;
+          product = {
+            id: normalizedItemId,
+            productId: normalizedItemId,
+            name: fallbackName,
+            brand: "",
+            description: "",
+            image: (card?.querySelector("img") || {}).src || "",
+            url: "product.html",
+            price:
+              dispense.retailPrice !== undefined
+                ? dispense.retailPrice
+                : 0,
+            retailGst:
+              dispense.retailGst !== undefined ? dispense.retailGst : 0,
+            wholesalePrice:
+              dispense.wholesalePrice !== undefined
+                ? dispense.wholesalePrice
+                : 0,
+            dispenseItemId: normalizedItemId,
+            itemId: normalizedItemId,
+            dispenseId: dispense.id,
+            dispenseStatusId:
+              dispense.statusId || ITEM_DISPENSE_STATUS.IN_CART,
+            dispenseStatus:
+              dispense.statusLabel ||
+              getDispenseStatusLabel(
+                dispense.statusId || ITEM_DISPENSE_STATUS.IN_CART
+              ) ||
+              "In Cart",
+          };
+        }
+      }
+      if (product && !product.itemId && product.dispenseItemId) {
+        product.itemId = product.dispenseItemId;
+      }
+      if (existingByDispense) {
+        product.id = existingByDispense.id;
+        product.productId = existingByDispense.productId || existingByDispense.id;
+        if (!product.name || /^Item\s+/i.test(product.name)) {
+          product.name = existingByDispense.name || product.name;
+        }
+        if (!product.image) {
+          product.image = existingByDispense.image || product.image;
+          if (!product.image) {
+            const fallbackCard = findProductCardByItemId(product.dispenseItemId);
+            const img = fallbackCard?.querySelector("img");
+            if (img?.src) product.image = img.src;
+          }
+        }
+        if (!product.brand) {
+          product.brand = existingByDispense.brand || product.brand;
+        }
+        if (!product.description) {
+          product.description = existingByDispense.description || product.description;
+        }
+        if (!product.url) {
+          product.url = existingByDispense.url || product.url;
+        }
+        if (existingByDispense.price != null && product.price === undefined) {
+          product.price = existingByDispense.price;
+        }
+        if (existingByDispense.retailGst != null && product.retailGst === undefined) {
+          product.retailGst = existingByDispense.retailGst;
+        }
+        if (existingByDispense.wholesalePrice != null && product.wholesalePrice === undefined) {
+          product.wholesalePrice = existingByDispense.wholesalePrice;
+        }
+        if (!product.dispenseItemId) {
+          product.dispenseItemId = getDispenseItemId(existingByDispense) || product.itemId;
+        }
+        if (!product.itemId && product.dispenseItemId) {
+          product.itemId = product.dispenseItemId;
+        }
+      }
+      if (existingByDispense) {
+        const targetId = existingByDispense.id;
+        if (Number(existingByDispense.qty) !== quantity) {
+          try {
+            await window.Cart.updateQuantity(targetId, quantity);
+          } catch (err) {
+            console.error("Failed to sync quantity for existing dispense", err);
+          }
+        }
+        await updateCartItemMetadata(targetId, {
+          dispenseId: dispense.id,
+          dispenseStatusId:
+            dispense.statusId || ITEM_DISPENSE_STATUS.IN_CART,
+          dispenseStatus:
+            dispense.statusLabel ||
+            getDispenseStatusLabel(
+              dispense.statusId || ITEM_DISPENSE_STATUS.IN_CART
+            ) ||
+            "In Cart",
+          dispenseItemId: normalizedItemId,
+          itemId: normalizedItemId,
+          retailGst:
+            dispense.retailGst !== undefined
+              ? dispense.retailGst
+              : existingByDispense.retailGst,
+          wholesalePrice:
+            dispense.wholesalePrice !== undefined
+              ? dispense.wholesalePrice
+              : existingByDispense.wholesalePrice,
+          price:
+            dispense.retailPrice !== undefined
+              ? dispense.retailPrice
+              : existingByDispense.price,
+        });
+        updateProductCardDataset(
+          [targetId, existingByDispense.productId, normalizedItemId],
+          {
+            force: true,
+            dispenseId: dispense.id,
+            dispenseStatusId:
+              dispense.statusId || ITEM_DISPENSE_STATUS.IN_CART,
+            dispenseStatus:
+              dispense.statusLabel ||
+              getDispenseStatusLabel(
+                dispense.statusId || ITEM_DISPENSE_STATUS.IN_CART
+              ) ||
+              "In Cart",
+            dispenseItemId: normalizedItemId,
+          },
+          { syncButtons: true }
+        );
+        seededItemDispenseIds.add(dispense.id);
+        continue;
+      }
+
+      if (!product) {
+        remaining.push(dispense);
+        continue;
+      }
+      // Ensure we have at least some display metadata
+      product.name =
+        product.name ||
+        findProductCardByItemId(product.dispenseItemId || normalizedItemId)
+          ?.querySelector(".product-name")
+          ?.textContent?.trim() ||
+        `Item ${normalizedItemId}`;
+      if (!product.image) {
+        const cardSource =
+          card ||
+          findProductCardByItemId(product.dispenseItemId || normalizedItemId);
+        product.image =
+          cardSource?.querySelector("img")?.getAttribute("src") ||
+          product.image ||
+          "";
+      }
+      product.dispenseId = dispense.id;
+      product.dispenseStatus =
+        dispense.statusLabel ||
+        getDispenseStatusLabel(
+          dispense.statusId || ITEM_DISPENSE_STATUS.IN_CART
+        ) ||
+        "In Cart";
+      product.dispenseStatusId =
+        dispense.statusId || ITEM_DISPENSE_STATUS.IN_CART;
+      product.dispenseItemId = dispense.itemId || product.dispenseItemId;
+      if (dispense.retailPrice !== undefined) {
+        product.price = dispense.retailPrice;
+      }
+      if (dispense.retailGst !== undefined) {
+        product.retailGst = dispense.retailGst;
+      }
+      if (dispense.wholesalePrice !== undefined) {
+        product.wholesalePrice = dispense.wholesalePrice;
+      }
+      try {
+        const existing = window.Cart.getItem
+          ? window.Cart.getItem(product.id)
+          : null;
+        if (!existing) {
+          await window.Cart.addItem(product, quantity);
+          const snapshotItem = window.Cart.getItem
+            ? window.Cart.getItem(product.id)
+            : null;
+          if (snapshotItem) cartSnapshot.push(snapshotItem);
+        } else if (existing.qty !== quantity) {
+          await window.Cart.updateQuantity(existing.id || product.id, quantity);
+        }
+        const latest = window.Cart.getItem
+          ? window.Cart.getItem(product.id)
+          : null;
+        const targetId = latest?.id || product.id;
+        await updateCartItemMetadata(targetId, {
+          dispenseId: dispense.id,
+          dispenseStatusId:
+            dispense.statusId || ITEM_DISPENSE_STATUS.IN_CART,
+          dispenseStatus: product.dispenseStatus,
+          dispenseItemId: product.dispenseItemId,
+          itemId: product.dispenseItemId,
+          retailGst: product.retailGst,
+          wholesalePrice: product.wholesalePrice,
+          price: product.price,
+        });
+        updateProductCardDataset(
+          [product.id, product.productId, product.dispenseItemId],
+          {
+            force: true,
+            dispenseId: dispense.id,
+            dispenseStatusId:
+              dispense.statusId || ITEM_DISPENSE_STATUS.IN_CART,
+            dispenseStatus: product.dispenseStatus,
+            dispenseItemId: product.dispenseItemId,
+          },
+          { syncButtons: true }
+        );
+        seededItemDispenseIds.add(dispense.id);
+      } catch (err) {
+        console.error("Failed to seed item dispense", err);
+        remaining.push(dispense);
+      }
+    }
+    pendingItemDispenseSeeds.length = 0;
+    pendingItemDispenseSeeds.push(...remaining);
+  };
+
+  const loadExistingItemDispenses = async () => {
+    if (!shouldHandleItemDispenses()) return;
+    const service = getDispenseService();
+    if (!service?.fetchItemDispenses) return;
+    const contactId = getContactId();
+    if (!contactId) return;
+    try {
+      const result = await service.fetchItemDispenses({
+        contactId,
+        statusIds: ITEM_DISPENSE_STATUS.IN_CART,
+        limit: 200,
+      });
+      const dispenses = Array.isArray(result?.dispenses)
+        ? result.dispenses
+        : [];
+      const latestByItem = new Map();
+      dispenses.forEach((dispense) => {
+        if (!dispense || !dispense.itemId || dispense.itemId === "0") return;
+        if (latestByItem.has(dispense.itemId)) return;
+        latestByItem.set(dispense.itemId, dispense);
+      });
+      latestByItem.forEach((dispense) => enqueueItemDispenseSeed(dispense));
+      await processItemDispenseSeeds();
+      await pruneNonDispensableScripts();
+    } catch (err) {
+      console.error("Failed to fetch existing dispenses", err);
+    }
+  };
+
+  const pruneNonDispensableScripts = async () => {
+    if (!shouldManageDispenses() || !window.Cart) return;
+    const items = Cart.getState().items.filter((item) =>
+      isScriptCartItem(item)
+    );
+    if (!items.length) return;
+    await Promise.all(
+      items.map(async (item) => {
+        const scriptId = item.scriptId || item.productId || item.id;
+        if (!scriptId) return;
+        const selectors = [
+          `.product-card[data-script-id="${cssEscape(scriptId)}"]`,
+          `.product-card[data-product-id="${cssEscape(scriptId)}"]`,
+        ];
+        const card =
+          document.querySelector(selectors[0]) ||
+          document.querySelector(selectors[1]);
+        const canDispense = card
+          ? parseCanDispenseFlag(card.dataset?.canDispense)
+          : true;
+        if (!canDispense) {
+          try {
+            await Cart.removeItem(item.id);
+          } catch (err) {
+            console.error("Failed to remove blocked script", err);
+          }
+          updateProductCardDataset(
+            [item.id, item.productId, scriptId],
+            {
+              dispenseStatus: "Cancelled",
+              dispenseStatusId: null,
+              dispenseId: null,
+              scriptId: item.scriptId,
+              suppressAutoSeed: true,
+            },
+            { syncButtons: true }
+          );
+        }
+      })
+    );
+  };
+
+  const clearItemDispenseQueues = () => {
+    pendingItemDispenseSeeds.length = 0;
+    seededItemDispenseIds.clear();
+  };
+
+  const hydrateCartItemsFromDom = async () => {
+    if (!window.Cart) return;
+    const items = window.Cart.getState().items;
+    await Promise.all(
+      items.map(async (item) => {
+        if (!item || isScriptCartItem(item)) return;
+        const itemKey = getDispenseItemId(item) || item.productId || item.id;
+        if (!itemKey) return;
+        const card = findProductCardByItemId(itemKey);
+        if (!card) return;
+        const product = extractProduct(card);
+        if (!product) return;
+        const patch = {};
+        if (isMeaningfulText(product.name) && product.name !== item.name) {
+          patch.name = product.name;
+        }
+        if (isMeaningfulText(product.brand) && product.brand !== item.brand) {
+          patch.brand = product.brand;
+        }
+        const cardImage =
+          product.image || card.querySelector("img")?.getAttribute("src") || "";
+        if (isMeaningfulImage(cardImage) && cardImage !== item.image) {
+          patch.image = cardImage;
+        }
+        if (isMeaningfulText(product.description) && product.description !== item.description) {
+          patch.description = product.description;
+        }
+        if (
+          product.price !== undefined &&
+          !Number.isNaN(Number(product.price)) &&
+          product.price !== item.price
+        ) {
+          patch.price = Number(product.price);
+        }
+        if (
+          product.retailGst !== undefined &&
+          !Number.isNaN(Number(product.retailGst)) &&
+          Number(product.retailGst) !== Number(item.retailGst)
+        ) {
+          patch.retailGst = Number(product.retailGst);
+        }
+        if (
+          product.wholesalePrice !== undefined &&
+          !Number.isNaN(Number(product.wholesalePrice)) &&
+          Number(product.wholesalePrice) !== Number(item.wholesalePrice)
+        ) {
+          patch.wholesalePrice = Number(product.wholesalePrice);
+        }
+        if (Object.keys(patch).length) {
+          await updateCartItemMetadata(item.id, patch);
+        }
+      })
+    );
+  };
+
+/* ========= rendering ========= */
   const updateCount = (state) => {
     const count = state
       ? state.items.reduce((total, item) => total + (Number(item.qty) || 0), 0)
@@ -810,12 +1550,12 @@ const dlog = (...args) => {
       state.items.forEach((item) => {
         const row = document.createElement("div");
         row.className = "p-4 flex gap-3 items-center";
-        const isScriptItem = !!(item && (item.isScript || item.scriptId));
-        const qtyValue = isScriptItem
+        const scriptLine = isScriptCartItem(item);
+        const qtyValue = scriptLine
           ? 1
           : Math.max(1, Number(item.qty) || 1);
         if (
-          isScriptItem &&
+          scriptLine &&
           typeof Cart?.updateQuantity === "function" &&
           Number(item.qty) !== 1
         ) {
@@ -832,13 +1572,13 @@ const dlog = (...args) => {
             }
           });
         }
-        const disableBtnAttrs = isScriptItem
+        const disableBtnAttrs = scriptLine
           ? ' disabled aria-disabled="true" tabindex="-1"'
           : "";
-        const disableBtnClasses = isScriptItem
+        const disableBtnClasses = scriptLine
           ? " opacity-50 cursor-not-allowed"
           : "";
-        const qtyInputAttrs = isScriptItem
+        const qtyInputAttrs = scriptLine
           ? ' readonly aria-readonly="true"'
           : "";
         row.innerHTML = `
@@ -944,6 +1684,15 @@ const dlog = (...args) => {
 
   const syncAddButtons = () => {
     if (!window.Cart) return;
+    processItemDispenseSeeds().catch((err) => {
+      dlog("processItemDispenseSeeds error", err);
+    });
+    pruneNonDispensableScripts().catch((err) => {
+      dlog("pruneNonDispensableScripts error", err);
+    });
+    hydrateCartItemsFromDom().catch((err) => {
+      dlog("hydrateCartItemsFromDom error", err);
+    });
     const items = Cart.getState().items;
     const inCart = new Set();
     const toSignature = (name = "", brand = "", priceText = "") => {
@@ -955,6 +1704,8 @@ const dlog = (...args) => {
     items.forEach((item) => {
       const id = String(item.id);
       inCart.add(id);
+      const itemKey = getDispenseItemId(item);
+      if (itemKey) inCart.add(String(itemKey));
       inCart.add(
         toSignature(
           item.name || "",
@@ -977,6 +1728,7 @@ const dlog = (...args) => {
       const explicitId =
         btn.dataset?.productId ||
         card?.dataset?.productId ||
+        card?.dataset?.itemId ||
         "";
       const computedId = explicitId || safeId(btn);
       const idStr = String(computedId);
@@ -1142,6 +1894,7 @@ const dlog = (...args) => {
       Object.assign(config, next);
       return config;
     },
+    clearItemDispenseQueues,
   });
 
   /* ========= events ========= */
@@ -1178,6 +1931,28 @@ const dlog = (...args) => {
       addBtn.textContent = "Adding…";
       try {
         await Cart.addItem(product, qty);
+        const cartItem = Cart.getItem ? Cart.getItem(product.id) : null;
+        if (!product.isScript && cartItem) {
+          await syncItemDispenseForCartItem(cartItem, product, {
+            skipCreate:
+              cartItem.dispenseId &&
+              seededItemDispenseIds.has(cartItem.dispenseId),
+          });
+          const itemKey = getDispenseItemId(cartItem);
+      updateProductCardDataset(
+        [cartItem.id, cartItem.productId, itemKey],
+        {
+          force: true,
+          dispenseStatus: cartItem.dispenseStatus || "In Cart",
+          dispenseStatusId:
+            cartItem.dispenseStatusId ||
+            ITEM_DISPENSE_STATUS.IN_CART,
+          dispenseId: cartItem.dispenseId || null,
+          dispenseItemId: itemKey,
+        },
+        { syncButtons: true }
+      );
+        }
         if (product.isScript) {
           updateProductCardDataset(
             [product.id, product.productId],
@@ -1253,30 +2028,18 @@ const dlog = (...args) => {
       if (!hasCart) return;
       const id = decr.dataset.id;
       const item = Cart.getItem(id);
-      if (item && (item.isScript || item.scriptId)) {
+      if (!item) return;
+      if (isScriptCartItem(item)) {
         return;
       }
-      if (item) {
-        const nextQty = Math.max(0, (Number(item.qty) || 0) - 1);
-        await Cart.updateQuantity(id, nextQty);
-        if (nextQty === 0 && (item.isScript || item.scriptId)) {
-          updateProductCardDataset(
-            [id, item.productId],
-            {
-              dispenseStatus: "Cancelled",
-              dispenseStatusId: null,
-              dispenseId: null,
-              scriptId: item.scriptId,
-              suppressAutoSeed: true,
-            },
-            { syncButtons: true }
-          );
-          if (shouldManageDispenses()) {
-            cancelScriptDispense(item).catch((err) => {
-              console.error("Cancel dispense failed", err);
-            });
-          }
-        }
+      const nextQty = Math.max(0, (Number(item.qty) || 0) - 1);
+      if (nextQty === 0 && shouldHandleItemDispenses()) {
+        await cancelItemDispense(item);
+      }
+      await Cart.updateQuantity(id, nextQty);
+      if (nextQty > 0 && shouldHandleItemDispenses()) {
+        const updated = Cart.getItem(id);
+        if (updated) await updateItemDispenseQuantity(updated);
       }
       return;
     }
@@ -1286,10 +2049,16 @@ const dlog = (...args) => {
       if (!hasCart) return;
       const id = incr.dataset.id;
       const item = Cart.getItem(id);
-      if (item && (item.isScript || item.scriptId)) {
+      if (!item) return;
+      if (isScriptCartItem(item)) {
         return;
       }
-      if (item) await Cart.updateQuantity(id, item.qty + 1);
+      const nextQty = (Number(item.qty) || 0) + 1;
+      await Cart.updateQuantity(id, nextQty);
+      if (shouldHandleItemDispenses()) {
+        const updated = Cart.getItem(id);
+        if (updated) await updateItemDispenseQuantity(updated);
+      }
       return;
     }
 
@@ -1298,7 +2067,7 @@ const dlog = (...args) => {
       if (!hasCart) return;
       const id = remove.dataset.id;
       const item = Cart.getItem(id);
-      if (item && (item.isScript || item.scriptId)) {
+      if (item && isScriptCartItem(item)) {
         updateProductCardDataset(
           [id, item.productId],
           {
@@ -1315,6 +2084,8 @@ const dlog = (...args) => {
             console.error("Cancel dispense failed", err);
           });
         }
+      } else if (item && shouldHandleItemDispenses()) {
+        await cancelItemDispense(item);
       }
       await Cart.removeItem(id);
       return;
@@ -1324,9 +2095,9 @@ const dlog = (...args) => {
       if (!hasCart) return;
       const manage = shouldManageDispenses();
       const state = Cart.getState();
-      state.items
-        .filter((item) => item && (item.isScript || item.scriptId))
-        .forEach((item) => {
+      state.items.forEach((item) => {
+        if (!item) return;
+        if (item.isScript || item.scriptId) {
           updateProductCardDataset(
             [item.id, item.productId],
             {
@@ -1343,7 +2114,12 @@ const dlog = (...args) => {
               console.error("Cancel dispense failed", err);
             });
           }
-        });
+        } else if (shouldHandleItemDispenses()) {
+          cancelItemDispense(item).catch((err) => {
+            console.error("Cancel item dispense failed", err);
+          });
+        }
+      });
       await Cart.clear();
       return;
     }
@@ -1375,7 +2151,8 @@ const dlog = (...args) => {
     if (!input || typeof Cart === "undefined") return;
     const id = input.dataset.id;
     const item = Cart.getItem(id);
-    if (item && (item.isScript || item.scriptId)) {
+    if (!item) return;
+    if (isScriptCartItem(item)) {
       input.value = "1";
       if (Number(item.qty) !== 1) {
         await Cart.updateQuantity(id, 1);
@@ -1383,25 +2160,14 @@ const dlog = (...args) => {
       return;
     }
     const value = Math.max(0, parseInt(input.value || "0", 10) || 0);
-    if (value === 0 && item && (item.isScript || item.scriptId)) {
-      updateProductCardDataset(
-        [id, item.productId],
-        {
-          dispenseStatus: "Cancelled",
-          dispenseStatusId: null,
-          dispenseId: null,
-          scriptId: item.scriptId,
-          suppressAutoSeed: true,
-        },
-        { syncButtons: true }
-      );
-      if (shouldManageDispenses()) {
-        cancelScriptDispense(item).catch((err) => {
-          console.error("Cancel dispense failed", err);
-        });
-      }
+    if (value === 0 && shouldHandleItemDispenses()) {
+      await cancelItemDispense(item);
     }
     await Cart.updateQuantity(id, value);
+    if (value > 0 && shouldHandleItemDispenses()) {
+      const updated = Cart.getItem(id);
+      if (updated) await updateItemDispenseQuantity(updated);
+    }
   });
 
   document.addEventListener("keydown", (event) => {
@@ -1419,10 +2185,14 @@ const dlog = (...args) => {
     ensureDrawer();
     if (!window.Cart) return;
     await Cart.init();
+    if (shouldHandleItemDispenses()) {
+      await loadExistingItemDispenses();
+    }
     if (shouldManageDispenses()) {
       try {
         await seedScriptsFromDom();
         await syncScriptMetadataFromDom();
+        await pruneNonDispensableScripts();
       } catch (err) {
         dlog("Initial script sync failed", err);
       }
@@ -1431,29 +2201,56 @@ const dlog = (...args) => {
     renderCart(state);
     updateCount(state);
     syncAddButtons();
+    processItemDispenseSeeds().catch((err) => dlog("seed process error", err));
     // Retry syncing buttons to catch late-rendered product cards
-    setTimeout(syncAddButtons, 120);
-    setTimeout(syncAddButtons, 300);
-    setTimeout(syncAddButtons, 800);
+    const scheduleSyncPass = (delay) =>
+      setTimeout(() => {
+        syncAddButtons();
+        processItemDispenseSeeds().catch((err) =>
+          dlog("delayed seed error", err)
+        );
+      }, delay);
+    scheduleSyncPass(120);
+    scheduleSyncPass(300);
+    scheduleSyncPass(800);
 
     // Observe dynamic additions of product cards globally
     const syncObserver = new MutationObserver(() => {
-      window.requestAnimationFrame(() => syncAddButtons());
+      window.requestAnimationFrame(() => {
+        syncAddButtons();
+        processItemDispenseSeeds().catch((err) =>
+          dlog("observer process error", err)
+        );
+      });
     });
     syncObserver.observe(document.body, { childList: true, subtree: true });
 
     // Re-sync on bfcache restore and visibility changes
-    window.addEventListener("pageshow", () => syncAddButtons());
+    window.addEventListener("pageshow", () => {
+      syncAddButtons();
+      processItemDispenseSeeds().catch((err) =>
+        dlog("pageshow seed error", err)
+      );
+    });
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") syncAddButtons();
+      if (document.visibilityState === "visible") {
+        syncAddButtons();
+        processItemDispenseSeeds().catch((err) =>
+          dlog("visibility seed error", err)
+        );
+      }
     });
 
     Cart.subscribe((next) => {
       renderCart(next);
       updateCount(next);
       syncAddButtons();
+      processItemDispenseSeeds().catch((err) =>
+        dlog("subscription seed error", err)
+      );
       if (!next.items.length) {
         suppressedScriptIds.clear();
+        clearItemDispenseQueues();
       }
     });
   };

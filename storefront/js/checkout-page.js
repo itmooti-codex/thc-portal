@@ -52,6 +52,7 @@
     showPageLoader: showPageLoaderFn,
     hidePageLoader: hidePageLoaderFn,
     setPageLoaderMessage: setPageLoaderMessageFn,
+    showToast: showToastFn,
   } = window.StorefrontUtils || {};
   const fallback$ = (sel, ctx = document) => ctx.querySelector(sel);
   const fallback$$ = (sel, ctx = document) =>
@@ -69,6 +70,16 @@
     typeof setPageLoaderMessageFn === "function"
       ? (message) => setPageLoaderMessageFn(message)
       : () => {};
+
+  const showToast =
+    typeof showToastFn === "function"
+      ? (message, options) => showToastFn(message, options)
+      : (message) => {
+          if (!message) return;
+          try {
+            alert(message);
+          } catch {}
+        };
 
   showLoader("Preparing checkout…");
 
@@ -90,6 +101,293 @@
         } catch {}
       }
     }
+  };
+
+  const stripCardDigits = (value) => {
+    if (value === null || value === undefined) return "";
+    const digits = String(value).replace(/\D/g, "");
+    return digits;
+  };
+
+  const normalizeSavedCardId = (card) => {
+    if (!card || typeof card !== "object") return "";
+    const candidates = [card.id, card.card_id, card.cardId, card.cc_id, card.ccId];
+    for (const candidate of candidates) {
+      if (candidate === null || candidate === undefined) continue;
+      const value = String(candidate).trim();
+      if (value) return value;
+    }
+    return "";
+  };
+
+  const summariseSavedCardForDebug = (card) => {
+    if (!card || typeof card !== "object") return null;
+    const id = normalizeSavedCardId(card);
+    const last4 =
+      card.last4 || card.card_last_four || card.card_last4 || "unknown";
+    const expMonth =
+      card.exp_month || card.card_expiration_month || card.expMonth || "";
+    const expYear =
+      card.exp_year || card.card_expiration_year || card.expYear || "";
+    return {
+      id,
+      brand:
+        card.type ||
+        card.card_type ||
+        card.cardType ||
+        card.brand ||
+        card.card_brand ||
+        "",
+      last4: stripCardDigits(last4).slice(-4) || last4,
+      exp: expMonth && expYear ? `${expMonth}/${String(expYear).slice(-2)}` : "",
+      nickname: card.nickname || "",
+    };
+  };
+
+  const summarisePayerForDebug = (payer) => {
+    if (!payer || typeof payer !== "object") return null;
+    const cardDigits = stripCardDigits(payer.ccnumber || payer.number || "");
+    return {
+      name: payer.name || "",
+      exp_month: payer.expire_month || payer.exp_month || "",
+      exp_year: payer.expire_year || payer.exp_year || "",
+      card_last4: cardDigits ? cardDigits.slice(-4) : "",
+      has_code: !!(payer.code || payer.cvc || payer.cvv),
+    };
+  };
+
+  const summariseOfferForDebug = (offer) => {
+    if (!offer || typeof offer !== "object") return null;
+    const summary = {};
+    [
+      "total",
+      "subtotal",
+      "tax",
+      "shipping",
+      "grand_total",
+      "grandTotal",
+    ].forEach((key) => {
+      if (offer[key] !== undefined) summary[key] = offer[key];
+    });
+    if (Array.isArray(offer.items)) {
+      summary.items = offer.items.map((item) => ({
+        productId:
+          item.productId ||
+          item.id ||
+          item.product_id ||
+          item.payment_id ||
+          "",
+        quantity: item.quantity || item.qty || 0,
+        price: item.price || item.unitPrice || 0,
+      }));
+    }
+    return summary;
+  };
+
+  const summariseTransactionForDebug = (transactionData) => {
+    if (!transactionData || typeof transactionData !== "object") return null;
+    const summary = {
+      contactId:
+        transactionData.contact_id ||
+        transactionData.contactId ||
+        checkoutState.contactId,
+      chargeNow: transactionData.chargeNow,
+      gatewayId: transactionData.gateway_id,
+      invoiceTemplate: transactionData.invoice_template,
+      hasBillingAddress: !!transactionData.billing_address,
+      billingCountry: transactionData.billing_address?.country || "",
+      ccId: transactionData.cc_id || null,
+      payer: summarisePayerForDebug(transactionData.payer),
+      offer: summariseOfferForDebug(transactionData.offer),
+    };
+    return summary;
+  };
+
+  const summariseTransactionResultForDebug = (result) => {
+    if (!result || typeof result !== "object") return result;
+    const summary = {};
+    [
+      "order_id",
+      "orderId",
+      "transaction_id",
+      "transactionId",
+      "status",
+      "state",
+      "message",
+    ].forEach((key) => {
+      if (result[key] !== undefined) summary[key] = result[key];
+    });
+    if (result.errors) summary.errors = result.errors;
+    if (result.missingFields) summary.missingFields = result.missingFields;
+    return Object.keys(summary).length ? summary : result;
+  };
+
+  const sanitiseErrorDetailsForDebug = (details) => {
+    if (!details || typeof details !== "object") return details;
+    const allowedKeys = [
+      "error",
+      "message",
+      "details",
+      "missing",
+      "missingFields",
+      "fieldErrors",
+      "errors",
+      "missing_fields",
+      "missing_fields_display",
+      "validation",
+    ];
+    const sanitised = {};
+    allowedKeys.forEach((key) => {
+      if (details[key] !== undefined) {
+        sanitised[key] = details[key];
+      }
+    });
+    if (!Object.keys(sanitised).length) return details;
+    return sanitised;
+  };
+
+  const pickFirstString = (...candidates) => {
+    for (const candidate of candidates) {
+      if (typeof candidate === "string" && candidate.trim()) {
+        return candidate.trim();
+      }
+    }
+    return "";
+  };
+
+  const extractMissingFields = (details) => {
+    if (!details || typeof details !== "object") return [];
+    const sources = [
+      details.missingFields,
+      details.missing_fields,
+      details.missing,
+      details.missing_fields_display,
+      details?.details?.missingFields,
+    ];
+    for (const source of sources) {
+      if (Array.isArray(source) && source.length) {
+        return source.map((item) => String(item).trim()).filter(Boolean);
+      }
+      if (typeof source === "string" && source.trim()) {
+        return source
+          .split(/[,;]/)
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+    }
+    return [];
+  };
+
+  const getFriendlyCheckoutErrorMessage = (err) => {
+    if (!err) return "";
+    if (typeof err === "string") return err;
+    const details =
+      err.details && typeof err.details === "object" ? err.details : null;
+    const missing = extractMissingFields(details);
+    if (missing.length) {
+      return `Missing required fields: ${missing.join(", ")}`;
+    }
+    const detailMessage = details
+      ? pickFirstString(
+          details.error,
+          details.message,
+          details.details,
+          details.reason,
+          Array.isArray(details.errors)
+            ? details.errors.map((item) => String(item)).join(", ")
+            : ""
+        )
+      : "";
+    const errorMessage = pickFirstString(err.friendlyMessage, err.message);
+    return pickFirstString(detailMessage, errorMessage, "");
+  };
+
+  const logCheckoutError = (label, err, context = {}) => {
+    const payload = {
+      message: err?.message,
+      status: err?.status,
+      friendly: getFriendlyCheckoutErrorMessage(err),
+      details: err?.details
+        ? sanitiseErrorDetailsForDebug(err.details)
+        : null,
+      context,
+    };
+    debugLog(label, payload);
+    if (typeof window === "undefined" || !window.__CHECKOUT_DEBUG) {
+      try {
+        console.warn(`[Checkout] ${label}`, payload);
+      } catch {}
+    }
+  };
+
+  const getAddressFromForm = (
+    prefix,
+    { fallbackCountry = "Australia" } = {}
+  ) => {
+    const read = (suffix) => {
+      const el = byId(`${prefix}_${suffix}`);
+      if (!el || el.value == null) return "";
+      return String(el.value).trim();
+    };
+    return {
+      address: read("addr1"),
+      address2: read("addr2"),
+      city: read("city"),
+      state: read("state"),
+      zip: read("postal"),
+      country: read("country") || fallbackCountry,
+    };
+  };
+
+  const addressHasRequiredFields = (address) => {
+    if (!address || typeof address !== "object") return false;
+    return ["address", "city", "zip"].some((key) => {
+      const value = address[key];
+      return typeof value === "string" && value.trim().length > 0;
+    });
+  };
+
+  const fillAddressWithFallback = (primary = {}, fallback = {}) => {
+    const result = { ...primary };
+    ["address", "address2", "city", "state", "zip", "country"].forEach(
+      (key) => {
+        if (
+          (!result[key] || !String(result[key]).trim()) &&
+          fallback[key] &&
+          String(fallback[key]).trim()
+        ) {
+          result[key] = String(fallback[key]).trim();
+        }
+      }
+    );
+    return result;
+  };
+
+  const normaliseAddressForPayload = (
+    address,
+    fallbackCountry = "Australia"
+  ) => {
+    if (!address || typeof address !== "object") return null;
+    const normalized = {};
+    ["address", "address2", "city", "state", "zip", "country"].forEach(
+      (key) => {
+        if (address[key] === undefined || address[key] === null) return;
+        const value =
+          typeof address[key] === "string"
+            ? address[key].trim()
+            : address[key];
+        if (typeof value === "string") {
+          if (!value) return;
+          normalized[key] = value;
+        } else if (value !== undefined) {
+          normalized[key] = value;
+        }
+      }
+    );
+    if (!normalized.country && fallbackCountry) {
+      normalized.country = fallbackCountry;
+    }
+    return normalized;
   };
 
   const getApiBase = () => {
@@ -126,21 +424,73 @@
   const apiCall = async (endpoint, options = {}) => {
     const base = getApiBase();
     const url = `${base}${endpoint}`;
-    const response = await fetch(url, {
+    const fetchOptions = {
       headers: { "Content-Type": "application/json" },
       ...options,
-    });
+    };
+    const response = await fetch(url, fetchOptions);
+    console.log(response);
+
+    let responseData = null;
+    let parsedJson = false;
+    try {
+      responseData = await response.clone().json();
+      parsedJson = true;
+    } catch {
+      try {
+        responseData = await response.clone().text();
+      } catch {
+        responseData = null;
+      }
+    }
 
     if (!response.ok) {
       let errorMessage = "Request failed";
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage;
-      } catch {}
-      throw new Error(`${errorMessage} (${response.status})`);
+      if (parsedJson && responseData && typeof responseData === "object") {
+        errorMessage =
+          responseData.error ||
+          responseData.message ||
+          responseData.details ||
+          errorMessage;
+      } else if (typeof responseData === "string" && responseData.trim()) {
+        errorMessage = responseData.trim();
+      }
+      const error = new Error(`${errorMessage} (${response.status})`);
+      console.log("err", error);
+      error.status = response.status;
+      error.endpoint = endpoint;
+      error.details =
+        parsedJson && responseData && typeof responseData === "object"
+          ? responseData
+          : typeof responseData === "string"
+          ? { raw: responseData.slice(0, 500) }
+          : null;
+      debugLog("API call failed", {
+        endpoint,
+        status: response.status,
+        message: errorMessage,
+        details: error.details
+          ? sanitiseErrorDetailsForDebug(error.details)
+          : null,
+      });
+      throw error;
     }
 
-    return await response.json();
+    if (parsedJson) {
+      return responseData;
+    }
+    if (typeof responseData === "string" && responseData.trim()) {
+      try {
+        return JSON.parse(responseData);
+      } catch {
+        return responseData;
+      }
+    }
+    try {
+      return await response.json();
+    } catch {
+      return {};
+    }
   };
 
   const saveContact = async (contactData) => {
@@ -170,10 +520,25 @@
   };
 
   const processTransaction = async (transactionData) => {
-    return await apiCall("/api-thc/transaction/process", {
-      method: "POST",
-      body: JSON.stringify(transactionData),
-    });
+    debugLog("Submitting transaction", summariseTransactionForDebug(transactionData));
+    try {
+      const result = await apiCall("/api-thc/transaction/process", {
+        method: "POST",
+        body: JSON.stringify(transactionData),
+      });
+      debugLog(
+        "Transaction processed",
+        summariseTransactionResultForDebug(result)
+      );
+      return result;
+    } catch (err) {
+      debugLog("Transaction failed", {
+        message: err?.message,
+        status: err?.status,
+        details: err?.details ? sanitiseErrorDetailsForDebug(err.details) : null,
+      });
+      throw err;
+    }
   };
 
   const fetchContactDetails = async (contactId) => {
@@ -386,6 +751,86 @@
     getDispenseService()?.statusLabels || {}
   );
 
+  const STARTRACK_MATCHER = /star\s*track/i;
+
+  const getContactId = () => {
+    if (checkoutState.contactId) {
+      return String(checkoutState.contactId).trim();
+    }
+    try {
+      const config = window.StorefrontConfig || {};
+      const candidates = [
+        config.loggedInContactId,
+        config.contactId,
+        config.customerId,
+        config.userId,
+        config.memberId,
+      ];
+      for (const candidate of candidates) {
+        if (candidate !== undefined && candidate !== null) {
+          const value = String(candidate).trim();
+          if (value) return value;
+        }
+      }
+    } catch {}
+    try {
+      const root = document.querySelector(".get-url");
+      const dataset = root?.dataset || {};
+      const candidates = [
+        dataset.contactId,
+        dataset.contactid,
+        dataset.contact,
+        dataset.userId,
+        dataset.userid,
+      ];
+      for (const candidate of candidates) {
+        if (candidate !== undefined && candidate !== null) {
+          const value = String(candidate).trim();
+          if (value) return value;
+        }
+      }
+    } catch {}
+    return null;
+  };
+
+  const isScriptCartItem = (item) =>
+    !!(item && (item.isScript || item.scriptId));
+
+  const getDispenseItemId = (item) => {
+    if (!item) return null;
+    const candidates = [
+      item.dispenseItemId,
+      item.productId,
+      item.id,
+    ];
+    for (const candidate of candidates) {
+      if (candidate !== undefined && candidate !== null) {
+        const value = String(candidate).trim();
+        if (value && !value.startsWith("sig:") && !/^\s*\[/.test(value)) {
+          return value;
+        }
+      }
+    }
+    return null;
+  };
+
+  const resolveShippingCompanyId = () => {
+    const shippingTypes = Array.isArray(checkoutState.shippingTypes)
+      ? checkoutState.shippingTypes
+      : [];
+    const method = checkoutState.shippingMethod;
+    if (!method) return null;
+    const match =
+      shippingTypes.find((type) => String(type.id) === String(method)) ||
+      null;
+    if (!match) return null;
+    const name = String(match.name || match.label || "").trim();
+    if (STARTRACK_MATCHER.test(name)) {
+      return "328";
+    }
+    return null;
+  };
+
   const resolveDispenseStatusId = (value) => {
     if (value === null || value === undefined) return null;
     const raw = String(value).trim();
@@ -468,22 +913,126 @@
       (service.statusLabels && service.statusLabels[statusId]) ||
       null;
     const cartState = Cart.getState();
+    const shippingCompany =
+      statusId === resolveDispenseStatusId("PAID")
+        ? resolveShippingCompanyId()
+        : null;
+    const contactId = getContactId();
     for (const item of cartState.items) {
-      if (!item || (!item.isScript && !item.scriptId)) continue;
-      const enriched = await ensureScriptDispenseMetadata(item);
-      if (!enriched.dispenseId) continue;
+      if (!item) continue;
+      if (isScriptCartItem(item)) {
+        const enriched = await ensureScriptDispenseMetadata(item);
+        if (!enriched.dispenseId) continue;
+        try {
+          await service.updateDispenseStatus(enriched.dispenseId, statusId);
+          if (typeof Cart.updateItemMetadata === "function") {
+            await Cart.updateItemMetadata(enriched.id || item.id, {
+              dispenseStatusId: statusId,
+              dispenseStatus: label || enriched.dispenseStatus || "",
+            });
+          }
+        } catch (err) {
+          console.error("Failed to update script dispense status", err);
+        }
+        continue;
+      }
+      const itemId = getDispenseItemId(item);
+      if (!itemId) continue;
+      const quantity = Math.max(1, Number(item.qty) || 1);
+      let dispenseId =
+        item.dispenseId != null ? String(item.dispenseId).trim() : "";
       try {
-        await service.updateDispenseStatus(enriched.dispenseId, statusId);
-        if (typeof Cart.updateItemMetadata === "function") {
-          await Cart.updateItemMetadata(enriched.id || item.id, {
-            dispenseStatusId: statusId,
-            dispenseStatus: label || enriched.dispenseStatus || "",
+        if (!dispenseId) {
+          if (!contactId || typeof service.createItemDispense !== "function") {
+            continue;
+          }
+          const response = await service.createItemDispense({
+            itemId,
+            contactId,
+            quantity,
+            retailPrice: item.price,
+            retailGst: item.retailGst,
+            wholesalePrice: item.wholesalePrice,
+            statusId,
+            shippingCompany,
           });
+          const created = response?.dispense || response || {};
+          dispenseId =
+            created.id != null ? String(created.id).trim() : "";
+          if (
+            dispenseId &&
+            typeof Cart.updateItemMetadata === "function"
+          ) {
+            await Cart.updateItemMetadata(item.id, {
+              dispenseId,
+              dispenseStatusId: statusId,
+              dispenseStatus: label || created.statusLabel || "",
+              dispenseItemId: item.dispenseItemId || itemId,
+            });
+          }
+        } else if (typeof service.updateItemDispense === "function") {
+          await service.updateItemDispense(dispenseId, {
+            statusId,
+            quantity,
+            shippingCompany: shippingCompany || undefined,
+            contactId,
+            patientId: contactId,
+          });
+          if (typeof Cart.updateItemMetadata === "function") {
+            await Cart.updateItemMetadata(item.id, {
+              dispenseStatusId: statusId,
+              dispenseStatus: label || item.dispenseStatus || "",
+            });
+          }
+        } else {
+          await service.updateDispenseStatus(dispenseId, statusId);
         }
       } catch (err) {
-        console.error("Failed to update dispense status", err);
+        console.error("Failed to synchronise item dispense", err);
       }
     }
+    try {
+      window.StorefrontCartUI?.clearItemDispenseQueues?.();
+    } catch {}
+  };
+
+  const syncGuestItemDispenses = async (statusKeyOrId) => {
+    const service = getDispenseService();
+    if (!service?.createItemDispense) return;
+    const statusId =
+      resolveDispenseStatusId(statusKeyOrId) ||
+      resolveDispenseStatusId(service.statusIds?.[statusKeyOrId]) ||
+      DISPENSE_STATUS_IDS.PAID;
+    const contactId = getContactId();
+    if (!contactId) return;
+    const shippingCompany =
+      statusId === resolveDispenseStatusId("PAID")
+        ? resolveShippingCompanyId()
+        : null;
+    const cartState = Cart.getState();
+    for (const item of cartState.items) {
+      if (!item || isScriptCartItem(item)) continue;
+      const itemId = getDispenseItemId(item);
+      if (!itemId) continue;
+      const quantity = Math.max(1, Number(item.qty) || 1);
+      try {
+        await service.createItemDispense({
+          itemId,
+          contactId,
+          quantity,
+          retailPrice: item.price,
+          retailGst: item.retailGst,
+          wholesalePrice: item.wholesalePrice,
+          statusId,
+          shippingCompany,
+        });
+      } catch (err) {
+        console.error("Failed to create guest item dispense", err);
+      }
+    }
+    try {
+      window.StorefrontCartUI?.clearItemDispenseQueues?.();
+    } catch {}
   };
 
   // Load form data from localStorage
@@ -1206,7 +1755,7 @@
     if (!cardId) return null;
     return (
       checkoutState.savedCards.find(
-        (card) => String(card?.id ?? "") === String(cardId)
+        (card) => normalizeSavedCardId(card) === String(cardId)
       ) || null
     );
   };
@@ -1284,6 +1833,12 @@
       ? checkoutState.savedCards
       : [];
 
+    debugLog("Rendering saved cards", {
+      count: cards.length,
+      selected: checkoutState.selectedPaymentSource,
+      cards: cards.map((card) => summariseSavedCardForDebug(card)),
+    });
+
     if (!cards.length) {
       paymentSourceSelector.classList.add("hidden");
       checkoutState.selectedPaymentSource = "new";
@@ -1298,14 +1853,19 @@
 
     cards.forEach((card) => {
       if (!card) return;
-      const value = `saved:${card.id}`;
+      const resolvedId = normalizeSavedCardId(card);
+      if (!resolvedId) return;
+      const value = `saved:${resolvedId}`;
       validValues.push(value);
       const label = document.createElement("label");
       label.className =
         "flex items-center justify-between gap-3 rounded-xl border border-gray-200 px-4 py-3 hover:border-blue-500";
-      const last4 = card.last4 || card.card_last_four || "••••";
-      const expMonth = card.exp_month || card.card_expiration_month;
-      const expYear = card.exp_year || card.card_expiration_year;
+      const last4 =
+        card.last4 || card.card_last_four || card.card_last4 || "••••";
+      const expMonth =
+        card.exp_month || card.card_expiration_month || card.expMonth;
+      const expYear =
+        card.exp_year || card.card_expiration_year || card.expYear;
       const expDisplay = expMonth && expYear
         ? `${String(expMonth).padStart(2, "0")}/${String(expYear).slice(-2)}`
         : "";
@@ -1494,6 +2054,9 @@
     try {
       const cards = await fetchSavedCards(contactId);
       checkoutState.savedCards = cards;
+      debugLog("Loaded saved cards", Array.isArray(cards)
+        ? cards.map((card) => summariseSavedCardForDebug(card))
+        : cards);
     } catch (err) {
       console.error("Failed to load saved cards", err);
       checkoutState.savedCards = [];
@@ -2016,29 +2579,50 @@
       throw new Error("Offer not calculated. Please try again.");
     }
 
-    // Get billing address
-    const billing_address = {
-      address: byId("bill_addr1")?.value?.trim() || "",
-      address2: byId("bill_addr2")?.value?.trim() || "",
-      city: byId("bill_city")?.value?.trim() || "",
-      state: byId("bill_state")?.value?.trim() || "",
-      zip: byId("bill_postal")?.value?.trim() || "",
-      country: byId("bill_country")?.value?.trim() || "Australia",
-    };
-
     const usingSavedCard = isUsingSavedCard();
-    let payer;
+    const manualBillingAddress = getAddressFromForm("bill");
+    const shippingAddress = getAddressFromForm("ship");
+    let resolvedBillingAddress = { ...manualBillingAddress };
+    let billingAddressSource = addressHasRequiredFields(manualBillingAddress)
+      ? "billing_form"
+      : "unknown";
+
+    let selectedSavedCardId = null;
+    let payer = null;
+    let selectedCard = null;
+    const contactId = getContactId() || checkoutState.contactId;
     if (usingSavedCard) {
-      const selectedCard = getSelectedSavedCard();
+      selectedCard = getSelectedSavedCard();
       if (!selectedCard) {
         throw new Error(
           "Saved card could not be found. Please choose another payment method."
         );
       }
-      const cardId = selectedCard.id;
+      const cardId = normalizeSavedCardId(selectedCard);
+      if (!cardId) {
+        throw new Error(
+          "Saved card is missing an identifier. Please choose another payment method."
+        );
+      }
+      selectedSavedCardId = Number(cardId) || cardId;
       payer = {
-        card_id: Number(cardId) || cardId,
+        cc_id: selectedSavedCardId,
+        payment_method: "saved_card",
+        use_saved_card: true,
+        use_existing: true,
       };
+      resolvedBillingAddress = fillAddressWithFallback(
+        resolvedBillingAddress,
+        shippingAddress
+      );
+      if (
+        !addressHasRequiredFields(manualBillingAddress) &&
+        addressHasRequiredFields(resolvedBillingAddress)
+      ) {
+        billingAddressSource = addressHasRequiredFields(shippingAddress)
+          ? "shipping_fallback"
+          : "unknown";
+      }
     } else {
       const expRaw = byId("cc_exp")?.value || "";
       const [expMonthRaw, expYearRaw] = expRaw.split("/");
@@ -2051,6 +2635,7 @@
         expire_year: expYear,
         name: byId("cc_name")?.value?.trim() || "",
       };
+      billingAddressSource = "billing_form";
     }
 
     // Get selected shipping type
@@ -2086,16 +2671,67 @@
       shippingType
     );
 
-    // Process transaction
+    const transactionContactId = contactId || checkoutState.contactId;
+    if (transactionContactId && payer) {
+      payer.contact_id = Number(transactionContactId) || transactionContactId;
+    }
+
+    if (!payer) {
+      throw new Error(
+        usingSavedCard
+          ? "Saved payment method could not be resolved. Please choose another payment method."
+          : "Payment details are required."
+      );
+    }
+
+    if (!addressHasRequiredFields(resolvedBillingAddress)) {
+      if (
+        usingSavedCard &&
+        addressHasRequiredFields(shippingAddress)
+      ) {
+        resolvedBillingAddress = fillAddressWithFallback(
+          resolvedBillingAddress,
+          shippingAddress
+        );
+        if (!billingAddressSource || billingAddressSource === "unknown") {
+          billingAddressSource = "shipping_fallback";
+        }
+      }
+    }
+
+    const billing_address =
+      normaliseAddressForPayload(resolvedBillingAddress) || {};
+
     const transactionData = {
       contactId: checkoutState.contactId,
-      billing_address,
-      payer,
+      chargeNow: "chargeNow",
       offer: finalOffer,
       external_order_id: `WEB-${Date.now()}`,
       invoice_template: invoiceTemplateId,
       gateway_id: paymentGatewayId,
     };
+    transactionData.billing_address = billing_address;
+    transactionData.payer = payer;
+    if (selectedSavedCardId) {
+      transactionData.cc_id = selectedSavedCardId;
+    }
+    if (transactionContactId) {
+      transactionData.contact_id =
+        Number(transactionContactId) || transactionContactId;
+    }
+
+    debugLog("Prepared transaction payload", {
+      contactId: transactionContactId,
+      usingSavedCard,
+      selectedSavedCardId,
+      savedCard: summariseSavedCardForDebug(selectedCard),
+      billingAddressSource,
+      billingAddress: billing_address,
+      shippingType: shippingType
+        ? { id: shippingType.id, name: shippingType.name }
+        : null,
+      transactionSummary: summariseTransactionForDebug(transactionData),
+    });
 
     return await processTransaction(transactionData);
   };
@@ -2394,18 +3030,46 @@
             } catch (err) {
               console.error("Failed to mark dispenses as paid", err);
             }
+          } else {
+            try {
+              await syncGuestItemDispenses("PAID");
+            } catch (err) {
+              console.error("Failed to create guest dispenses", err);
+            }
           }
           await Cart.clear();
           localStorage.removeItem(STORAGE_KEY);
           localStorage.removeItem(`${STORAGE_KEY}:form`);
-
-          // Redirect to success page
-          window.location.href = `https://app.thehappy.clinic/shop/thank-you?order=${
-            result.order_id || result.transaction_id || "success"
-          }`;
+          showToast("Payment successful! Redirecting…", {
+            type: "success",
+            duration: 2600,
+          });
+          const orderRef = result.order_id || result.transaction_id || "success";
+          setTimeout(() => {
+            window.location.href = `https://app.thehappy.clinic/shop/thank-you?order=${orderRef}`;
+          }, 1400);
         })
-        .catch((err) => {
-          alert(err?.message || "Order processing failed. Please try again.");
+        .catch(async (err) => {
+          if (shouldUpdateDispenses()) {
+            try {
+              await updateCartDispenses("PAYMENT_ISSUE");
+            } catch (updateErr) {
+              console.error("Failed to mark dispenses as payment issue", updateErr);
+            }
+          }
+          logCheckoutError("Order processing failed", err, {
+            usingSavedCard: isUsingSavedCard(),
+            selectedPaymentSource: checkoutState.selectedPaymentSource,
+          });
+          const friendlyMessage = getFriendlyCheckoutErrorMessage(err);
+          const message =
+            friendlyMessage ||
+            err?.message ||
+            "Order processing failed. Please try again.";
+          showToast(message, {
+            type: "error",
+            duration: friendlyMessage ? 8000 : 5000,
+          });
         })
         .finally(() => {
           if (btn) {
@@ -2495,6 +3159,12 @@
     }
     if (target.name === "payment_source") {
       checkoutState.selectedPaymentSource = target.value || "new";
+      const selectedCard = isUsingSavedCard() ? getSelectedSavedCard() : null;
+      debugLog("Payment source change", {
+        selected: checkoutState.selectedPaymentSource,
+        usingSavedCard: isUsingSavedCard(),
+        savedCard: summariseSavedCardForDebug(selectedCard),
+      });
       applyPaymentSourceSelection();
     }
   });

@@ -7,6 +7,7 @@
   const GUEST_CART_KEY = "thc_portal_cart_guest_v1";
   const AUTH_CART_KEY = "thc_portal_cart_auth_v1";
   const PRODUCT_CACHE_KEY = "thc_portal_last_product_v1";
+  const STORAGE_TTL_MS = 3 * 60 * 1000;
 
   const defaultState = () => ({ items: [], currency: "AUD" });
 
@@ -56,6 +57,15 @@
     const readKey = (storage, key) => {
       try {
         const parsed = JSON.parse(storage.getItem(key) || "null");
+        if (parsed && typeof parsed === "object") {
+          const savedAt = Number(parsed.savedAt) || 0;
+          const expired =
+            !savedAt || Date.now() - savedAt > STORAGE_TTL_MS;
+          if (expired) {
+            storage.removeItem(key);
+            return null;
+          }
+        }
         if (parsed && Array.isArray(parsed.items)) {
           return {
             currency: parsed.currency || "AUD",
@@ -127,7 +137,13 @@
     const key = isAuthenticated() ? AUTH_CART_KEY : GUEST_CART_KEY;
     const storage = isAuthenticated() ? sessionStorage : localStorage;
     try {
-      storage.setItem(key, JSON.stringify(state));
+      storage.setItem(
+        key,
+        JSON.stringify({
+          ...state,
+          savedAt: Date.now(),
+        })
+      );
     } catch (err) {
       console.warn("Cart storage persist failed", err);
     }
@@ -175,12 +191,20 @@
       "retailGst",
       "wholesalePrice",
       "requiresShipping",
+      "dispenseItemId",
+      "itemId",
     ];
     optionalKeys.forEach((key) => {
       if (product[key] !== undefined) {
         normalised[key] = product[key];
       }
     });
+    if (
+      normalised.dispenseItemId === undefined ||
+      normalised.dispenseItemId === null
+    ) {
+      normalised.dispenseItemId = normalised.productId || normalised.id;
+    }
     if (product.isScript !== undefined) {
       normalised.isScript = Boolean(product.isScript);
     } else if (product.scriptId) {
@@ -309,6 +333,8 @@
       "image",
       "description",
       "url",
+      "dispenseItemId",
+      "itemId",
     ];
     passthroughKeys.forEach((key) => {
       if (Object.prototype.hasOwnProperty.call(patch, key)) {
