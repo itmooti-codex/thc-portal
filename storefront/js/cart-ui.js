@@ -885,14 +885,16 @@ const dlog = (...args) => {
         discountDisplay,
       });
       if (subtotalEl) subtotalEl.textContent = formatMoney(totals.subtotal);
+      const fallbackShippingText = (() => {
+        if (!totals.shippingConfirmed) return "Select shipping";
+        if (totals.shipping <= 0) return "Free";
+        const amount = Number.isFinite(totals.shippingWithGst)
+          ? totals.shippingWithGst
+          : totals.shipping;
+        return `Shipping (GST incl) ${formatMoney(amount)}`;
+      })();
       if (shippingEl)
-        shippingEl.textContent =
-          shippingLabel ||
-          (totals.shippingConfirmed
-            ? totals.rawShipping > 0
-              ? formatMoney(totals.rawShipping)
-              : "Free"
-            : "Select shipping");
+        shippingEl.textContent = shippingLabel || fallbackShippingText;
       if (processingEl)
         processingEl.textContent = formatMoney(totals.cardFeeTotal);
       if (gstEl) gstEl.textContent = formatMoney(totals.taxTotal);

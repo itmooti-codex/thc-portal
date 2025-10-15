@@ -526,6 +526,7 @@
   const CARD_FEE_RATE = 0.018;
   const CARD_FEE_FIXED = 0.3;
   const CARD_FEE_GST_RATE = 0.1;
+  const SHIPPING_GST_RATE = 0.1;
 
   const knownCoupons = {
     SAVE10: {
@@ -954,19 +955,35 @@
 
     discount = roundCurrency(Math.min(Math.max(discount, 0), subtotal));
 
-    const totalBeforeFees = roundCurrency(subtotal + shipping - discount + itemTax);
+    const shippingTax =
+      shippingConfirmed && shipping > 0
+        ? roundCurrency(shipping * SHIPPING_GST_RATE)
+        : 0;
+    const shippingWithGst = roundCurrency(shipping + shippingTax);
+
+    const totalBeforeFees = roundCurrency(
+      subtotal + shipping + shippingTax - discount + itemTax
+    );
     const cardFeeBase = Math.max(0, totalBeforeFees);
-    const cardFeeExGst = cardFeeBase > 0 ? roundCurrency(cardFeeBase * CARD_FEE_RATE + CARD_FEE_FIXED) : 0;
-    const cardFeeGst = cardFeeExGst > 0 ? roundCurrency(cardFeeExGst * CARD_FEE_GST_RATE) : 0;
+    const cardFeeExGst =
+      cardFeeBase > 0
+        ? roundCurrency(cardFeeBase * CARD_FEE_RATE + CARD_FEE_FIXED)
+        : 0;
+    const cardFeeGst =
+      cardFeeExGst > 0 ? roundCurrency(cardFeeExGst * CARD_FEE_GST_RATE) : 0;
     const cardFeeTotal = roundCurrency(cardFeeExGst + cardFeeGst);
-    const taxTotal = roundCurrency(itemTax + cardFeeGst);
-    const total = roundCurrency(subtotal + shipping - discount + taxTotal + cardFeeExGst);
+    const taxTotal = roundCurrency(itemTax + shippingTax + cardFeeGst);
+    const total = roundCurrency(
+      subtotal + shipping - discount + taxTotal + cardFeeExGst
+    );
 
     debugLog("calcTotals result", {
       subtotal,
       shipping,
       rawShipping,
       shippingConfirmed,
+      shippingTax,
+      shippingWithGst,
       discount,
       itemTax,
       cardFeeExGst,
@@ -984,6 +1001,8 @@
       shipping,
       rawShipping,
       shippingConfirmed,
+      shippingTax,
+      shippingWithGst,
       discount,
       itemTax,
       taxTotal,
@@ -1058,20 +1077,20 @@
     if (summaryEls.subtotal)
       summaryEls.subtotal.textContent = money(totals.subtotal);
 
-    const selectedShipping = getSelectedShippingType();
     let shippingLabel = "Select shipping";
+    const shippingHasCharge =
+      totals.shippingConfirmed && totals.shipping > 0;
     if (checkoutState.shippingMethod === NONE_SHIPPING_ID) {
       shippingLabel = "No shipping";
     } else if (checkoutState.freeShipping) {
       shippingLabel = "Free";
-    } else if (
-      totals.shippingConfirmed &&
-      selectedShipping &&
-      String(selectedShipping.id) !== NONE_SHIPPING_ID
-    ) {
-      shippingLabel = totals.rawShipping > 0 ? money(totals.rawShipping) : "Free";
+    } else if (shippingHasCharge) {
+      const shippingAmount = Number.isFinite(totals.shippingWithGst)
+        ? totals.shippingWithGst
+        : totals.shipping;
+      shippingLabel = `Shipping (GST incl) ${money(shippingAmount)}`;
     } else if (totals.shippingConfirmed) {
-      shippingLabel = totals.rawShipping > 0 ? money(totals.rawShipping) : "Free";
+      shippingLabel = "Free";
     }
     if (summaryEls.shipping) summaryEls.shipping.textContent = shippingLabel;
 
