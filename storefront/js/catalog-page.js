@@ -82,7 +82,7 @@
     if (!msg) {
       msg = document.createElement("p");
       msg.className =
-        "cant-dispense-msg text-sm font-semibold text-red-600 leading-snug";
+        "cant-dispense-msg text-[12px] font-semibold text-red-600 leading-snug";
       msg.style.display = "none";
       actions.appendChild(msg);
     }
@@ -125,7 +125,7 @@
         if (addBtn) addBtn.classList.add("hidden");
         const combinedReason = [reason, nextDispenseDate]
           .filter((part) => !!part)
-          .join(" ")
+          .join(" - ")
           .trim();
         reasonEl.textContent =
           combinedReason || "This script is not ready to dispense.";
