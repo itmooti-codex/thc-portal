@@ -16,17 +16,17 @@
   };
 
   const STATUS_LABELS = {
-    "146": "Cancelled",
-    "147": "In Transit",
-    "148": "Confirmed - In Progress",
-    "149": "In Cart",
-    "151": "Payment Processing",
-    "152": "Paid",
-    "326": "Sent – Awaiting Confirmation",
-    "327": "Payment Issue",
-    "605": "Tracking Added",
-    "675": "On Hold",
-    "677": "Fulfilled",
+    146: "Cancelled",
+    147: "In Transit",
+    148: "Confirmed - In Progress",
+    149: "In Cart",
+    151: "Payment Processing",
+    152: "Paid",
+    326: "Sent – Awaiting Confirmation",
+    327: "Payment Issue",
+    605: "Tracking Added",
+    675: "On Hold",
+    677: "Fulfilled",
   };
 
   const sleep = (ms) =>
@@ -45,16 +45,15 @@
   };
 
   const getApiBase = () => {
+    // Priority: window.ENV.API_BASE > .get-url[data-api-base] > meta[name="api-base"]
     try {
-      const envBase = window.ENV?.API_BASE;
-      const dataBase = getRootEl()?.dataset?.apiBase;
-      const metaBase = document
-        .querySelector('meta[name="api-base"]')
-        ?.getAttribute("content");
-      const fallback = "http://localhost:3001";
-      const candidate = envBase || dataBase || metaBase || fallback;
-      const resolved = new URL(candidate, window.location.href).toString();
-      return resolved.replace(/\/+$/, "");
+      const winBase = window.ENV?.API_BASE;
+      const dataBase = document.querySelector(".get-url")?.dataset?.apiBase;
+      const metaBase = document.querySelector('meta[name="api-base"]')?.content;
+      const base = winBase || dataBase || metaBase || "http://localhost:3001";
+      return base
+        ? new URL(base, window.location.href).toString().replace(/\/$/, "")
+        : "http://localhost:3001";
     } catch {
       return "http://localhost:3001";
     }
@@ -72,7 +71,9 @@
     const base = getApiBase();
     const url = `${base}${endpoint}`;
     const hasBody =
-      options.body !== undefined && options.body !== null && options.body !== "";
+      options.body !== undefined &&
+      options.body !== null &&
+      options.body !== "";
     const response = await fetch(url, {
       method: options.method || "GET",
       credentials: options.credentials || "same-origin",
@@ -210,12 +211,12 @@
       params.set("statusId", String(options.status));
     }
     const query = params.toString();
-    return await apiCall(
-      `/api-thc/dispenses${query ? `?${query}` : ""}`
-    ).catch((err) => {
-      console.error("[DispenseService] fetchItemDispenses failed", err);
-      throw err;
-    });
+    return await apiCall(`/api-thc/dispenses${query ? `?${query}` : ""}`).catch(
+      (err) => {
+        console.error("[DispenseService] fetchItemDispenses failed", err);
+        throw err;
+      }
+    );
   };
 
   const service = {
@@ -232,8 +233,5 @@
     fetchItemDispenses,
   };
 
-  window.DispenseService = Object.assign(
-    window.DispenseService || {},
-    service
-  );
+  window.DispenseService = Object.assign(window.DispenseService || {}, service);
 })();
