@@ -266,6 +266,46 @@ app.get("/api-thc/shipping/types", async (req, res) => {
   }
 });
 
+app.get("/api-thc/taxes/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const resolvedId = typeof id === "string" ? id.trim() : "";
+    if (!resolvedId) {
+      return res.status(400).json({ error: "Tax ID is required" });
+    }
+
+    const response = await ontraportRequest(
+      "/Taxtypes?range=50&count=false"
+    );
+
+    const taxes = Array.isArray(response?.data) ? response.data : [];
+    const matchesId = (value) => {
+      if (value === undefined || value === null) return false;
+      return String(value).trim() === resolvedId;
+    };
+
+    const tax = taxes.find((entry) => {
+      if (!entry || typeof entry !== "object") return false;
+      const candidates = [
+        entry.id,
+        entry.tax_id,
+        entry.taxId,
+        entry.form_id,
+        entry.formId,
+      ];
+      return candidates.some(matchesId);
+    });
+
+    if (!tax) {
+      return res.status(404).json({ error: "Tax not found" });
+    }
+
+    res.json({ tax });
+  } catch (err) {
+    handleError(err, req, res);
+  }
+});
+
 // Offer building endpoint
 app.post("/api-thc/offer/build", async (req, res) => {
   try {
