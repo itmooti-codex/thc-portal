@@ -61,10 +61,35 @@
     }
   };
 
-  const clearAllPersistence = () => {
+  const persistSnapshotToStorage = (storage, key, snapshot) => {
+    if (!storage || typeof storage.setItem !== "function") return;
+    try {
+      const payload = {
+        currency: snapshot?.currency || "AUD",
+        items: Array.isArray(snapshot?.items)
+          ? snapshot.items.map((item) => ({ ...item }))
+          : [],
+        savedAt: Date.now(),
+      };
+      storage.setItem(key, JSON.stringify(payload));
+    } catch (err) {
+      console.warn("Cart storage persist failed", key, err);
+    }
+  };
+
+  const clearGuestPersistence = () => {
     if (!isBrowser) return;
     clearStorageKey(localStorage, GUEST_CART_KEY);
+  };
+
+  const clearAuthPersistence = () => {
+    if (!isBrowser) return;
     clearStorageKey(sessionStorage, AUTH_CART_KEY);
+  };
+
+  const clearAllPersistence = () => {
+    clearGuestPersistence();
+    clearAuthPersistence();
   };
 
   const loadFromStorage = () => {
@@ -99,10 +124,13 @@
     const auth = readKey(sessionStorage, AUTH_CART_KEY);
 
     if (isAuthenticated()) {
-      if (auth || guest) {
-        clearAllPersistence();
+      if (guest && !auth) {
+        persistSnapshotToStorage(sessionStorage, AUTH_CART_KEY, guest);
       }
-      return defaultState();
+      if (guest) {
+        clearGuestPersistence();
+      }
+      return auth || guest || defaultState();
     }
 
     // Merge any leftover authenticated cart into the guest cart so the user keeps
@@ -161,22 +189,14 @@
 
   const persist = () => {
     if (!isBrowser) return;
+    const snapshot = cloneState();
     if (isAuthenticated()) {
-      clearAllPersistence();
+      persistSnapshotToStorage(sessionStorage, AUTH_CART_KEY, snapshot);
+      clearGuestPersistence();
       return;
     }
-    try {
-      localStorage.setItem(
-        GUEST_CART_KEY,
-        JSON.stringify({
-          ...state,
-          savedAt: Date.now(),
-        })
-      );
-      clearStorageKey(sessionStorage, AUTH_CART_KEY);
-    } catch (err) {
-      console.warn("Cart storage persist failed", err);
-    }
+    persistSnapshotToStorage(localStorage, GUEST_CART_KEY, snapshot);
+    clearAuthPersistence();
   };
 
   const notify = () => {
