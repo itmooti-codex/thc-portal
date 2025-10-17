@@ -980,10 +980,50 @@ app.post("/api-thc/transaction/process", async (req, res) => {
         };
       });
       const shipping = Array.isArray(offer.shipping)
-        ? offer.shipping.map((s) => ({
-            ...s,
-            price: Math.max(0, Math.round((Number(s.price) || 0) * 100) / 100),
-          }))
+        ? offer.shipping
+            .map((s) => {
+              if (!s) return null;
+              const rawPrice = Number(s.price) || 0;
+              const price = Math.max(
+                0,
+                Math.round(rawPrice * 100) / 100
+              );
+              const resolvedId = (() => {
+                const candidates = [
+                  s.id,
+                  s.shipping_type_id,
+                  s.shippingTypeId,
+                  s.shipping_type,
+                  s.shippingId,
+                  s.code,
+                ];
+                for (const candidate of candidates) {
+                  if (
+                    candidate !== undefined &&
+                    candidate !== null &&
+                    String(candidate).trim() !== ""
+                  ) {
+                    const num = Number(candidate);
+                    if (Number.isFinite(num)) return num;
+                    return String(candidate);
+                  }
+                }
+                return null;
+              })();
+              if (
+                resolvedId === null ||
+                resolvedId === undefined ||
+                resolvedId === ""
+              ) {
+                return null;
+              }
+              return {
+                ...s,
+                id: resolvedId,
+                price,
+              };
+            })
+            .filter(Boolean)
         : [];
       const subTotal = Math.max(
         0,

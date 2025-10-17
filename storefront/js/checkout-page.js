@@ -2673,6 +2673,13 @@
       checkoutState.couponMeta,
       shippingType
     );
+    const appliedCouponCode =
+      checkoutState.couponMeta?.code ||
+      checkoutState.couponMeta?.coupon_code ||
+      null;
+    if (appliedCouponCode) {
+      finalOffer.coupon = { code: String(appliedCouponCode).trim() };
+    }
 
     const transactionContactId = contactId || checkoutState.contactId;
     if (transactionContactId && payer) {

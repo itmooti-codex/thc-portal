@@ -69,7 +69,7 @@ export class OfferEngine {
     // Calculate final totals
     const grandTotal = Math.max(0, subTotal + shippingTotal - discountAmount);
 
-    return {
+    const offer = {
       products,
       shipping,
       subTotal: Math.max(0, Math.round(subTotal * 100) / 100),
@@ -79,6 +79,14 @@ export class OfferEngine {
       currency_code: this.currency,
       shipping_charge_recurring_orders: false
     };
+
+    const couponCode =
+      appliedCoupon?.code || appliedCoupon?.coupon_code || null;
+    if (couponCode) {
+      offer.coupon = { code: String(couponCode).trim() };
+    }
+
+    return offer;
   }
 
   /**
