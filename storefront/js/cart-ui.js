@@ -550,6 +550,20 @@ const dlog = (...args) => {
     return String(datasetId || "");
   };
 
+  const parseBooleanish = (value) => {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value !== 0;
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (!normalized) return undefined;
+      if (["true", "1", "yes", "y", "on"].includes(normalized)) return true;
+      if (["false", "0", "no", "n", "off"].includes(normalized)) return false;
+    }
+    return undefined;
+  };
+
   const extractProduct = (card) => {
     if (!card) return null;
     const priceAttr = card.dataset.productPrice;
@@ -616,6 +630,13 @@ const dlog = (...args) => {
     if (wholesaleRaw !== undefined && wholesaleRaw !== null && wholesaleRaw !== "") {
       const wholesale = Number(wholesaleRaw);
       if (Number.isFinite(wholesale)) product.wholesalePrice = wholesale;
+    }
+
+    const taxableAttr =
+      card.dataset.taxable || card.dataset.productTaxable || undefined;
+    const taxable = parseBooleanish(taxableAttr);
+    if (taxable === true || taxable === false) {
+      product.taxable = taxable;
     }
 
     const scriptIdRaw = card.dataset.scriptId || card.dataset.scriptID;
@@ -713,6 +734,20 @@ const dlog = (...args) => {
         const statusId = resolveDispenseStatusId(statusLabel);
         if (statusId) patch.dispenseStatusId = statusId;
       }
+    }
+    if (source.taxable !== undefined) {
+      const taxable = parseBooleanish(source.taxable);
+      if (taxable === null) {
+        patch.taxable = null;
+      } else if (taxable !== undefined) {
+        patch.taxable = taxable;
+      }
+    } else if (source.isTaxable !== undefined) {
+      const taxable = parseBooleanish(source.isTaxable);
+      if (taxable !== undefined) patch.taxable = taxable === null ? null : taxable;
+    } else if (source.tax !== undefined) {
+      const taxable = parseBooleanish(source.tax);
+      if (taxable !== undefined) patch.taxable = taxable === null ? null : taxable;
     }
     return patch;
   };
