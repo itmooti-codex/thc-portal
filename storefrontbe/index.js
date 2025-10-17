@@ -1025,6 +1025,113 @@ app.post("/api-thc/transaction/process", async (req, res) => {
             })
             .filter(Boolean)
         : [];
+      const taxes = Array.isArray(offer.taxes)
+        ? offer.taxes
+            .map((t) => {
+              if (!t) return null;
+              const resolvedId = (() => {
+                const candidates = [
+                  t.id,
+                  t.tax_id,
+                  t.taxId,
+                  t.form_id,
+                  t.formId,
+                ];
+                for (const candidate of candidates) {
+                  if (
+                    candidate !== undefined &&
+                    candidate !== null &&
+                    String(candidate).trim() !== ""
+                  ) {
+                    const str = String(candidate).trim();
+                    const num = Number(str);
+                    if (Number.isFinite(num)) return num;
+                    return str;
+                  }
+                }
+                return null;
+              })();
+              if (
+                resolvedId === null ||
+                resolvedId === undefined ||
+                resolvedId === ""
+              ) {
+                return null;
+              }
+              const resolveNumber = (value) => {
+                if (value === null || value === undefined || value === "") {
+                  return undefined;
+                }
+                const num = Number(value);
+                return Number.isFinite(num) ? num : undefined;
+              };
+              const rate =
+                resolveNumber(t.rate) ??
+                resolveNumber(t.tax_rate) ??
+                resolveNumber(t.percentage);
+              const taxTotal =
+                resolveNumber(t.taxTotal) ??
+                resolveNumber(t.tax_total) ??
+                resolveNumber(t.total) ??
+                resolveNumber(t.amount) ??
+                0;
+              const name = (() => {
+                const raw =
+                  t.name ??
+                  t.tax_name ??
+                  t.label ??
+                  t.description ??
+                  t.taxLabel;
+                if (raw === undefined || raw === null) return undefined;
+                const str = String(raw);
+                return str;
+              })();
+              const formIdRaw =
+                t.form_id ??
+                t.formId ??
+                t.tax_id ??
+                t.taxId ??
+                resolvedId;
+              const formId = (() => {
+                if (formIdRaw === null || formIdRaw === undefined || formIdRaw === "") {
+                  return resolvedId;
+                }
+                const str = String(formIdRaw).trim();
+                if (!str) return resolvedId;
+                const num = Number(str);
+                if (Number.isFinite(num)) return num;
+                return str;
+              })();
+              const taxShippingRaw =
+                t.taxShipping ??
+                t.tax_shipping ??
+                t.apply_to_shipping ??
+                t.applyShipping ??
+                t.taxOnShipping ??
+                t.shipping;
+              const taxShipping = (() => {
+                if (taxShippingRaw === null || taxShippingRaw === undefined) {
+                  return false;
+                }
+                if (typeof taxShippingRaw === "string") {
+                  const normalized = taxShippingRaw.trim().toLowerCase();
+                  if (!normalized) return false;
+                  return ["1", "true", "yes", "y", "on"].includes(normalized);
+                }
+                return Boolean(taxShippingRaw);
+              })();
+              return {
+                ...t,
+                id: resolvedId,
+                form_id: formId,
+                rate: rate ?? 0,
+                taxTotal: Number.isFinite(taxTotal) ? taxTotal : 0,
+                name,
+                taxShipping,
+              };
+            })
+            .filter(Boolean)
+        : [];
       const subTotal = Math.max(
         0,
         Math.round(
@@ -1046,8 +1153,10 @@ app.post("/api-thc/transaction/process", async (req, res) => {
         ...offer,
         products,
         shipping,
+        taxes,
         subTotal: subTotal.toFixed(2),
         grandTotal: grandTotal.toFixed(2),
+        hasTaxes: taxes.length > 0,
       };
     })();
 

@@ -120,6 +120,12 @@
   })();
   const invoiceTemplateId = toNumberOr(config.invoiceTemplateId, 1);
   const paymentGatewayId = toNumberOr(config.paymentGatewayId, 1);
+  const shippingTaxId = (() => {
+    const raw = config.shippingTaxId;
+    if (raw === null || raw === undefined) return "";
+    const str = String(raw).trim();
+    return str;
+  })();
 
   // Shipping options filter (ids). Overrideable via window.shippingOptions
   let shippingOptions = Array.isArray(config.shippingTypeIds)
@@ -136,6 +142,81 @@
       })
       .filter(Boolean);
   }
+
+  const applyShippingTaxToOffer = (offer) => {
+    if (!offer || !shippingTaxId) return offer;
+    if (!Array.isArray(offer.shipping) || !offer.shipping.length) return offer;
+    const idStr = String(shippingTaxId).trim();
+    if (!idStr) return offer;
+
+    const taxesSource = Array.isArray(offer.taxes) ? offer.taxes : [];
+    const taxes = taxesSource
+      .map((entry) =>
+        entry && typeof entry === "object" ? { ...entry } : null
+      )
+      .filter(Boolean);
+
+    const matchesId = (value) =>
+      value !== undefined &&
+      value !== null &&
+      String(value).trim() === idStr;
+
+    const existingIndex = taxes.findIndex((tax) => {
+      if (!tax) return false;
+      const candidates = [tax.id, tax.form_id, tax.formId, tax.tax_id, tax.taxId];
+      return candidates.some(matchesId);
+    });
+
+    const existing = existingIndex >= 0 ? taxes[existingIndex] : {};
+    const resolveNumber = (value) => {
+      if (value === null || value === undefined || value === "") return undefined;
+      const num = Number(value);
+      return Number.isFinite(num) ? num : undefined;
+    };
+
+    const resolvedRate =
+      resolveNumber(existing.rate) ??
+      resolveNumber(existing.tax_rate) ??
+      resolveNumber(existing.percentage);
+
+    const resolvedTotal =
+      resolveNumber(existing.taxTotal) ??
+      resolveNumber(existing.tax_total) ??
+      resolveNumber(existing.total) ??
+      resolveNumber(existing.amount);
+
+    const taxEntry = {
+      ...existing,
+      id: idStr,
+      form_id:
+        existing.form_id ??
+        existing.formId ??
+        existing.tax_id ??
+        existing.taxId ??
+        idStr,
+      taxShipping: true,
+    };
+
+    if (resolvedRate !== undefined) {
+      taxEntry.rate = resolvedRate;
+    } else if (taxEntry.rate === undefined) {
+      taxEntry.rate = 0;
+    }
+
+    if (resolvedTotal !== undefined) {
+      taxEntry.taxTotal = resolvedTotal;
+    } else if (taxEntry.taxTotal === undefined) {
+      taxEntry.taxTotal = 0;
+    } else {
+      const totalNum = resolveNumber(taxEntry.taxTotal);
+      taxEntry.taxTotal = totalNum !== undefined ? totalNum : 0;
+    }
+
+    taxes[existingIndex >= 0 ? existingIndex : taxes.length] = taxEntry;
+    offer.taxes = taxes;
+    offer.hasTaxes = true;
+    return offer;
+  };
 
   window.StorefrontCartUI?.ensureDrawer?.();
 
@@ -1310,6 +1391,8 @@
         checkoutState.couponMeta,
         shippingType
       );
+
+      applyShippingTaxToOffer(offer);
 
       checkoutState.currentOffer = offer;
       debugLog("updateOffer success", offer);
@@ -2765,6 +2848,7 @@
       checkoutState.couponMeta,
       shippingType
     );
+    applyShippingTaxToOffer(finalOffer);
     const appliedCouponCode =
       checkoutState.couponMeta?.code ||
       checkoutState.couponMeta?.coupon_code ||

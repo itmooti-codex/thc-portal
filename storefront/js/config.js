@@ -2,6 +2,7 @@ const loggedInContactIdFromOp = "526";
 const paymentGatewayIdFromOp = 1;
 const invoiceTemplateIdFromOp = 1;
 const shippingTypeIdsFromOp = [1, 2];
+const shippingTaxIdFromOp = 1;
 const pharmacyToDispenseIdFromOp = "123";
 
 
@@ -23,6 +24,10 @@ const pharmacyToDispenseIdFromOp = "123";
      * Restrict shipping types to these Ontraport IDs. Leave empty to allow all.
      */
     shippingTypeIds: shippingTypeIdsFromOp,
+    /**
+     * Ontraport tax ID to apply to shipping charges.
+     */
+    shippingTaxId: shippingTaxIdFromOp,
   };
 
   const existing = window.StorefrontConfig || {};
