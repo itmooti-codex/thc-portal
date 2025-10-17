@@ -79,18 +79,14 @@ export class OfferEngine {
     const productSubtotalEx = roundCurrency(
       productItems.reduce((sum, item) => sum + item.totalEx, 0)
     );
-    const productTaxTotal = roundCurrency(
-      productItems.reduce((sum, item) => sum + item.taxAmount, 0)
-    );
-    const productSubtotalIncl = roundCurrency(
-      productSubtotalEx + productTaxTotal
-    );
 
-    let cardFeeEx = roundCurrency(
-      cardFeeItems.reduce((sum, item) => sum + item.totalEx, 0)
+    // Pre-GST discount on ex-GST components
+    const couponType = normaliseCouponType(
+      appliedCoupon?.discount_type || appliedCoupon?.type
     );
-    let cardFeeTax = roundCurrency(
-      cardFeeItems.reduce((sum, item) => sum + item.taxAmount, 0)
+    const couponValue = toNumber(
+      appliedCoupon?.discount_value ?? appliedCoupon?.value,
+      0
     );
 
     const requiresShipping = preparedItems.some((item) => item.requiresShipping);
@@ -104,23 +100,54 @@ export class OfferEngine {
     if (requiresShipping && shippingType && shippingType.price != null) {
       shippingEx = Math.max(0, toNumber(shippingType.price, 0));
     }
-    let shippingTax = shippingEx > 0 ? roundCurrency(shippingEx * taxRate) : 0;
-    let shippingIncl = roundCurrency(shippingEx + shippingTax);
 
-    const couponType = normaliseCouponType(
-      appliedCoupon?.discount_type || appliedCoupon?.type
+    const baseExBeforeDiscount = roundCurrency(productSubtotalEx + shippingEx);
+    const percentValue =
+      couponType === "percent"
+        ? (couponValue > 1 ? couponValue / 100 : couponValue)
+        : 0;
+    let discountEx = 0;
+    if (percentValue > 0) {
+      discountEx = roundCurrency(baseExBeforeDiscount * percentValue);
+    } else if (couponType === "fixed" && couponValue > 0) {
+      discountEx = roundCurrency(Math.min(couponValue, baseExBeforeDiscount));
+    }
+
+    // Allocate discount proportionally
+    const taxableEx = roundCurrency(
+      productItems.filter((i) => i.taxable).reduce((s, i) => s + i.totalEx, 0)
     );
-    const couponValue = toNumber(
-      appliedCoupon?.discount_value ?? appliedCoupon?.value,
-      0
+    const nonTaxableEx = roundCurrency(
+      productItems.filter((i) => !i.taxable).reduce((s, i) => s + i.totalEx, 0)
     );
+    const partsSum = roundCurrency(taxableEx + nonTaxableEx + shippingEx);
+    const share = (x) => (partsSum > 0 ? roundCurrency((discountEx * x) / partsSum) : 0);
+    const discountTaxableEx = share(taxableEx);
+    const discountNonTaxableEx = share(nonTaxableEx);
+    const discountShippingEx = share(shippingEx);
+
+    const taxableExAfter = roundCurrency(Math.max(taxableEx - discountTaxableEx, 0));
+    const nonTaxableExAfter = roundCurrency(Math.max(nonTaxableEx - discountNonTaxableEx, 0));
+    const shippingExAfter = roundCurrency(Math.max(shippingEx - discountShippingEx, 0));
+
+    const productTaxTotal = roundCurrency(taxableExAfter * taxRate);
+    const shippingTax = shippingExAfter > 0 ? roundCurrency(shippingExAfter * taxRate) : 0;
+    const productSubtotalIncl = roundCurrency(taxableExAfter + nonTaxableExAfter + productTaxTotal);
+    const shippingIncl = roundCurrency(shippingExAfter + shippingTax);
+
+    let cardFeeEx = roundCurrency(
+      cardFeeItems.reduce((sum, item) => sum + item.totalEx, 0)
+    );
+    let cardFeeTax = roundCurrency(
+      cardFeeItems.reduce((sum, item) => sum + item.taxAmount, 0)
+    );
+    // shippingEx/shippingIncl recomputed above after discount
 
     if (couponType === "shipping") {
       shippingEx = 0;
       shippingTax = 0;
       shippingIncl = 0;
     }
-
     const totalBeforeFees = roundCurrency(productSubtotalIncl + shippingIncl);
 
     if (cardFeeEx <= 0 && cardFeeTax <= 0) {
@@ -150,24 +177,12 @@ export class OfferEngine {
       eligibleLines.reduce((sum, item) => sum + item.totalIncl, 0)
     );
 
-    const percentValue =
-      couponType === "percent"
-        ? couponValue > 1
-          ? couponValue / 100
-          : couponValue
-        : 0;
-
-    let discountAmount = 0;
-    if (percentValue > 0) {
-      const base = hasSpecificProducts ? eligibleBaseIncl : totalBeforeFees;
-      discountAmount = roundCurrency(base * percentValue);
-    } else if (couponType === "fixed" && couponValue > 0) {
-      const base = hasSpecificProducts ? eligibleBaseIncl : totalBeforeFees;
-      discountAmount = roundCurrency(Math.min(couponValue, base));
-    }
+    // Use pre-GST discount already computed
+    let discountAmount = roundCurrency(discountEx);
 
     if (!hasSpecificProducts) {
-      discountAmount = Math.min(discountAmount, totalBeforeFees);
+      // When coupon applies to whole order, cap by total including card fee
+      discountAmount = Math.min(discountAmount, totalBeforeDiscount);
     }
 
     discountAmount = Math.min(discountAmount, totalBeforeDiscount);
@@ -175,7 +190,7 @@ export class OfferEngine {
 
     const productSubtotalAfterDiscount = roundCurrency(
       Math.max(
-        productSubtotalIncl - Math.min(discountAmount, productSubtotalIncl),
+        productSubtotalIncl,
         0
       )
     );
@@ -243,17 +258,7 @@ export class OfferEngine {
       },
     };
 
-    if (taxTotal > 0) {
-      offer.taxes = [
-        {
-          id: "gst",
-          name: "GST",
-          rate: taxRate,
-          taxTotal: formatCurrency(taxTotal),
-          taxShipping: shippingIncl > 0,
-        },
-      ];
-    }
+    // Do not emit backend GST entry here; frontend adds/merges tax entry with correct form_id
 
     const couponCode =
       appliedCoupon?.code || appliedCoupon?.coupon_code || null;

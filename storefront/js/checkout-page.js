@@ -328,11 +328,15 @@
 
     if (resolvedTotal !== undefined) {
       taxEntry.taxTotal = resolvedTotal;
-    } else if (taxEntry.taxTotal === undefined) {
-      taxEntry.taxTotal = 0;
     } else {
-      const totalNum = resolveNumber(taxEntry.taxTotal);
-      taxEntry.taxTotal = totalNum !== undefined ? totalNum : 0;
+      // Derive tax total from current cart totals to ensure GST is represented
+      const currentTotals = calcTotals(Cart.getState());
+      if (Number.isFinite(currentTotals?.taxTotal) && currentTotals.taxTotal > 0) {
+        taxEntry.taxTotal = currentTotals.taxTotal;
+      } else {
+        // No tax to report; do not add an empty GST row
+        return offer;
+      }
     }
 
     taxes[existingIndex >= 0 ? existingIndex : taxes.length] = taxEntry;
@@ -1879,14 +1883,14 @@
     return ensureNoneOption(baseList);
   };
 
-  const calcTotals = (cartState = Cart.getState(), { ignoreOffer = false } = {}) => {
+  const calcTotals = (cartState = Cart.getState(), { ignoreOffer = false, forceShippingType = null } = {}) => {
     const items = Array.isArray(cartState?.items) ? cartState.items : [];
     const taxRate = getEffectiveTaxRate();
 
     const subtotal = roundCurrency(getCartSubtotal(cartState));
 
     let baseShipping = 0;
-    const selected = getSelectedShippingType();
+    const selected = forceShippingType || getSelectedShippingType();
     if (selected && String(selected.id) !== NONE_SHIPPING_ID) {
       baseShipping = Number(selected.price) || 0;
     } else if (!selected && checkoutState.shippingMethod) {
@@ -1900,55 +1904,38 @@
       Array.isArray(checkoutState.shippingTypes) &&
       checkoutState.shippingTypes.filter(Boolean).length <= 1;
     let shippingConfirmed =
+      forceShippingType != null ||
       checkoutState.shippingSelectionConfirmed ||
       checkoutState.shippingMethod === NONE_SHIPPING_ID ||
       (checkoutState.shippingMethod && hasSingleOption);
     let shipping = shippingConfirmed ? rawShipping : 0;
 
+    // Split subtotal into taxable and non-taxable ex-GST
     let taxableSubtotalRaw = 0;
+    let nonTaxableSubtotalRaw = 0;
     items.forEach((item) => {
       if (!item) return;
-      if (parseBooleanish(item.taxable) !== true) return;
       const price = Number(item.price) || 0;
       const qty = Number(item.qty) || 0;
       if (price <= 0 || qty <= 0) return;
-      taxableSubtotalRaw += price * qty;
+      const lineEx = price * qty;
+      if (parseBooleanish(item.taxable) === true) {
+        taxableSubtotalRaw += lineEx;
+      } else {
+        nonTaxableSubtotalRaw += lineEx;
+      }
     });
 
     const taxableSubtotalRounded = roundCurrency(taxableSubtotalRaw);
-    let itemTaxBase = roundCurrency(sumRetailGstForItems(items));
-    if (itemTaxBase <= 0 && taxableSubtotalRounded > 0) {
-      itemTaxBase = roundCurrency(taxableSubtotalRounded * taxRate);
-    }
 
-    const subtotalWithItemTax = roundCurrency(subtotal + itemTaxBase);
-
-    const shippingTax =
-      shippingConfirmed && shipping > 0
-        ? roundCurrency(shipping * taxRate)
-        : 0;
-    const shippingWithGst = roundCurrency(shipping + shippingTax);
-
-    const totalBeforeFees = roundCurrency(subtotalWithItemTax + shippingWithGst);
-
-    const cardFeeBase = Math.max(0, totalBeforeFees);
-    const cardFeeExGst =
-      cardFeeBase > 0 ? roundCurrency(cardFeeBase * CARD_FEE_RATE) : 0;
-    const cardFeeGst =
-      cardFeeExGst > 0 ? roundCurrency(cardFeeExGst * taxRate) : 0;
-    const cardFeeTotal = roundCurrency(cardFeeExGst + cardFeeGst);
+    // Apply discount PRE-GST against the ex-GST base (items + shipping)
+    const baseExBeforeDiscount = roundCurrency(subtotal + (shippingConfirmed ? shipping : 0));
 
     let discount = 0;
     const meta = interpretCouponMeta(checkoutState.couponMeta);
     if (meta) {
-      debugLog("calcTotals: applying coupon meta", {
-        meta,
-        subtotal,
-        rawShipping,
-        shippingConfirmed,
-      });
       if (meta.type === "percent") {
-        discount = totalBeforeFees * meta.percent;
+        discount = baseExBeforeDiscount * meta.percent;
       } else if (meta.type === "fixed") {
         discount = meta.rawValue;
       }
@@ -1969,15 +1956,53 @@
       }
     }
 
-    const totalBeforeDiscount = roundCurrency(totalBeforeFees + cardFeeTotal);
-    discount = roundCurrency(
-      Math.max(0, Math.min(discount, totalBeforeDiscount, totalBeforeFees))
-    );
+    discount = roundCurrency(Math.max(0, Math.min(discount, baseExBeforeDiscount)));
 
-    const total = roundCurrency(Math.max(totalBeforeDiscount - discount, 0));
+    // Allocate discount proportionally across taxable, non-taxable, and shipping (all ex-GST)
+    const parts = {
+      itemsTaxable: taxableSubtotalRounded,
+      itemsNonTaxable: roundCurrency(nonTaxableSubtotalRaw),
+      shippingEx: shippingConfirmed ? shipping : 0,
+    };
+    const partsSum = roundCurrency(parts.itemsTaxable + parts.itemsNonTaxable + parts.shippingEx);
+    const share = (x) => (partsSum > 0 ? roundCurrency((discount * x) / partsSum) : 0);
+    const discountOnTaxableEx = share(parts.itemsTaxable);
+    const discountOnNonTaxableEx = share(parts.itemsNonTaxable);
+    const discountOnShippingEx = share(parts.shippingEx);
+
+    const taxableExAfterDiscount = roundCurrency(Math.max(parts.itemsTaxable - discountOnTaxableEx, 0));
+    const nonTaxableExAfterDiscount = roundCurrency(
+      Math.max(parts.itemsNonTaxable - discountOnNonTaxableEx, 0)
+    );
+    const shippingExAfterDiscount = roundCurrency(Math.max(parts.shippingEx - discountOnShippingEx, 0));
+
+    // Compute GST after discount
+    const itemTaxBase = roundCurrency(taxableExAfterDiscount * taxRate);
+    const shippingTax =
+      shippingConfirmed && shippingExAfterDiscount > 0
+        ? roundCurrency(shippingExAfterDiscount * taxRate)
+        : 0;
+    const subtotalAfterDiscountEx = roundCurrency(
+      taxableExAfterDiscount + nonTaxableExAfterDiscount
+    );
+    const subtotalWithItemTax = roundCurrency(subtotalAfterDiscountEx + itemTaxBase);
+    const shippingWithGst = roundCurrency(shippingExAfterDiscount + shippingTax);
+
+    const totalBeforeFees = roundCurrency(subtotalWithItemTax + shippingWithGst);
+
+    // Card fee calculated on total incl GST
+    const cardFeeBase = Math.max(0, totalBeforeFees);
+    const cardFeeExGst =
+      cardFeeBase > 0 ? roundCurrency(cardFeeBase * CARD_FEE_RATE) : 0;
+    const cardFeeGst =
+      cardFeeExGst > 0 ? roundCurrency(cardFeeExGst * taxRate) : 0;
+    const cardFeeTotal = roundCurrency(cardFeeExGst + cardFeeGst);
+
+    const totalBeforeDiscount = roundCurrency(totalBeforeFees + cardFeeTotal);
+    const total = totalBeforeDiscount; // discount already applied to ex-GST components above
 
     const subtotalAfterDiscount = roundCurrency(
-      Math.max(subtotalWithItemTax - Math.min(discount, subtotalWithItemTax), 0)
+      Math.max(subtotalWithItemTax, 0)
     );
 
     const taxTotal = roundCurrency(itemTaxBase + shippingTax + cardFeeGst);
@@ -2016,10 +2041,10 @@
       shippingTax,
       shippingWithGst,
       discount,
-      discountTaxableShare: 0,
+      discountTaxableShare: discountOnTaxableEx,
       taxableSubtotal: taxableSubtotalRounded,
-      taxableAfterDiscount: taxableSubtotalRounded,
-      itemTaxBeforeDiscount: itemTaxBase,
+      taxableAfterDiscount: taxableExAfterDiscount,
+      itemTaxBeforeDiscount: null,
       itemTax: itemTaxBase,
       taxRate,
       taxTotal,
@@ -2104,7 +2129,8 @@
       if (taxableFlag === true) {
         payload.taxable = true;
         applyTaxMetadataToItem(payload, taxDetails);
-      } else if (taxableFlag === false) {
+      } else {
+        // Explicitly send false when not taxable or unknown
         payload.taxable = false;
       }
       return payload;
@@ -2179,7 +2205,17 @@
       });
     }
 
-    const totals = calcTotals(cartState);
+    // If a shipping radio is currently checked, use it immediately for totals
+    let forceType = null;
+    try {
+      const checked = document.querySelector('input[name="shipping_method"]:checked');
+      if (checked && Array.isArray(checkoutState.shippingTypes)) {
+        forceType = checkoutState.shippingTypes.find(
+          (st) => st && String(st.id) === String(checked.value)
+        ) || null;
+      }
+    } catch {}
+    const totals = calcTotals(cartState, { forceShippingType: forceType });
     checkoutState.financials = totals;
 
     const subtotalDisplay =
@@ -2235,6 +2271,13 @@
     if (summaryEls.discount) {
       summaryEls.discount.textContent = discountDisplay;
     }
+    // Force drawer to pick up updated summary immediately
+    window.__checkoutSummary = {
+      totals,
+      shippingLabel,
+      discountDisplay,
+      processingNote,
+    };
 
     if (summaryEls.total) summaryEls.total.textContent = formatMoney(totals.total);
 
@@ -3134,6 +3177,7 @@
     }
 
     await updateOffer();
+    renderSummary();
   };
 
   // Process the complete order
@@ -3223,7 +3267,7 @@
 
     // Build final offer with current shipping selection
     const cartState = Cart.getState();
-    const totalsForFee = calcTotals(cartState, { ignoreOffer: true });
+    const totalsForFee = calcTotals(cartState, { ignoreOffer: true, forceShippingType: shippingType });
     const cartItems = await buildBackendCartItems(cartState, totalsForFee);
 
     const finalOffer = await buildOffer(
@@ -3343,7 +3387,8 @@
           ) {
             return current;
           }
-          return resolvedTypes[0] ? String(resolvedTypes[0].id) : "";
+          // Default to NONE by design until user picks
+          return NONE_SHIPPING_ID;
         })();
 
         resolvedTypes.forEach((type, index) => {
@@ -3357,13 +3402,7 @@
           label.innerHTML = `
             <div class="flex items-center gap-3">
               <input type="radio" name="shipping_method" value="${value}" ${
-                preferred
-                  ? value === preferred
-                    ? "checked"
-                    : ""
-                  : index === 0
-                  ? "checked"
-                  : ""
+                value === preferred ? "checked" : ""
               }
                 class="text-blue-600 focus:ring-blue-500" />
               <div>
@@ -3381,8 +3420,7 @@
         const previousMethod = checkoutState.shippingMethod
           ? String(checkoutState.shippingMethod)
           : "";
-        const nextMethod =
-          preferred || (resolvedTypes[0] ? String(resolvedTypes[0].id) : "");
+        const nextMethod = preferred;
         checkoutState.shippingMethod = nextMethod;
         if (previousMethod && previousMethod !== nextMethod) {
           checkoutState.shippingSelectionConfirmed = false;
@@ -3391,6 +3429,7 @@
           checkoutState.shippingSelectionConfirmed = true;
         }
         await updateOffer();
+        renderSummary();
       }
     } catch (err) {
       console.error("Failed to load shipping types:", err);
@@ -3608,8 +3647,28 @@
             }
           }
           await Cart.clear();
-          localStorage.removeItem(STORAGE_KEY);
-          localStorage.removeItem(`${STORAGE_KEY}:form`);
+          // Aggressive storage wipe across namespaces
+          try {
+            const wipe = (storage) => {
+              if (!storage) return;
+              const keys = [];
+              for (let i = 0; i < storage.length; i++) keys.push(storage.key(i));
+              keys.forEach((key) => {
+                if (
+                  key &&
+                  (/^checkout:/i.test(key) ||
+                    /^checkout/i.test(key) ||
+                    /^thc_portal_/i.test(key) ||
+                    key === STORAGE_KEY ||
+                    key === `${STORAGE_KEY}:form`)
+                ) {
+                  try { storage.removeItem(key); } catch {}
+                }
+              });
+            };
+            wipe(localStorage);
+            wipe(sessionStorage);
+          } catch {}
           showToast("Payment successful! Redirecting…", {
             type: "success",
             duration: 2600,
@@ -3726,6 +3785,7 @@
       if (checkoutState.steps[checkoutState.stepIndex] === "review")
         buildReview();
       updateOffer();
+      renderSummary();
       return;
     }
     if (target.name === "payment_source") {
