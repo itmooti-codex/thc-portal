@@ -165,6 +165,7 @@ const dlog = (...args) => {
       )
     );
     const itemTax = roundCurrency(getCartItemTaxValue(items));
+    const subtotalWithItemTax = roundCurrency(subtotal + itemTax);
     const totalBeforeFees = roundCurrency(subtotal + itemTax);
     const cardFeeExGst =
       totalBeforeFees > 0
@@ -176,6 +177,7 @@ const dlog = (...args) => {
     const total = roundCurrency(subtotal + taxTotal + cardFeeExGst);
     return {
       subtotal,
+      subtotalWithItemTax,
       shippingLabel: "Select shipping",
       cardFeeExGst,
       cardFeeGst,
@@ -1659,7 +1661,11 @@ const cancelScriptDispense = async (item) => {
         shippingLabel,
         discountDisplay,
       });
-      if (subtotalEl) subtotalEl.textContent = formatMoney(totals.subtotal);
+      const subtotalDisplay =
+        totals.subtotalWithItemTax !== undefined
+          ? totals.subtotalWithItemTax
+          : totals.subtotal;
+      if (subtotalEl) subtotalEl.textContent = formatMoney(subtotalDisplay);
       const fallbackShippingText = (() => {
         if (!totals.shippingConfirmed) return "Select shipping";
         if (totals.shipping <= 0) return "Free";
@@ -1692,7 +1698,11 @@ const cancelScriptDispense = async (item) => {
     } else {
       const fallback = computeDrawerFallbackTotals(state);
       debugLog("renderCart fallback totals", fallback);
-      if (subtotalEl) subtotalEl.textContent = formatMoney(fallback.subtotal);
+      const fallbackSubtotal =
+        fallback.subtotalWithItemTax !== undefined
+          ? fallback.subtotalWithItemTax
+          : fallback.subtotal;
+      if (subtotalEl) subtotalEl.textContent = formatMoney(fallbackSubtotal);
       if (shippingEl) shippingEl.textContent = fallback.shippingLabel;
       if (processingEl)
         processingEl.textContent = formatMoney(fallback.cardFeeTotal);
