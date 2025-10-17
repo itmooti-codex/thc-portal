@@ -1099,7 +1099,7 @@ app.post("/api-thc/transaction/process", async (req, res) => {
     const payload = {
       contact_id: contactId,
       chargeNow: "chargeNow",
-      trans_date: Math.floor(Date.now() / 1000),
+      trans_date: Date.now(),
       invoice_template: parseInt(invoice_template),
       gateway_id: parseInt(gateway_id),
       offer: normalizedOffer || offer,
