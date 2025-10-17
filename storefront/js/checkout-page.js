@@ -19,6 +19,99 @@
   };
 
   const config = window.StorefrontConfig || {};
+  const datasetRoot = document.querySelector(".get-url") || document.body;
+  const dataset = (datasetRoot && datasetRoot.dataset) || {};
+
+  const shouldUseHtmlFallbacks = (() => {
+    try {
+      const loc = window.location || {};
+      const protocol = (loc.protocol || "").toLowerCase();
+      if (protocol === "file:") return true;
+      const pathname = loc.pathname || "";
+      if (/\.html(?:$|[?#/])/i.test(pathname)) return true;
+      const host = (loc.hostname || "").toLowerCase();
+      if (!host) return true;
+      if (
+        host === "localhost" ||
+        host === "127.0.0.1" ||
+        host === "0.0.0.0" ||
+        host.endsWith(".local")
+      ) {
+        return true;
+      }
+      return false;
+    } catch {
+      return true;
+    }
+  })();
+
+  const SHOP_FALLBACK = shouldUseHtmlFallbacks ? "shop.html" : "/shop";
+  const THANK_YOU_FALLBACK = shouldUseHtmlFallbacks
+    ? "thank-you.html"
+    : "/thank-you";
+
+  const pickFirstValue = (...candidates) => {
+    for (const candidate of candidates) {
+      if (candidate === null || candidate === undefined) continue;
+      const value = String(candidate).trim();
+      if (value) return value;
+    }
+    return "";
+  };
+
+  const normaliseUrl = (raw, fallbackPath) => {
+    const fallback = (() => {
+      try {
+        return new URL(fallbackPath, window.location.href).toString();
+      } catch {
+        return fallbackPath;
+      }
+    })();
+    if (!raw) return fallback;
+    try {
+      return new URL(raw, window.location.href).toString();
+    } catch (err) {
+      console.warn("Failed to normalise URL", raw, err);
+      return fallback;
+    }
+  };
+
+  const getShopUrl = () =>
+    normaliseUrl(
+      pickFirstValue(
+        dataset.shopUrl,
+        dataset.storeUrl,
+        config.shopUrl,
+        config.storeUrl,
+        config.shopURL,
+        config.storeURL
+      ),
+      SHOP_FALLBACK
+    );
+
+  const getThankYouUrl = () =>
+    normaliseUrl(
+      pickFirstValue(
+        dataset.thankYouUrl,
+        dataset.thankyouUrl,
+        config.thankYouUrl,
+        config.thankyouUrl,
+        config.thankYouURL,
+        config.thankyouURL
+      ),
+      THANK_YOU_FALLBACK
+    );
+
+  const withOrderRef = (url, orderRef) => {
+    if (!orderRef) return url;
+    try {
+      const resolved = new URL(url);
+      resolved.searchParams.set("order", orderRef);
+      return resolved.toString();
+    } catch {
+      return url;
+    }
+  };
   const loggedInContactId = (() => {
     const raw = config.loggedInContactId;
     if (raw === null || raw === undefined) return "";
@@ -392,7 +485,6 @@
 
   const getApiBase = () => {
     // Priority: window.ENV.API_BASE > .get-url[data-api-base] > meta[name="api-base"]
-    console.log("aa", window.ENV);
     try {
       const winBase = window.ENV?.API_BASE;
       const dataBase = document.querySelector(".get-url")?.dataset?.apiBase;
@@ -3056,7 +3148,8 @@
           });
           const orderRef = result.order_id || result.transaction_id || "success";
           setTimeout(() => {
-            window.location.href = `https://app.thehappy.clinic/shop/thank-you?order=${orderRef}`;
+            const thankYouUrl = withOrderRef(getThankYouUrl(), orderRef);
+            window.location.href = thankYouUrl;
           }, 1400);
         })
         .catch(async (err) => {
@@ -3100,7 +3193,7 @@
       return;
     }
     if (target.closest(".return-to-shop")) {
-      window.location.href = "https://app.thehappy.clinic/shop";
+      window.location.href = getShopUrl();
       return;
     }
   });
@@ -3190,7 +3283,7 @@
       const cartState = Cart.getState();
       if (!cartState.items.length) {
         hideLoader();
-        window.location.href = "https://app.thehappy.clinic/shop";
+        window.location.href = getShopUrl();
         return;
       }
 
