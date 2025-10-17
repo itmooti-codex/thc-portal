@@ -343,6 +343,7 @@
 
   const applyRetailGstToOffer = (offer, cartState = Cart.getState()) => {
     if (!offer || typeof offer !== "object") return offer;
+    if (offer.retailGstIncluded) return offer;
     const items =
       cartState && Array.isArray(cartState.items) ? cartState.items : [];
     const gstTotalRaw = sumRetailGstForItems(items);
@@ -427,7 +428,7 @@
     const percentLabel = formatTaxPercent(effectiveRate);
     const gstLabel = percentLabel ? `${percentLabel}% GST` : "GST";
     const total = roundCurrency(exGst + gstAmount);
-    return `This transaction includes a credit card processing fee of 1.8% of the discounted product subtotal. Credit card fee = ${formatMoney(exGst)} + ${gstLabel} ${formatMoney(gstAmount)} = ${formatMoney(total)}.`;
+    return `This transaction includes a credit card processing fee of 1.8% of the order amount (products and shipping). Credit card fee = ${formatMoney(exGst)} + ${gstLabel} ${formatMoney(gstAmount)} = ${formatMoney(total)}.`;
   };
 
   const showLoader =
@@ -1879,8 +1880,11 @@
   };
 
   const calcTotals = (cartState = Cart.getState(), { ignoreOffer = false } = {}) => {
-    let subtotal = roundCurrency(getCartSubtotal(cartState));
     const items = Array.isArray(cartState?.items) ? cartState.items : [];
+    const taxRate = getEffectiveTaxRate();
+
+    const subtotal = roundCurrency(getCartSubtotal(cartState));
+
     let baseShipping = 0;
     const selected = getSelectedShippingType();
     if (selected && String(selected.id) !== NONE_SHIPPING_ID) {
@@ -1900,133 +1904,6 @@
       checkoutState.shippingMethod === NONE_SHIPPING_ID ||
       (checkoutState.shippingMethod && hasSingleOption);
     let shipping = shippingConfirmed ? rawShipping : 0;
-    let discount = 0;
-    let usedOffer = false;
-    const meta = interpretCouponMeta(checkoutState.couponMeta);
-    if (meta) {
-      debugLog("calcTotals: applying coupon meta", {
-        meta,
-        subtotal,
-        rawShipping,
-        shippingConfirmed,
-      });
-      if (meta.type === "percent") {
-        discount = subtotal * meta.percent;
-      } else if (meta.type === "fixed") {
-        discount = meta.rawValue;
-      }
-    }
-
-    let offerSubTotal = null;
-    let offerGrandTotal = null;
-    const offer = checkoutState.currentOffer;
-    if (offer && !ignoreOffer) {
-      offerSubTotal = resolveOfferMoney(
-        offer,
-        "subTotalBeforeDiscount",
-        "preDiscountSubtotal",
-        "preDiscountTotal",
-        "subTotal"
-      );
-      const offerNetSubtotal = resolveOfferMoney(
-        offer,
-        "subTotalAfterDiscount",
-        "netSubtotal",
-        "netSubTotal",
-        "discountedSubtotal",
-        "discountedSubTotal"
-      );
-      offerGrandTotal = resolveOfferMoney(offer, "grandTotal");
-      const offerDiscountTotal = resolveOfferMoney(
-        offer,
-        "discountTotal",
-        "discount",
-        "couponAmount",
-        "couponTotal",
-        "totalDiscount"
-      );
-      const offerShippingTotal = (() => {
-        if (Array.isArray(offer.shipping)) {
-          const sum = offer.shipping.reduce(
-            (acc, entry) => acc + normaliseMoneyValue(entry?.price),
-            0
-          );
-          if (Number.isFinite(sum)) return sum;
-        }
-        return resolveOfferMoney(
-          offer,
-          "shippingTotal",
-          "shipping_amount",
-          "shippingTotalAmount"
-        );
-      })();
-
-      const haveShippingOverride = Number.isFinite(offerShippingTotal);
-      const haveSubtotalOverride = Number.isFinite(offerSubTotal);
-      const haveNetSubtotal = Number.isFinite(offerNetSubtotal);
-      const haveDiscountValue = Number.isFinite(offerDiscountTotal);
-      const haveGrandTotal = Number.isFinite(offerGrandTotal);
-
-      let resolvedDiscount = haveDiscountValue
-        ? roundCurrency(Math.max(0, offerDiscountTotal))
-        : null;
-
-      if (!resolvedDiscount) {
-        if (haveSubtotalOverride && haveNetSubtotal) {
-          resolvedDiscount = roundCurrency(
-            Math.max(0, offerSubTotal - offerNetSubtotal)
-          );
-        } else if (
-          haveSubtotalOverride &&
-          haveShippingOverride &&
-          haveGrandTotal
-        ) {
-          resolvedDiscount = roundCurrency(
-            Math.max(0, offerSubTotal + offerShippingTotal - offerGrandTotal)
-          );
-        }
-      }
-
-      if (haveSubtotalOverride) {
-        subtotal = roundCurrency(offerSubTotal);
-      }
-
-      if (haveShippingOverride) {
-        rawShipping = roundCurrency(offerShippingTotal);
-        shippingConfirmed = true;
-        shipping = rawShipping;
-      }
-
-      if (resolvedDiscount !== null && resolvedDiscount !== undefined) {
-        discount = roundCurrency(Math.max(resolvedDiscount, discount));
-      }
-
-      if (
-        haveSubtotalOverride ||
-        haveShippingOverride ||
-        (resolvedDiscount !== null && resolvedDiscount !== undefined) ||
-        haveGrandTotal
-      ) {
-        usedOffer = true;
-        debugLog("calcTotals: using offer overrides", {
-          offerSubTotal: Number.isFinite(offerSubTotal)
-            ? roundCurrency(offerSubTotal)
-            : null,
-          offerNetSubtotal: Number.isFinite(offerNetSubtotal)
-            ? roundCurrency(offerNetSubtotal)
-            : null,
-          offerGrandTotal,
-          offerShippingTotal: haveShippingOverride
-            ? roundCurrency(offerShippingTotal)
-            : null,
-          offerDiscount: resolvedDiscount,
-        });
-      }
-    }
-
-    discount = roundCurrency(Math.min(Math.max(discount, 0), subtotal));
-
-    const subtotalAfterDiscount = roundCurrency(subtotal - discount);
 
     let taxableSubtotalRaw = 0;
     items.forEach((item) => {
@@ -2038,29 +1915,13 @@
       taxableSubtotalRaw += price * qty;
     });
 
-    const discountTaxableShareRaw =
-      subtotal > 0 ? discount * (taxableSubtotalRaw / subtotal) : 0;
-    let discountTaxableShare = roundCurrency(discountTaxableShareRaw);
     const taxableSubtotalRounded = roundCurrency(taxableSubtotalRaw);
-    if (discountTaxableShare > taxableSubtotalRounded) {
-      discountTaxableShare = taxableSubtotalRounded;
-    }
-    if (discountTaxableShare > discount) {
-      discountTaxableShare = roundCurrency(discount);
+    let itemTaxBase = roundCurrency(sumRetailGstForItems(items));
+    if (itemTaxBase <= 0 && taxableSubtotalRounded > 0) {
+      itemTaxBase = roundCurrency(taxableSubtotalRounded * taxRate);
     }
 
-    const taxableAfterDiscountRaw = Math.max(
-      0,
-      taxableSubtotalRaw - discountTaxableShare
-    );
-    const taxableAfterDiscount = roundCurrency(taxableAfterDiscountRaw);
-
-    const taxRate = getEffectiveTaxRate();
-    const itemTax = roundCurrency(taxableAfterDiscount * taxRate);
-
-    const subtotalWithItemTax = roundCurrency(
-      subtotalAfterDiscount + itemTax
-    );
+    const subtotalWithItemTax = roundCurrency(subtotal + itemTaxBase);
 
     const shippingTax =
       shippingConfirmed && shipping > 0
@@ -2068,18 +1929,58 @@
         : 0;
     const shippingWithGst = roundCurrency(shipping + shippingTax);
 
-    const cardFeeBase = Math.max(0, subtotalAfterDiscount);
+    const totalBeforeFees = roundCurrency(subtotalWithItemTax + shippingWithGst);
+
+    const cardFeeBase = Math.max(0, totalBeforeFees);
     const cardFeeExGst =
       cardFeeBase > 0 ? roundCurrency(cardFeeBase * CARD_FEE_RATE) : 0;
     const cardFeeGst =
       cardFeeExGst > 0 ? roundCurrency(cardFeeExGst * taxRate) : 0;
     const cardFeeTotal = roundCurrency(cardFeeExGst + cardFeeGst);
 
-    const taxTotal = roundCurrency(itemTax + shippingTax + cardFeeGst);
-    const totalBeforeFees = roundCurrency(
-      subtotalWithItemTax + shippingWithGst
+    let discount = 0;
+    const meta = interpretCouponMeta(checkoutState.couponMeta);
+    if (meta) {
+      debugLog("calcTotals: applying coupon meta", {
+        meta,
+        subtotal,
+        rawShipping,
+        shippingConfirmed,
+      });
+      if (meta.type === "percent") {
+        discount = totalBeforeFees * meta.percent;
+      } else if (meta.type === "fixed") {
+        discount = meta.rawValue;
+      }
+    }
+
+    const offer = checkoutState.currentOffer;
+    if (!meta && offer && !ignoreOffer) {
+      const offerDiscount = resolveOfferMoney(
+        offer,
+        "discountTotal",
+        "discount",
+        "couponAmount",
+        "couponTotal",
+        "totalDiscount"
+      );
+      if (Number.isFinite(offerDiscount)) {
+        discount = roundCurrency(Math.max(discount, offerDiscount));
+      }
+    }
+
+    const totalBeforeDiscount = roundCurrency(totalBeforeFees + cardFeeTotal);
+    discount = roundCurrency(
+      Math.max(0, Math.min(discount, totalBeforeDiscount, totalBeforeFees))
     );
-    const total = roundCurrency(totalBeforeFees + cardFeeTotal);
+
+    const total = roundCurrency(Math.max(totalBeforeDiscount - discount, 0));
+
+    const subtotalAfterDiscount = roundCurrency(
+      Math.max(subtotalWithItemTax - Math.min(discount, subtotalWithItemTax), 0)
+    );
+
+    const taxTotal = roundCurrency(itemTaxBase + shippingTax + cardFeeGst);
 
     debugLog("calcTotals result", {
       subtotal,
@@ -2090,21 +1991,19 @@
       shippingTax,
       shippingWithGst,
       discount,
-      discountTaxableShare,
       taxableSubtotal: taxableSubtotalRounded,
-      taxableAfterDiscount,
-      itemTax,
+      itemTaxBeforeDiscount: itemTaxBase,
+      itemTax: itemTaxBase,
+      taxRate,
+      taxTotal,
       cardFeeBase,
       cardFeeExGst,
       cardFeeGst,
       cardFeeTotal,
-      taxRate,
-      taxTotal,
+      cardFeeTaxRate: taxRate,
+      totalBeforeDiscount,
       totalBeforeFees,
       total,
-      offerSubTotal,
-      offerGrandTotal,
-      usedOffer,
     });
 
     return {
@@ -2117,10 +2016,11 @@
       shippingTax,
       shippingWithGst,
       discount,
-      discountTaxableShare,
+      discountTaxableShare: 0,
       taxableSubtotal: taxableSubtotalRounded,
-      taxableAfterDiscount,
-      itemTax,
+      taxableAfterDiscount: taxableSubtotalRounded,
+      itemTaxBeforeDiscount: itemTaxBase,
+      itemTax: itemTaxBase,
       taxRate,
       taxTotal,
       cardFeeBase,
@@ -2128,11 +2028,12 @@
       cardFeeGst,
       cardFeeTotal,
       cardFeeTaxRate: taxRate,
+      totalBeforeDiscount,
       totalBeforeFees,
       total,
-      usedOffer,
-      offerSubTotal: offerSubTotal !== null ? roundCurrency(offerSubTotal) : null,
-      offerGrandTotal: offerGrandTotal !== null ? roundCurrency(offerGrandTotal) : null,
+      usedOffer: Boolean(offer && !ignoreOffer),
+      offerSubTotal: null,
+      offerGrandTotal: null,
     };
   };
 
@@ -2299,7 +2200,7 @@
       const shippingAmount = Number.isFinite(totals.shippingWithGst)
         ? totals.shippingWithGst
         : totals.shipping;
-      shippingLabel = `Shipping (GST incl) ${formatMoney(shippingAmount)}`;
+      shippingLabel = formatMoney(shippingAmount);
     } else if (totals.shippingConfirmed) {
       shippingLabel = "Free";
     }

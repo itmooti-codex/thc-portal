@@ -27,12 +27,12 @@
     </section>
 
     <footer class="border-t p-4 space-y-4">
-      <div class="flex justify-between text-sm"><span>Subtotal</span><span class="cart-subtotal">$0.00</span></div>
-      <div class="flex justify-between text-sm"><span>Shipping</span><span class="cart-shipping font-medium">Select shipping</span></div>
-      <div class="flex justify-between text-sm"><span>Card fee (incl GST)</span><span class="cart-processing font-medium">$0.00</span></div>
-      <div class="flex justify-between text-sm"><span>GST total</span><span class="cart-gst font-medium">$0.00</span></div>
+      <div class="flex justify-between text-sm"><span>Subtotal (incl GST)</span><span class="cart-subtotal">$0.00</span></div>
+      <div class="flex justify-between text-sm"><span>Shipping (incl GST)</span><span class="cart-shipping font-medium">Select shipping</span></div>
+      <div class="flex justify-between text-sm"><span>Credit card fee (incl GST)</span><span class="cart-processing font-medium">$0.00</span></div>
+      <div class="flex justify-between text-sm"><span>GST Only Total</span><span class="cart-gst font-medium">$0.00</span></div>
       <div class="flex justify-between text-sm"><span>Discount</span><span class="cart-discount font-medium text-emerald-600">-$0.00</span></div>
-      <div class="flex justify-between text-base font-bold"><span>Total</span><span class="cart-total">$0.00</span></div>
+      <div class="flex justify-between text-base font-bold"><span>Total (incl GST)</span><span class="cart-total">$0.00</span></div>
       <p class="cart-processing-note text-xs text-gray-500 leading-snug hidden"></p>
       <div class="flex items-center justify-between gap-3">
         <button class="clear-cart px-4 py-2 rounded-xl border border-gray-300 hover:bg-gray-100">Clear Cart</button>
@@ -183,7 +183,7 @@ const dlog = (...args) => {
     const percentLabel = formatTaxPercent(effectiveRate);
     const gstLabel = percentLabel ? `${percentLabel}% GST` : "GST";
     const total = roundCurrency(exGst + gstAmount);
-    return `This transaction includes a credit card processing fee of 1.8% of the discounted product subtotal. Credit card fee = ${formatMoney(exGst)} + ${gstLabel} ${formatMoney(gstAmount)} = ${formatMoney(total)}.`;
+    return `This transaction includes a credit card processing fee of 1.8% of the order amount (products and shipping). Credit card fee = ${formatMoney(exGst)} + ${gstLabel} ${formatMoney(gstAmount)} = ${formatMoney(total)}.`;
   };
 
   const computeDrawerFallbackTotals = (state) => {
@@ -204,15 +204,19 @@ const dlog = (...args) => {
       if (price <= 0 || qty <= 0) return;
       taxableSubtotalRaw += price * qty;
     });
-    const itemTax = roundCurrency(taxableSubtotalRaw * taxRate);
-    const subtotalWithItemTax = roundCurrency(subtotal + itemTax);
-    const cardFeeBase = subtotal;
+    const itemTaxBase = roundCurrency(taxableSubtotalRaw * taxRate);
+    const subtotalWithItemTax = roundCurrency(subtotal + itemTaxBase);
+    const shippingWithGst = 0;
+    const cardFeeBase = subtotalWithItemTax + shippingWithGst;
     const cardFeeExGst =
       cardFeeBase > 0 ? roundCurrency(cardFeeBase * CARD_FEE_RATE) : 0;
     const cardFeeGst = cardFeeExGst > 0 ? roundCurrency(cardFeeExGst * taxRate) : 0;
     const cardFeeTotal = roundCurrency(cardFeeExGst + cardFeeGst);
-    const taxTotal = roundCurrency(itemTax + cardFeeGst);
-    const total = roundCurrency(subtotalWithItemTax + cardFeeTotal);
+    const taxTotal = roundCurrency(itemTaxBase + cardFeeGst);
+    const totalBeforeDiscount = roundCurrency(
+      subtotalWithItemTax + shippingWithGst + cardFeeTotal
+    );
+    const total = totalBeforeDiscount;
     return {
       subtotal,
       subtotalWithItemTax,
@@ -222,6 +226,7 @@ const dlog = (...args) => {
       cardFeeTotal,
       taxTotal,
       total,
+      totalBeforeDiscount,
       discountDisplay: "-$0.00",
       processingNote: formatCardFeeNote(cardFeeExGst, cardFeeGst, taxRate),
       cardFeeTaxRate: taxRate,
@@ -1753,7 +1758,7 @@ const cancelScriptDispense = async (item) => {
         const amount = Number.isFinite(totals.shippingWithGst)
           ? totals.shippingWithGst
           : totals.shipping;
-        return `Shipping (GST incl) ${formatMoney(amount)}`;
+        return formatMoney(amount);
       })();
       if (shippingEl)
         shippingEl.textContent = shippingLabel || fallbackShippingText;
