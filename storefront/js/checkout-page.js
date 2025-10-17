@@ -18,6 +18,20 @@
     return Number.isFinite(num) ? num : fallback;
   };
 
+  const parseBooleanish = (value) => {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value !== 0;
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (!normalized) return undefined;
+      if (["true", "1", "yes", "y", "on"].includes(normalized)) return true;
+      if (["false", "0", "no", "n", "off"].includes(normalized)) return false;
+    }
+    return undefined;
+  };
+
   const config = window.StorefrontConfig || {};
   const datasetRoot = document.querySelector(".get-url") || document.body;
   const dataset = (datasetRoot && datasetRoot.dataset) || {};
@@ -146,9 +160,28 @@
       .filter(Boolean);
   }
 
-  const applyShippingTaxToOffer = async (offer) => {
+  const ensureOfferTaxEntry = async (offer) => {
     if (!offer || !shippingTaxId) return offer;
-    if (!Array.isArray(offer.shipping) || !offer.shipping.length) return offer;
+
+    const products = Array.isArray(offer.products) ? offer.products : [];
+    const hasTaxableProducts = products.some((product) => {
+      if (!product || typeof product !== "object") return false;
+      const candidates = [
+        product.taxable,
+        product.tax,
+        product.isTaxable,
+        product.requiresTax,
+      ];
+      return candidates.some((value) => parseBooleanish(value) === true);
+    });
+
+    const shippingLines = Array.isArray(offer.shipping) ? offer.shipping : [];
+    const hasShipping = shippingLines.length > 0;
+
+    if (!hasTaxableProducts && !hasShipping) {
+      return offer;
+    }
+
     const idStr = String(shippingTaxId).trim();
     if (!idStr) return offer;
 
@@ -202,7 +235,7 @@
         existing.tax_id ??
         existing.taxId ??
         idStr,
-      taxShipping: true,
+      taxShipping: hasShipping,
     };
 
     if (taxDetails?.name) {
@@ -1499,7 +1532,7 @@
         shippingType
       );
 
-      await applyShippingTaxToOffer(offer);
+      await ensureOfferTaxEntry(offer);
 
       checkoutState.currentOffer = offer;
       debugLog("updateOffer success", offer);
@@ -1546,6 +1579,8 @@
 
   const getCartItemTax = (cartState = Cart.getState()) =>
     cartState.items.reduce((total, item) => {
+      const taxable = parseBooleanish(item.taxable);
+      if (taxable === false) return total;
       const unitTax = Number(item.retailGst);
       const qty = Number(item.qty) || 0;
       if (!Number.isFinite(unitTax) || unitTax <= 0 || qty <= 0) return total;
@@ -2941,21 +2976,29 @@
 
     // Build final offer with current shipping selection
     const cartState = Cart.getState();
-    const cartItems = cartState.items.map((item) => ({
-      productId: item.productId || item.id, // Use payment ID for backend
-      name: item.name,
-      quantity: item.qty,
-      price: item.price,
-      taxable: true,
-      requiresShipping: true,
-    }));
+    const cartItems = cartState.items.map((item) => {
+      const taxable = parseBooleanish(item.taxable);
+      const requiresShipping = parseBooleanish(item.requiresShipping);
+      return {
+        productId: item.productId || item.id, // Use payment ID for backend
+        name: item.name,
+        quantity: item.qty,
+        price: item.price,
+        taxable:
+          taxable === undefined || taxable === null ? true : taxable === true,
+        requiresShipping:
+          requiresShipping === undefined || requiresShipping === null
+            ? true
+            : requiresShipping === true,
+      };
+    });
 
     const finalOffer = await buildOffer(
       { items: cartItems },
       checkoutState.couponMeta,
       shippingType
     );
-    await applyShippingTaxToOffer(finalOffer);
+    await ensureOfferTaxEntry(finalOffer);
     const appliedCouponCode =
       checkoutState.couponMeta?.code ||
       checkoutState.couponMeta?.coupon_code ||

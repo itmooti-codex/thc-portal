@@ -210,6 +210,20 @@
     });
   };
 
+  const parseBooleanish = (value) => {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value !== 0;
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (!normalized) return undefined;
+      if (["true", "1", "yes", "y", "on"].includes(normalized)) return true;
+      if (["false", "0", "no", "n", "off"].includes(normalized)) return false;
+    }
+    return undefined;
+  };
+
   const ensureInit = async () => {
     if (initialized) return cloneState();
     state = loadFromStorage();
@@ -249,6 +263,14 @@
         normalised[key] = product[key];
       }
     });
+    if (product.taxable !== undefined) {
+      const taxable = parseBooleanish(product.taxable);
+      if (taxable === null) {
+        normalised.taxable = null;
+      } else if (taxable !== undefined) {
+        normalised.taxable = taxable;
+      }
+    }
     if (
       normalised.dispenseItemId === undefined ||
       normalised.dispenseItemId === null
@@ -391,6 +413,14 @@
         assign(key, patch[key]);
       }
     });
+    if (patch.taxable !== undefined) {
+      const taxable = parseBooleanish(patch.taxable);
+      if (taxable === null) {
+        assign("taxable", null);
+      } else if (taxable !== undefined) {
+        assign("taxable", taxable);
+      }
+    }
 
     if (!next.productId) next.productId = next.id || targetId;
 
