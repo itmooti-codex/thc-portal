@@ -8,7 +8,7 @@ The `storefront` directory hosts a static, multi-page storefront experience impl
 
 ### Shared Utilities
 - **`utils.js`** – Provides helper selectors (`$`, `$$`), money-formatting, numeric parsing, and a small DOM helper set used across pages.
-- **`cart-state.js`** – Implements a global `Cart` singleton that keeps cart state in memory with localStorage/sessionStorage persistence. It exposes methods such as `init`, `addItem`, `updateQuantity`, `removeItem`, `clear`, and `subscribe`. It automatically chooses guest vs. authenticated storage and normalises product payloads for downstream APIs.
+- **`cart-state.js`** – Implements a global `Cart` singleton that keeps cart state in memory. Guest users receive a one-minute localStorage cache, while authenticated users operate purely in-memory to ensure live data from the backend. It exposes methods such as `init`, `addItem`, `updateQuantity`, `removeItem`, `clear`, and `subscribe`. It automatically normalises product payloads for downstream APIs.
 
 ### Cart Drawer UI (`cart-ui.js`)
 - Renders the slide-in cart drawer, maintains the cart bubble badge, and synchronises "Add to cart" buttons across product cards.
