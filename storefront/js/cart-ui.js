@@ -136,8 +136,16 @@ const dlog = (...args) => {
     !placeholderTokenRegex.test(value);
 
   const CARD_FEE_RATE = 0.018;
-  const CARD_FEE_FIXED = 0.3;
-  const CARD_FEE_GST_RATE = 0.1;
+  const DEFAULT_TAX_RATE = 0.1;
+
+  const normaliseTaxRate = (value) => {
+    if (value === null || value === undefined || value === "") return undefined;
+    const num = Number(value);
+    if (!Number.isFinite(num)) return undefined;
+    if (num > 1) return num / 100;
+    if (num < 0) return undefined;
+    return num;
+  };
 
   const roundCurrency = (value) =>
     Math.round((Number(value) + Number.EPSILON) * 100) / 100;
@@ -147,13 +155,36 @@ const dlog = (...args) => {
       ? money(value)
       : `$${(Number(value) || 0).toFixed(2)}`;
 
-  const getCartItemTaxValue = (items = []) =>
-    items.reduce((total, item) => {
-      const unitTax = Number(item.retailGst);
-      const qty = Number(item.qty) || 0;
-      if (!Number.isFinite(unitTax) || unitTax <= 0 || qty <= 0) return total;
-      return total + unitTax * qty;
-    }, 0);
+  const formatTaxPercent = (rate) => {
+    if (!Number.isFinite(rate)) return "";
+    const percent = rate * 100;
+    if (!Number.isFinite(percent)) return "";
+    return percent % 1 === 0 ? percent.toFixed(0) : percent.toFixed(2);
+  };
+
+  const getCartTaxRate = () => {
+    const summaryRate = normaliseTaxRate(
+      window.__checkoutTotals?.cardFeeTaxRate ??
+        window.__checkoutTotals?.taxRate
+    );
+    if (summaryRate !== undefined) return summaryRate;
+    const configRate = normaliseTaxRate(
+      window.StorefrontConfig?.shippingTaxRate ??
+        window.StorefrontConfig?.shippingTaxPercentage
+    );
+    if (configRate !== undefined) return configRate;
+    return DEFAULT_TAX_RATE;
+  };
+
+  const formatCardFeeNote = (exGst, gst, rate) => {
+    if (!Number.isFinite(exGst) || exGst <= 0) return "";
+    const gstAmount = Number.isFinite(gst) ? gst : 0;
+    const effectiveRate = Number.isFinite(rate) ? rate : getCartTaxRate();
+    const percentLabel = formatTaxPercent(effectiveRate);
+    const gstLabel = percentLabel ? `${percentLabel}% GST` : "GST";
+    const total = roundCurrency(exGst + gstAmount);
+    return `This transaction includes a credit card processing fee of 1.8% of the discounted product subtotal. Credit card fee = ${formatMoney(exGst)} + ${gstLabel} ${formatMoney(gstAmount)} = ${formatMoney(total)}.`;
+  };
 
   const computeDrawerFallbackTotals = (state) => {
     const items = Array.isArray(state?.items) ? state.items : [];
@@ -164,17 +195,24 @@ const dlog = (...args) => {
         0
       )
     );
-    const itemTax = roundCurrency(getCartItemTaxValue(items));
+    const taxRate = getCartTaxRate();
+    let taxableSubtotalRaw = 0;
+    items.forEach((item) => {
+      if (!item || parseBooleanish(item.taxable) !== true) return;
+      const price = Number(item.price) || 0;
+      const qty = Number(item.qty) || 0;
+      if (price <= 0 || qty <= 0) return;
+      taxableSubtotalRaw += price * qty;
+    });
+    const itemTax = roundCurrency(taxableSubtotalRaw * taxRate);
     const subtotalWithItemTax = roundCurrency(subtotal + itemTax);
-    const totalBeforeFees = roundCurrency(subtotal + itemTax);
+    const cardFeeBase = subtotal;
     const cardFeeExGst =
-      totalBeforeFees > 0
-        ? roundCurrency(totalBeforeFees * CARD_FEE_RATE + CARD_FEE_FIXED)
-        : 0;
-    const cardFeeGst = cardFeeExGst > 0 ? roundCurrency(cardFeeExGst * CARD_FEE_GST_RATE) : 0;
+      cardFeeBase > 0 ? roundCurrency(cardFeeBase * CARD_FEE_RATE) : 0;
+    const cardFeeGst = cardFeeExGst > 0 ? roundCurrency(cardFeeExGst * taxRate) : 0;
     const cardFeeTotal = roundCurrency(cardFeeExGst + cardFeeGst);
     const taxTotal = roundCurrency(itemTax + cardFeeGst);
-    const total = roundCurrency(subtotal + taxTotal + cardFeeExGst);
+    const total = roundCurrency(subtotalWithItemTax + cardFeeTotal);
     return {
       subtotal,
       subtotalWithItemTax,
@@ -185,10 +223,8 @@ const dlog = (...args) => {
       taxTotal,
       total,
       discountDisplay: "-$0.00",
-      processingNote:
-        cardFeeTotal > 0
-          ? `This transaction includes a credit card processing fee of 1.8% + A$0.30 per transaction. Credit card fee = ${formatMoney(cardFeeExGst)} + 10% GST ${formatMoney(cardFeeGst)} = ${formatMoney(cardFeeTotal)}.`
-          : "",
+      processingNote: formatCardFeeNote(cardFeeExGst, cardFeeGst, taxRate),
+      cardFeeTaxRate: taxRate,
     };
   };
 

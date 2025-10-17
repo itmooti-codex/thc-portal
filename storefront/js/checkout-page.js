@@ -172,6 +172,17 @@
   const shippingTaxDetailsState = { promise: null, data: undefined };
   let getShippingTaxDetails = async () => null;
 
+  const getEffectiveTaxRate = () => {
+    const configRate = normaliseTaxRate(
+      window.StorefrontConfig?.shippingTaxRate ??
+        window.StorefrontConfig?.shippingTaxPercentage
+    );
+    const detailRate = normaliseTaxRate(shippingTaxDetailsState.data?.rate);
+    if (detailRate !== undefined) return detailRate;
+    if (configRate !== undefined) return configRate;
+    return DEFAULT_TAX_RATE;
+  };
+
   // Shipping options filter (ids). Overrideable via window.shippingOptions
   let shippingOptions = Array.isArray(config.shippingTypeIds)
     ? config.shippingTypeIds
@@ -392,6 +403,21 @@
   const $use = $ || fallback$;
   const $$use = $$ || fallback$$;
 
+  const formatMoney = (value) =>
+    typeof money === "function"
+      ? money(value)
+      : `$${(Number(value) || 0).toFixed(2)}`;
+
+  const formatCardFeeNote = (exGst, gst, rate) => {
+    if (!Number.isFinite(exGst) || exGst <= 0) return "";
+    const gstAmount = Number.isFinite(gst) ? gst : 0;
+    const effectiveRate = Number.isFinite(rate) ? rate : getEffectiveTaxRate();
+    const percentLabel = formatTaxPercent(effectiveRate);
+    const gstLabel = percentLabel ? `${percentLabel}% GST` : "GST";
+    const total = roundCurrency(exGst + gstAmount);
+    return `This transaction includes a credit card processing fee of 1.8% of the discounted product subtotal. Credit card fee = ${formatMoney(exGst)} + ${gstLabel} ${formatMoney(gstAmount)} = ${formatMoney(total)}.`;
+  };
+
   const showLoader =
     typeof showPageLoaderFn === "function"
       ? (message) => showPageLoaderFn(message)
@@ -414,6 +440,7 @@
         };
 
   showLoader("Preparing checkout…");
+  getShippingTaxDetails().catch(() => {});
 
   const debounce = (fn, delay = 150) => {
     let timer;
@@ -1486,9 +1513,25 @@
   };
 
   const CARD_FEE_RATE = 0.018;
-  const CARD_FEE_FIXED = 0.3;
-  const CARD_FEE_GST_RATE = 0.1;
-  const SHIPPING_GST_RATE = 0.1;
+  const CARD_FEE_PRODUCT_ID = "31";
+  const CARD_FEE_PRODUCT_NAME = "Credit Card Fee";
+  const DEFAULT_TAX_RATE = 0.1;
+
+  const normaliseTaxRate = (value) => {
+    if (value === null || value === undefined || value === "") return undefined;
+    const num = Number(value);
+    if (!Number.isFinite(num)) return undefined;
+    if (num > 1) return num / 100;
+    if (num < 0) return undefined;
+    return num;
+  };
+
+  const formatTaxPercent = (rate) => {
+    if (!Number.isFinite(rate)) return "";
+    const percent = rate * 100;
+    if (!Number.isFinite(percent)) return "";
+    return percent % 1 === 0 ? percent.toFixed(0) : percent.toFixed(2);
+  };
 
   const knownCoupons = {
     SAVE10: {
@@ -1602,14 +1645,8 @@
       }
 
       // Convert cart items to backend format
-      const cartItems = cartState.items.map((item) => ({
-        productId: item.productId || item.id, // productId now contains the payment ID
-        name: item.name,
-        quantity: item.qty,
-        price: item.price,
-        taxable: false,
-        requiresShipping: true, // Default to requiring shipping
-      }));
+      const totalsForFee = calcTotals(cartState, { ignoreOffer: true });
+      const cartItems = await buildBackendCartItems(cartState, totalsForFee);
 
       // Get selected shipping type
       let shippingType = getSelectedShippingType();
@@ -1829,10 +1866,9 @@
     return ensureNoneOption(baseList);
   };
 
-  const calcTotals = (cartState = Cart.getState()) => {
+  const calcTotals = (cartState = Cart.getState(), { ignoreOffer = false } = {}) => {
     let subtotal = roundCurrency(getCartSubtotal(cartState));
-    const itemTax = roundCurrency(getCartItemTax(cartState));
-    const subtotalWithItemTax = roundCurrency(subtotal + itemTax);
+    const items = Array.isArray(cartState?.items) ? cartState.items : [];
     let baseShipping = 0;
     const selected = getSelectedShippingType();
     if (selected && String(selected.id) !== NONE_SHIPPING_ID) {
@@ -1872,7 +1908,7 @@
     let offerSubTotal = null;
     let offerGrandTotal = null;
     const offer = checkoutState.currentOffer;
-    if (offer) {
+    if (offer && !ignoreOffer) {
       offerSubTotal = normaliseMoneyValue(offer.subTotal);
       offerGrandTotal = normaliseMoneyValue(offer.grandTotal);
       const offerShippingTotal = Array.isArray(offer.shipping)
@@ -1905,41 +1941,81 @@
 
     discount = roundCurrency(Math.min(Math.max(discount, 0), subtotal));
 
+    const subtotalAfterDiscount = roundCurrency(subtotal - discount);
+
+    let taxableSubtotalRaw = 0;
+    items.forEach((item) => {
+      if (!item) return;
+      if (parseBooleanish(item.taxable) !== true) return;
+      const price = Number(item.price) || 0;
+      const qty = Number(item.qty) || 0;
+      if (price <= 0 || qty <= 0) return;
+      taxableSubtotalRaw += price * qty;
+    });
+
+    const discountTaxableShareRaw =
+      subtotal > 0 ? discount * (taxableSubtotalRaw / subtotal) : 0;
+    let discountTaxableShare = roundCurrency(discountTaxableShareRaw);
+    const taxableSubtotalRounded = roundCurrency(taxableSubtotalRaw);
+    if (discountTaxableShare > taxableSubtotalRounded) {
+      discountTaxableShare = taxableSubtotalRounded;
+    }
+    if (discountTaxableShare > discount) {
+      discountTaxableShare = roundCurrency(discount);
+    }
+
+    const taxableAfterDiscountRaw = Math.max(
+      0,
+      taxableSubtotalRaw - discountTaxableShare
+    );
+    const taxableAfterDiscount = roundCurrency(taxableAfterDiscountRaw);
+
+    const taxRate = getEffectiveTaxRate();
+    const itemTax = roundCurrency(taxableAfterDiscount * taxRate);
+
+    const subtotalWithItemTax = roundCurrency(
+      subtotalAfterDiscount + itemTax
+    );
+
     const shippingTax =
       shippingConfirmed && shipping > 0
-        ? roundCurrency(shipping * SHIPPING_GST_RATE)
+        ? roundCurrency(shipping * taxRate)
         : 0;
     const shippingWithGst = roundCurrency(shipping + shippingTax);
 
-    const totalBeforeFees = roundCurrency(
-      subtotal + shipping + shippingTax - discount + itemTax
-    );
-    const cardFeeBase = Math.max(0, totalBeforeFees);
+    const cardFeeBase = Math.max(0, subtotalAfterDiscount);
     const cardFeeExGst =
-      cardFeeBase > 0
-        ? roundCurrency(cardFeeBase * CARD_FEE_RATE + CARD_FEE_FIXED)
-        : 0;
+      cardFeeBase > 0 ? roundCurrency(cardFeeBase * CARD_FEE_RATE) : 0;
     const cardFeeGst =
-      cardFeeExGst > 0 ? roundCurrency(cardFeeExGst * CARD_FEE_GST_RATE) : 0;
+      cardFeeExGst > 0 ? roundCurrency(cardFeeExGst * taxRate) : 0;
     const cardFeeTotal = roundCurrency(cardFeeExGst + cardFeeGst);
+
     const taxTotal = roundCurrency(itemTax + shippingTax + cardFeeGst);
-    const total = roundCurrency(
-      subtotal + shipping - discount + taxTotal + cardFeeExGst
+    const totalBeforeFees = roundCurrency(
+      subtotalWithItemTax + shippingWithGst
     );
+    const total = roundCurrency(totalBeforeFees + cardFeeTotal);
 
     debugLog("calcTotals result", {
       subtotal,
+      subtotalAfterDiscount,
       shipping,
       rawShipping,
       shippingConfirmed,
       shippingTax,
       shippingWithGst,
       discount,
+      discountTaxableShare,
+      taxableSubtotal: taxableSubtotalRounded,
+      taxableAfterDiscount,
       itemTax,
+      cardFeeBase,
       cardFeeExGst,
       cardFeeGst,
       cardFeeTotal,
+      taxRate,
       taxTotal,
+      totalBeforeFees,
       total,
       offerSubTotal,
       offerGrandTotal,
@@ -1948,6 +2024,7 @@
 
     return {
       subtotal,
+      subtotalAfterDiscount,
       subtotalWithItemTax,
       shipping,
       rawShipping,
@@ -1955,18 +2032,112 @@
       shippingTax,
       shippingWithGst,
       discount,
+      discountTaxableShare,
+      taxableSubtotal: taxableSubtotalRounded,
+      taxableAfterDiscount,
       itemTax,
+      taxRate,
       taxTotal,
       cardFeeBase,
       cardFeeExGst,
       cardFeeGst,
       cardFeeTotal,
+      cardFeeTaxRate: taxRate,
       totalBeforeFees,
       total,
       usedOffer,
       offerSubTotal: offerSubTotal !== null ? roundCurrency(offerSubTotal) : null,
       offerGrandTotal: offerGrandTotal !== null ? roundCurrency(offerGrandTotal) : null,
     };
+  };
+
+  const resolveTaxDetailsForPayload = async () => {
+    try {
+      const details = await getShippingTaxDetails();
+      if (details) return details;
+    } catch (err) {
+      debugLog("resolveTaxDetailsForPayload failed", err);
+    }
+    if (shippingTaxDetailsState.data) return shippingTaxDetailsState.data;
+    const fallbackId = String(shippingTaxId || "").trim();
+    if (fallbackId) {
+      return {
+        id: fallbackId,
+        name: shippingTaxDetailsState.data?.name,
+        rate:
+          shippingTaxDetailsState.data?.rate ??
+          (window.StorefrontConfig?.shippingTaxRate ??
+            window.StorefrontConfig?.shippingTaxPercentage),
+      };
+    }
+    return null;
+  };
+
+  const applyTaxMetadataToItem = (target, taxDetails) => {
+    if (!target || !taxDetails) return;
+    const id = taxDetails.id ? String(taxDetails.id).trim() : "";
+    const name = taxDetails.name ? String(taxDetails.name).trim() : "";
+    if (id) {
+      target.tax_id = id;
+      target.taxId = id;
+      target.tax_form_id = id;
+      target.form_id = target.form_id ?? id;
+    }
+    if (name) {
+      target.tax_name = name;
+      target.taxName = name;
+      target.tax_label = name;
+      target.taxLabel = name;
+    }
+    if (taxDetails.rate !== undefined) {
+      target.tax_rate = taxDetails.rate;
+      target.taxRate = taxDetails.rate;
+    }
+  };
+
+  const buildBackendCartItems = async (
+    cartState,
+    totals,
+    { includeCardFee = true } = {}
+  ) => {
+    const items = Array.isArray(cartState?.items) ? cartState.items : [];
+    const taxDetails = await resolveTaxDetailsForPayload();
+    const payloadItems = items.map((item) => {
+      const requiresShipping = parseBooleanish(item?.requiresShipping);
+      const payload = {
+        productId: item.productId || item.id,
+        name: item.name,
+        quantity: item.qty,
+        price: item.price,
+        requiresShipping:
+          requiresShipping === undefined || requiresShipping === null
+            ? true
+            : requiresShipping === true,
+      };
+      const taxableFlag = parseBooleanish(item?.taxable);
+      if (taxableFlag === true) {
+        payload.taxable = true;
+        applyTaxMetadataToItem(payload, taxDetails);
+      } else if (taxableFlag === false) {
+        payload.taxable = false;
+      }
+      return payload;
+    });
+
+    if (includeCardFee && totals?.cardFeeExGst > 0) {
+      const feeItem = {
+        productId: CARD_FEE_PRODUCT_ID,
+        name: CARD_FEE_PRODUCT_NAME,
+        quantity: 1,
+        price: roundCurrency(totals.cardFeeExGst),
+        taxable: true,
+        requiresShipping: false,
+      };
+      applyTaxMetadataToItem(feeItem, taxDetails);
+      payloadItems.push(feeItem);
+    }
+
+    return payloadItems;
   };
 
   const renderSummary = () => {
@@ -1992,14 +2163,14 @@
         const qtyControls = readOnly
           ? `<div class="mt-2 flex items-center justify-between text-xs text-gray-500">
               <span>Qty ${qty}</span>
-              <span class="text-sm font-semibold text-gray-900">${money(lineTotal)}</span>
+              <span class="text-sm font-semibold text-gray-900">${formatMoney(lineTotal)}</span>
             </div>`
           : `<div class="mt-2 flex items-center gap-2">
               <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${item.id}" aria-label="Decrease quantity">−</button>
               <input class="qty-input w-12 text-center rounded-lg border px-2 py-1" value="${qty}" data-id="${item.id}" inputmode="numeric" aria-label="Quantity"/>
               <button class="qty-incr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${item.id}" aria-label="Increase quantity">+</button>
             </div>
-            <div class="mt-2 text-sm font-semibold text-gray-900">${money(lineTotal)}</div>`;
+            <div class="mt-2 text-sm font-semibold text-gray-900">${formatMoney(lineTotal)}</div>`;
         const removeButton = readOnly
           ? ""
           : `<button class="remove-item w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center mt-1" data-id="${item.id}" aria-label="Remove item">
@@ -2013,7 +2184,7 @@
           <div class="flex-1 min-w-0">
             <div class="font-semibold text-sm sm:text-base truncate">${item.name}</div>
             ${brandLine}
-            <div class="text-xs text-gray-500">Unit price ${money(unitPrice)}</div>
+            <div class="text-xs text-gray-500">Unit price ${formatMoney(unitPrice)}</div>
             ${qtyControls}
           </div>
           ${removeButton}
@@ -2030,7 +2201,7 @@
         ? totals.subtotalWithItemTax
         : totals.subtotal;
     if (summaryEls.subtotal)
-      summaryEls.subtotal.textContent = money(subtotalDisplay);
+      summaryEls.subtotal.textContent = formatMoney(subtotalDisplay);
 
     let shippingLabel = "Select shipping";
     const shippingHasCharge =
@@ -2043,22 +2214,22 @@
       const shippingAmount = Number.isFinite(totals.shippingWithGst)
         ? totals.shippingWithGst
         : totals.shipping;
-      shippingLabel = `Shipping (GST incl) ${money(shippingAmount)}`;
+      shippingLabel = `Shipping (GST incl) ${formatMoney(shippingAmount)}`;
     } else if (totals.shippingConfirmed) {
       shippingLabel = "Free";
     }
     if (summaryEls.shipping) summaryEls.shipping.textContent = shippingLabel;
 
     if (summaryEls.processing)
-      summaryEls.processing.textContent = totals.cardFeeTotal
-        ? money(totals.cardFeeTotal)
-        : money(0);
+      summaryEls.processing.textContent = formatMoney(totals.cardFeeTotal);
 
-    if (summaryEls.gst) summaryEls.gst.textContent = money(totals.taxTotal);
+    if (summaryEls.gst) summaryEls.gst.textContent = formatMoney(totals.taxTotal);
 
-    const processingNote = totals.cardFeeTotal > 0
-      ? `This transaction includes a credit card processing fee of 1.8% + A$0.30 per transaction. Credit card fee = ${money(totals.cardFeeExGst)} + 10% GST ${money(totals.cardFeeGst)} = ${money(totals.cardFeeTotal)}.`
-      : "";
+    const processingNote = formatCardFeeNote(
+      totals.cardFeeExGst,
+      totals.cardFeeGst,
+      totals.cardFeeTaxRate
+    );
 
     if (summaryEls.processingNote) {
       if (processingNote) {
@@ -2072,14 +2243,14 @@
 
     const discountDisplay =
       totals.discount > 0
-        ? `-${money(totals.discount).replace(/^-/, "")}`
+        ? `-${formatMoney(totals.discount).replace(/^-/, "")}`
         : "-$0.00";
 
     if (summaryEls.discount) {
       summaryEls.discount.textContent = discountDisplay;
     }
 
-    if (summaryEls.total) summaryEls.total.textContent = money(totals.total);
+    if (summaryEls.total) summaryEls.total.textContent = formatMoney(totals.total);
 
     window.__checkoutSummary = {
       totals,
@@ -2757,17 +2928,21 @@
     const financials = checkoutState.financials || calcTotals();
     if (financials.cardFeeTotal > 0) {
       paymentLines.push(
-        `Card fee: ${money(financials.cardFeeTotal)} (incl GST ${money(financials.cardFeeGst)})`
+        `Card fee: ${formatMoney(financials.cardFeeTotal)} (incl GST ${formatMoney(financials.cardFeeGst)})`
       );
-      paymentLines.push(
-        `<span class="text-xs text-gray-500">This transaction includes a credit card processing fee of 1.8% + A$0.30 per transaction.</span>`
+      const reviewFeeNote = formatCardFeeNote(
+        financials.cardFeeExGst,
+        financials.cardFeeGst,
+        financials.cardFeeTaxRate
       );
-      paymentLines.push(
-        `<span class="text-xs text-gray-500">Credit card fee = ${money(financials.cardFeeExGst)} + 10% GST ${money(financials.cardFeeGst)} = ${money(financials.cardFeeTotal)}</span>`
-      );
+      if (reviewFeeNote) {
+        paymentLines.push(
+          `<span class="text-xs text-gray-500">${reviewFeeNote}</span>`
+        );
+      }
     }
     if (financials.taxTotal > 0) {
-      paymentLines.push(`GST total: ${money(financials.taxTotal)}`);
+      paymentLines.push(`GST total: ${formatMoney(financials.taxTotal)}`);
     }
     $("#review_payment").innerHTML = paymentLines
       .filter(Boolean)
@@ -3062,20 +3237,8 @@
 
     // Build final offer with current shipping selection
     const cartState = Cart.getState();
-    const cartItems = cartState.items.map((item) => {
-      const requiresShipping = parseBooleanish(item.requiresShipping);
-      return {
-        productId: item.productId || item.id, // Use payment ID for backend
-        name: item.name,
-        quantity: item.qty,
-        price: item.price,
-        taxable: false,
-        requiresShipping:
-          requiresShipping === undefined || requiresShipping === null
-            ? true
-            : requiresShipping === true,
-      };
-    });
+    const totalsForFee = calcTotals(cartState, { ignoreOffer: true });
+    const cartItems = await buildBackendCartItems(cartState, totalsForFee);
 
     const finalOffer = await buildOffer(
       { items: cartItems },
@@ -3204,7 +3367,7 @@
             "flex items-center justify-between gap-3 rounded-xl border border-gray-200 px-4 py-3 hover:border-blue-500";
           const value = String(type.id);
           const priceValue = Number(type.price) || 0;
-          const priceLabel = priceValue > 0 ? money(priceValue) : "Free";
+          const priceLabel = priceValue > 0 ? formatMoney(priceValue) : "Free";
           label.innerHTML = `
             <div class="flex items-center gap-3">
               <input type="radio" name="shipping_method" value="${value}" ${
