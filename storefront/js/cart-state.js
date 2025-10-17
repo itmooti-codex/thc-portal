@@ -7,7 +7,8 @@
   const GUEST_CART_KEY = "thc_portal_cart_guest_v1";
   const AUTH_CART_KEY = "thc_portal_cart_auth_v1";
   const PRODUCT_CACHE_KEY = "thc_portal_last_product_v1";
-  const STORAGE_TTL_MS = 3 * 60 * 1000;
+  const STORAGE_TTL_MS = 60 * 1000; // 1 minute guest cache window to avoid stale data
+  const PRODUCT_CACHE_TTL_MS = 60 * 1000;
 
   const defaultState = () => ({ items: [], currency: "AUD" });
 
@@ -51,10 +52,26 @@
     items: src.items.map((item) => ({ ...item })),
   });
 
+  const clearStorageKey = (storage, key) => {
+    if (!storage || typeof storage.removeItem !== "function") return;
+    try {
+      storage.removeItem(key);
+    } catch (err) {
+      console.warn("Cart storage cleanup failed", key, err);
+    }
+  };
+
+  const clearAllPersistence = () => {
+    if (!isBrowser) return;
+    clearStorageKey(localStorage, GUEST_CART_KEY);
+    clearStorageKey(sessionStorage, AUTH_CART_KEY);
+  };
+
   const loadFromStorage = () => {
     if (!isBrowser) return defaultState();
     // Read BOTH storages to guard against mismatched auth flags across pages
     const readKey = (storage, key) => {
+      if (!storage || typeof storage.getItem !== "function") return null;
       try {
         const parsed = JSON.parse(storage.getItem(key) || "null");
         if (parsed && typeof parsed === "object") {
@@ -81,14 +98,24 @@
     const guest = readKey(localStorage, GUEST_CART_KEY);
     const auth = readKey(sessionStorage, AUTH_CART_KEY);
 
-    // Choose active store based on current auth, but merge items from the other store if present
-    const preferAuth = isAuthenticated();
-    const primary = preferAuth ? auth : guest;
-    const secondary = preferAuth ? guest : auth;
+    if (isAuthenticated()) {
+      if (auth || guest) {
+        clearAllPersistence();
+      }
+      return defaultState();
+    }
+
+    // Merge any leftover authenticated cart into the guest cart so the user keeps
+    // their selections after logging out, but prefer the guest snapshot.
+    const primary = guest;
+    const secondary = auth;
 
     if (!primary && !secondary) return defaultState();
 
-    const merged = { currency: (primary?.currency || secondary?.currency || "AUD"), items: [] };
+    const merged = {
+      currency: primary?.currency || secondary?.currency || "AUD",
+      items: [],
+    };
     const byId = new Map();
     const pushAll = (src) => {
       if (!src) return;
@@ -134,16 +161,19 @@
 
   const persist = () => {
     if (!isBrowser) return;
-    const key = isAuthenticated() ? AUTH_CART_KEY : GUEST_CART_KEY;
-    const storage = isAuthenticated() ? sessionStorage : localStorage;
+    if (isAuthenticated()) {
+      clearAllPersistence();
+      return;
+    }
     try {
-      storage.setItem(
-        key,
+      localStorage.setItem(
+        GUEST_CART_KEY,
         JSON.stringify({
           ...state,
           savedAt: Date.now(),
         })
       );
+      clearStorageKey(sessionStorage, AUTH_CART_KEY);
     } catch (err) {
       console.warn("Cart storage persist failed", err);
     }
@@ -355,6 +385,9 @@
   const clear = async () => {
     await ensureInit();
     state = defaultState();
+    if (isAuthenticated()) {
+      clearAllPersistence();
+    }
     persist();
     notify();
     return cloneState();
@@ -397,8 +430,15 @@
 
   const saveProductSnapshot = (product) => {
     if (!isBrowser) return;
+    if (isAuthenticated()) {
+      clearProductSnapshot();
+      return;
+    }
     try {
-      const payload = normaliseProduct(product);
+      const payload = {
+        savedAt: Date.now(),
+        data: normaliseProduct(product),
+      };
       localStorage.setItem(PRODUCT_CACHE_KEY, JSON.stringify(payload));
     } catch (err) {
       console.warn("Product cache failed", err);
@@ -407,10 +447,21 @@
 
   const loadProductSnapshot = () => {
     if (!isBrowser) return null;
+    if (isAuthenticated()) {
+      clearProductSnapshot();
+      return null;
+    }
     try {
       const raw = localStorage.getItem(PRODUCT_CACHE_KEY);
       if (!raw) return null;
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      const savedAt = Number(parsed?.savedAt) || 0;
+      const expired = !savedAt || Date.now() - savedAt > PRODUCT_CACHE_TTL_MS;
+      if (expired) {
+        clearProductSnapshot();
+        return null;
+      }
+      return parsed?.data || null;
     } catch (err) {
       console.warn("Product cache parse failed", err);
       return null;
