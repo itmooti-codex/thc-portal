@@ -60,6 +60,18 @@
     return Number.isFinite(parsed) ? parsed : 0;
   };
 
+  const resolveOfferMoney = (offer, ...keys) => {
+    if (!offer) return null;
+    for (const key of keys) {
+      if (!Object.prototype.hasOwnProperty.call(offer, key)) continue;
+      const raw = offer[key];
+      if (raw === null || raw === undefined || raw === "") continue;
+      const value = normaliseMoneyValue(raw);
+      if (Number.isFinite(value)) return value;
+    }
+    return null;
+  };
+
   const config = window.StorefrontConfig || {};
   const datasetRoot = document.querySelector(".get-url") || document.body;
   const dataset = (datasetRoot && datasetRoot.dataset) || {};
@@ -1909,32 +1921,105 @@
     let offerGrandTotal = null;
     const offer = checkoutState.currentOffer;
     if (offer && !ignoreOffer) {
-      offerSubTotal = normaliseMoneyValue(offer.subTotal);
-      offerGrandTotal = normaliseMoneyValue(offer.grandTotal);
-      const offerShippingTotal = Array.isArray(offer.shipping)
-        ? offer.shipping.reduce(
-            (sum, entry) => sum + normaliseMoneyValue(entry?.price),
+      offerSubTotal = resolveOfferMoney(
+        offer,
+        "subTotalBeforeDiscount",
+        "preDiscountSubtotal",
+        "preDiscountTotal",
+        "subTotal"
+      );
+      const offerNetSubtotal = resolveOfferMoney(
+        offer,
+        "subTotalAfterDiscount",
+        "netSubtotal",
+        "netSubTotal",
+        "discountedSubtotal",
+        "discountedSubTotal"
+      );
+      offerGrandTotal = resolveOfferMoney(offer, "grandTotal");
+      const offerDiscountTotal = resolveOfferMoney(
+        offer,
+        "discountTotal",
+        "discount",
+        "couponAmount",
+        "couponTotal",
+        "totalDiscount"
+      );
+      const offerShippingTotal = (() => {
+        if (Array.isArray(offer.shipping)) {
+          const sum = offer.shipping.reduce(
+            (acc, entry) => acc + normaliseMoneyValue(entry?.price),
             0
-          )
-        : 0;
-      if (
-        Number.isFinite(offerSubTotal) &&
-        Number.isFinite(offerGrandTotal)
-      ) {
-        const offerDiscount = roundCurrency(
-          Math.max(0, offerSubTotal + offerShippingTotal - offerGrandTotal)
+          );
+          if (Number.isFinite(sum)) return sum;
+        }
+        return resolveOfferMoney(
+          offer,
+          "shippingTotal",
+          "shipping_amount",
+          "shippingTotalAmount"
         );
+      })();
+
+      const haveShippingOverride = Number.isFinite(offerShippingTotal);
+      const haveSubtotalOverride = Number.isFinite(offerSubTotal);
+      const haveNetSubtotal = Number.isFinite(offerNetSubtotal);
+      const haveDiscountValue = Number.isFinite(offerDiscountTotal);
+      const haveGrandTotal = Number.isFinite(offerGrandTotal);
+
+      let resolvedDiscount = haveDiscountValue
+        ? roundCurrency(Math.max(0, offerDiscountTotal))
+        : null;
+
+      if (!resolvedDiscount) {
+        if (haveSubtotalOverride && haveNetSubtotal) {
+          resolvedDiscount = roundCurrency(
+            Math.max(0, offerSubTotal - offerNetSubtotal)
+          );
+        } else if (
+          haveSubtotalOverride &&
+          haveShippingOverride &&
+          haveGrandTotal
+        ) {
+          resolvedDiscount = roundCurrency(
+            Math.max(0, offerSubTotal + offerShippingTotal - offerGrandTotal)
+          );
+        }
+      }
+
+      if (haveSubtotalOverride) {
         subtotal = roundCurrency(offerSubTotal);
+      }
+
+      if (haveShippingOverride) {
         rawShipping = roundCurrency(offerShippingTotal);
         shippingConfirmed = true;
         shipping = rawShipping;
-        discount = roundCurrency(Math.max(offerDiscount, discount));
+      }
+
+      if (resolvedDiscount !== null && resolvedDiscount !== undefined) {
+        discount = roundCurrency(Math.max(resolvedDiscount, discount));
+      }
+
+      if (
+        haveSubtotalOverride ||
+        haveShippingOverride ||
+        (resolvedDiscount !== null && resolvedDiscount !== undefined) ||
+        haveGrandTotal
+      ) {
         usedOffer = true;
         debugLog("calcTotals: using offer overrides", {
-          offerSubTotal: subtotal,
+          offerSubTotal: Number.isFinite(offerSubTotal)
+            ? roundCurrency(offerSubTotal)
+            : null,
+          offerNetSubtotal: Number.isFinite(offerNetSubtotal)
+            ? roundCurrency(offerNetSubtotal)
+            : null,
           offerGrandTotal,
-          offerShippingTotal: rawShipping,
-          offerDiscount: discount,
+          offerShippingTotal: haveShippingOverride
+            ? roundCurrency(offerShippingTotal)
+            : null,
+          offerDiscount: resolvedDiscount,
         });
       }
     }

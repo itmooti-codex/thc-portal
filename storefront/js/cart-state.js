@@ -435,10 +435,19 @@
   const clear = async () => {
     await ensureInit();
     state = defaultState();
-    if (isAuthenticated()) {
-      clearAllPersistence();
+    clearAllPersistence();
+    if (isBrowser) {
+      try {
+        localStorage.removeItem(PRODUCT_CACHE_KEY);
+      } catch (err) {
+        console.warn("Cart storage cleanup failed", PRODUCT_CACHE_KEY, err);
+      }
+      try {
+        sessionStorage.removeItem(PRODUCT_CACHE_KEY);
+      } catch (err) {
+        console.warn("Cart storage cleanup failed", PRODUCT_CACHE_KEY, err);
+      }
     }
-    persist();
     notify();
     return cloneState();
   };
