@@ -127,6 +127,9 @@
     return str;
   })();
 
+  const shippingTaxDetailsState = { promise: null, data: undefined };
+  let getShippingTaxDetails = async () => null;
+
   // Shipping options filter (ids). Overrideable via window.shippingOptions
   let shippingOptions = Array.isArray(config.shippingTypeIds)
     ? config.shippingTypeIds
@@ -143,11 +146,16 @@
       .filter(Boolean);
   }
 
-  const applyShippingTaxToOffer = (offer) => {
+  const applyShippingTaxToOffer = async (offer) => {
     if (!offer || !shippingTaxId) return offer;
     if (!Array.isArray(offer.shipping) || !offer.shipping.length) return offer;
     const idStr = String(shippingTaxId).trim();
     if (!idStr) return offer;
+
+    const taxDetails = await getShippingTaxDetails().catch((err) => {
+      console.warn("Failed to resolve shipping tax details", err);
+      return null;
+    });
 
     const taxesSource = Array.isArray(offer.taxes) ? offer.taxes : [];
     const taxes = taxesSource
@@ -197,8 +205,28 @@
       taxShipping: true,
     };
 
+    if (taxDetails?.name) {
+      const ensureName = (key) => {
+        const current = taxEntry[key];
+        if (
+          current === undefined ||
+          current === null ||
+          (typeof current === "string" && !current.trim())
+        ) {
+          taxEntry[key] = taxDetails.name;
+        }
+      };
+      ensureName("name");
+      ensureName("tax_name");
+      ensureName("label");
+      ensureName("taxLabel");
+      ensureName("description");
+    }
+
     if (resolvedRate !== undefined) {
       taxEntry.rate = resolvedRate;
+    } else if (taxDetails?.rate !== undefined) {
+      taxEntry.rate = taxDetails.rate;
     } else if (taxEntry.rate === undefined) {
       taxEntry.rate = 0;
     }
@@ -667,6 +695,85 @@
     } catch {
       return {};
     }
+  };
+
+  getShippingTaxDetails = async () => {
+    if (!shippingTaxId) return null;
+
+    if (shippingTaxDetailsState.data !== undefined) {
+      return shippingTaxDetailsState.data;
+    }
+
+    if (!shippingTaxDetailsState.promise) {
+      shippingTaxDetailsState.promise = (async () => {
+        try {
+          const response = await apiCall(
+            `/api-thc/taxes/${encodeURIComponent(shippingTaxId)}`
+          );
+          const tax = response?.tax ?? response;
+          if (!tax || typeof tax !== "object") {
+            shippingTaxDetailsState.data = null;
+            return null;
+          }
+
+          const normaliseName = (value) => {
+            if (value === null || value === undefined) return undefined;
+            const str = String(value).trim();
+            return str || undefined;
+          };
+
+          const normaliseRate = (value) => {
+            if (value === null || value === undefined || value === "") {
+              return undefined;
+            }
+            const num = Number(value);
+            return Number.isFinite(num) ? num : undefined;
+          };
+
+          const resolvedId = (() => {
+            const candidates = [
+              tax.id,
+              tax.tax_id,
+              tax.taxId,
+              tax.form_id,
+              tax.formId,
+            ];
+            for (const candidate of candidates) {
+              if (candidate === undefined || candidate === null) continue;
+              const str = String(candidate).trim();
+              if (str) return str;
+            }
+            return shippingTaxId;
+          })();
+
+          shippingTaxDetailsState.data = {
+            id: resolvedId,
+            name:
+              normaliseName(
+                tax.name ??
+                  tax.tax_name ??
+                  tax.label ??
+                  tax.description ??
+                  tax.taxLabel
+              ) || undefined,
+            rate: normaliseRate(
+              tax.rate ?? tax.tax_rate ?? tax.percentage ?? tax.amount
+            ),
+          };
+          return shippingTaxDetailsState.data;
+        } catch (err) {
+          console.warn("Failed to fetch shipping tax metadata", err);
+          shippingTaxDetailsState.data = null;
+          return null;
+        }
+      })();
+
+      shippingTaxDetailsState.promise.finally(() => {
+        shippingTaxDetailsState.promise = null;
+      });
+    }
+
+    return await shippingTaxDetailsState.promise;
   };
 
   const saveContact = async (contactData) => {
@@ -1392,7 +1499,7 @@
         shippingType
       );
 
-      applyShippingTaxToOffer(offer);
+      await applyShippingTaxToOffer(offer);
 
       checkoutState.currentOffer = offer;
       debugLog("updateOffer success", offer);
@@ -2848,7 +2955,7 @@
       checkoutState.couponMeta,
       shippingType
     );
-    applyShippingTaxToOffer(finalOffer);
+    await applyShippingTaxToOffer(finalOffer);
     const appliedCouponCode =
       checkoutState.couponMeta?.code ||
       checkoutState.couponMeta?.coupon_code ||
