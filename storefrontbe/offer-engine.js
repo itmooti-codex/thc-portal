@@ -3,6 +3,11 @@
  * Implements the pricing logic as specified in the requirements
  */
 
+const roundCurrency = (value) =>
+  Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+
+const formatCurrency = (value) => roundCurrency(value).toFixed(2);
+
 export class OfferEngine {
   constructor() {
     this.currency = "AUD";
@@ -23,67 +28,124 @@ export class OfferEngine {
     }
 
     // Calculate line subtotals
-    const products = cartItems.map(item => {
-      const unitPrice = Number(item.price) || 0;
-      const quantity = Number(item.quantity) || 1;
-      const total = unitPrice * quantity;
-      
+    const baseProducts = cartItems.map((item) => {
+      const unitPrice = Math.max(0, Number(item.price) || 0);
+      const quantity = Math.max(1, Number(item.quantity) || 1);
+      const total = roundCurrency(unitPrice * quantity);
+
       return {
         id: item.productId,
         quantity,
-        total: Math.max(0, total), // Ensure non-negative
-        price: Math.max(0, unitPrice), // Keep per-unit price for downstream processors
+        unitPrice,
+        total,
         taxable: Boolean(item.taxable),
         type: "one_time",
-        shipping: Boolean(item.requiresShipping)
+        shipping: Boolean(item.requiresShipping),
       };
     });
 
-    // Calculate subtotal
-    const subTotal = products.reduce((sum, product) => sum + product.total, 0);
+    // Calculate subtotal before discounts
+    const subTotalBeforeDiscount = roundCurrency(
+      baseProducts.reduce((sum, product) => sum + product.total, 0)
+    );
 
-    // Apply coupon discount if applicable
-    let discountAmount = 0;
-    if (appliedCoupon) {
-      discountAmount = this.calculateDiscount(products, appliedCoupon);
-    }
+    // Work out discount allocations per product (if any)
+    const { amount: discountAmount, allocations } = this.calculateDiscount(
+      baseProducts,
+      appliedCoupon
+    );
 
     // Calculate shipping
-    const shipping = this.calculateShipping(products, shippingType);
-    const shippingTotal = shipping.reduce((sum, ship) => sum + (Number(ship.price) || 0), 0);
+    const shipping = this.calculateShipping(baseProducts, shippingType);
+    const shippingTotal = roundCurrency(
+      shipping.reduce((sum, ship) => sum + (Number(ship.price) || 0), 0)
+    );
 
-    // Recompute unit prices from updated totals after discount so the gateway can charge adjusted amounts
-    products.forEach((p) => {
-      const q = p.quantity || 1;
-      const unit = q > 0 ? p.total / q : p.total;
-      const unitRounded = Math.max(0, Math.round(unit * 100) / 100);
-      const unitStr = unitRounded.toFixed(2);
-      // Provide both numeric and string forms, and an override flag for gateways that require it
-      p.price = unitStr;
-      p.amount = unitStr;
-      p.price_override = true;
-      // Also normalize total to string for consistency
-      p.total = (Math.max(0, Math.round((p.total || 0) * 100) / 100)).toFixed(2);
+    const adjustedProducts = baseProducts.map((product) => {
+      const discountForProduct = allocations.get(product.id) || 0;
+      const adjustedTotal = roundCurrency(
+        Math.max(0, product.total - discountForProduct)
+      );
+      const unitAdjusted =
+        product.quantity > 0
+          ? roundCurrency(adjustedTotal / product.quantity)
+          : adjustedTotal;
+      const unitDiscount =
+        product.quantity > 0
+          ? roundCurrency(discountForProduct / product.quantity)
+          : discountForProduct;
+
+      return {
+        id: product.id,
+        quantity: product.quantity,
+        total: formatCurrency(adjustedTotal),
+        price: formatCurrency(unitAdjusted),
+        amount: formatCurrency(unitAdjusted),
+        price_each: formatCurrency(unitAdjusted),
+        unit_price: formatCurrency(unitAdjusted),
+        price_override: 1,
+        override_product_price: 1,
+        taxable: product.taxable,
+        type: product.type,
+        shipping: product.shipping,
+        original_unit_price: formatCurrency(product.unitPrice),
+        original_total: formatCurrency(product.total),
+        discount_total: formatCurrency(discountForProduct),
+        discount_unit: formatCurrency(unitDiscount),
+      };
     });
 
-    // Calculate final totals
-    const grandTotal = Math.max(0, subTotal + shippingTotal - discountAmount);
+    const subTotalAfterDiscount = roundCurrency(
+      adjustedProducts.reduce(
+        (sum, product) => sum + Number(product.total || 0),
+        0
+      )
+    );
+
+    const grandTotal = roundCurrency(subTotalAfterDiscount + shippingTotal);
+
+    const discountFormatted = formatCurrency(discountAmount);
+    const subTotalBeforeFormatted = formatCurrency(subTotalBeforeDiscount);
+    const subTotalAfterFormatted = formatCurrency(subTotalAfterDiscount);
+    const grandTotalFormatted = formatCurrency(grandTotal);
 
     const offer = {
-      products,
+      products: adjustedProducts,
       shipping,
-      subTotal: Math.max(0, Math.round(subTotal * 100) / 100),
-      grandTotal: Math.max(0, Math.round(grandTotal * 100) / 100),
+      subTotal: subTotalBeforeFormatted,
+      subTotalBeforeDiscount: subTotalBeforeFormatted,
+      subTotalAfterDiscount: subTotalAfterFormatted,
+      netSubtotal: subTotalAfterFormatted,
+      grandTotal: grandTotalFormatted,
+      discountTotal: discountFormatted,
+      discount: discountFormatted,
       hasTaxes: false, // Not implemented in this version
       hasShipping: shipping.length > 0,
       currency_code: this.currency,
-      shipping_charge_recurring_orders: false
+      shipping_charge_recurring_orders: false,
     };
 
     const couponCode =
       appliedCoupon?.code || appliedCoupon?.coupon_code || null;
     if (couponCode) {
-      offer.coupon = { code: String(couponCode).trim() };
+      offer.coupon = {
+        code: String(couponCode).trim(),
+        discount_type: appliedCoupon?.discount_type,
+        discount_value: appliedCoupon?.discount_value,
+        amount: discountFormatted,
+        discount_total: discountFormatted,
+        applicable_products: appliedCoupon?.applicable_products,
+        recurring: appliedCoupon?.recurring || false,
+      };
+    }
+
+    if (discountAmount > 0) {
+      offer.discounts = adjustedProducts
+        .map((product) => ({
+          id: product.id,
+          amount: product.discount_total,
+        }))
+        .filter((entry) => Number(entry.amount) > 0);
     }
 
     return offer;
@@ -91,60 +153,83 @@ export class OfferEngine {
 
   /**
    * Calculate discount amount based on coupon type and product eligibility
-   * @param {Array} products - Product lines
+   * @param {Array} products - Product lines (with totals)
    * @param {Object} coupon - Coupon details
-   * @returns {number} Discount amount
+   * @returns {{ amount: number, allocations: Map<string, number> }} Discount summary
    */
   calculateDiscount(products, coupon) {
-    if (!coupon) return 0;
+    const allocations = new Map();
+    if (!coupon) return { amount: 0, allocations };
+
     const discountType = coupon.discount_type || coupon.type;
-    let discountValue = coupon.discount_value != null ? coupon.discount_value : coupon.value;
+    let discountValue =
+      coupon.discount_value != null ? coupon.discount_value : coupon.value;
     if (discountType === "percent" && discountValue > 1) {
       discountValue = discountValue / 100;
     }
     if (!discountType || !discountValue) {
-      return 0;
+      return { amount: 0, allocations };
     }
 
     // Determine eligible products based on coupon product selection
     let eligibleProducts = products;
     if (coupon.product_selection === "specific") {
-      const applicable = Array.isArray(coupon.applicable_products) ? coupon.applicable_products.map(String) : [];
-      eligibleProducts = applicable.length ? products.filter(product => applicable.includes(String(product.id))) : [];
+      const applicable = Array.isArray(coupon.applicable_products)
+        ? coupon.applicable_products.map(String)
+        : [];
+      eligibleProducts = applicable.length
+        ? products.filter((product) =>
+            applicable.includes(String(product.id))
+          )
+        : [];
     }
 
     if (eligibleProducts.length === 0) {
-      return 0;
+      return { amount: 0, allocations };
     }
 
-    const eligibleSubtotal = eligibleProducts.reduce((sum, product) => sum + product.total, 0);
+    const eligibleSubtotal = eligibleProducts.reduce(
+      (sum, product) => sum + product.total,
+      0
+    );
 
     let discountAmount = 0;
 
     if (discountType === "flat" || discountType === "fixed") {
-      // Flat discount - apply to eligible lines proportionally
       discountAmount = Math.min(Number(discountValue) || 0, eligibleSubtotal);
-      
-      // Apply discount proportionally to each eligible line
       if (discountAmount > 0 && eligibleSubtotal > 0) {
         const discountRatio = discountAmount / eligibleSubtotal;
-        eligibleProducts.forEach(product => {
-          const lineDiscount = product.total * discountRatio;
-          product.total = Math.max(0, product.total - lineDiscount);
+        eligibleProducts.forEach((product, index) => {
+          const lineDiscount = roundCurrency(product.total * discountRatio);
+          allocations.set(product.id, lineDiscount);
         });
+        const allocatedTotal = Array.from(allocations.values()).reduce(
+          (sum, value) => sum + value,
+          0
+        );
+        const roundingDiff = roundCurrency(discountAmount - allocatedTotal);
+        if (roundingDiff !== 0) {
+          const lastEligible = eligibleProducts[eligibleProducts.length - 1];
+          allocations.set(
+            lastEligible.id,
+            roundCurrency((allocations.get(lastEligible.id) || 0) + roundingDiff)
+          );
+        }
       }
     } else if (discountType === "percent") {
-      // Percentage discount
-      const discountRate = Math.min(Number(discountValue) || 0, 1); // Cap at 100%
-      discountAmount = eligibleSubtotal * discountRate;
-      
-      // Apply discount to each eligible line
-      eligibleProducts.forEach(product => {
-        product.total = Math.max(0, product.total * (1 - discountRate));
+      const discountRate = Math.min(Number(discountValue) || 0, 1);
+      eligibleProducts.forEach((product) => {
+        const lineDiscount = roundCurrency(product.total * discountRate);
+        if (lineDiscount > 0) {
+          allocations.set(product.id, lineDiscount);
+          discountAmount += lineDiscount;
+        }
       });
     }
 
-    return Math.max(0, discountAmount);
+    discountAmount = Math.min(discountAmount, eligibleSubtotal);
+
+    return { amount: roundCurrency(discountAmount), allocations };
   }
 
   /**

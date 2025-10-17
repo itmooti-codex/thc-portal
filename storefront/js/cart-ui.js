@@ -721,6 +721,27 @@ const dlog = (...args) => {
     return product;
   };
 
+  const resolveTaxableFlag = (product, fallback, card) => {
+    const candidates = [];
+    if (product && Object.prototype.hasOwnProperty.call(product, "taxable")) {
+      candidates.push(product.taxable);
+    }
+    if (fallback && Object.prototype.hasOwnProperty.call(fallback, "taxable")) {
+      candidates.push(fallback.taxable);
+    }
+    if (card) {
+      const data = card.dataset || {};
+      candidates.push(data.taxable);
+      candidates.push(data.productTaxable);
+      candidates.push(data.producttaxable);
+    }
+    for (const candidate of candidates) {
+      const parsed = parseBooleanish(candidate);
+      if (parsed === true || parsed === false) return parsed;
+    }
+    return undefined;
+  };
+
   const shouldManageDispenses = () => !!getDispenseService();
 
   const updateCartItemMetadata = async (id, patch) => {
@@ -1274,6 +1295,15 @@ const cancelScriptDispense = async (item) => {
           };
         }
       }
+      const resolvedTaxable = resolveTaxableFlag(
+        product,
+        fallbackCartItem || existingByDispense,
+        card
+      );
+      if (resolvedTaxable !== undefined && product) {
+        product.taxable = resolvedTaxable;
+      }
+
       if (product && !product.itemId && product.dispenseItemId) {
         product.itemId = product.dispenseItemId;
       }
@@ -1325,7 +1355,7 @@ const cancelScriptDispense = async (item) => {
             console.error("Failed to sync quantity for existing dispense", err);
           }
         }
-        await updateCartItemMetadata(targetId, {
+        const metadataPatch = {
           dispenseId: dispense.id,
           dispenseStatusId:
             dispense.statusId || ITEM_DISPENSE_STATUS.IN_CART,
@@ -1349,7 +1379,11 @@ const cancelScriptDispense = async (item) => {
             dispense.retailPrice !== undefined
               ? dispense.retailPrice
               : existingByDispense.price,
-        });
+        };
+        if (resolvedTaxable !== undefined) {
+          metadataPatch.taxable = resolvedTaxable;
+        }
+        await updateCartItemMetadata(targetId, metadataPatch);
         updateProductCardDataset(
           [targetId, existingByDispense.productId, normalizedItemId],
           {
@@ -1427,7 +1461,7 @@ const cancelScriptDispense = async (item) => {
           ? window.Cart.getItem(product.id)
           : null;
         const targetId = latest?.id || product.id;
-        await updateCartItemMetadata(targetId, {
+        const metadataPatchNew = {
           dispenseId: dispense.id,
           dispenseStatusId:
             dispense.statusId || ITEM_DISPENSE_STATUS.IN_CART,
@@ -1437,7 +1471,11 @@ const cancelScriptDispense = async (item) => {
           retailGst: product.retailGst,
           wholesalePrice: product.wholesalePrice,
           price: product.price,
-        });
+        };
+        if (resolvedTaxable !== undefined) {
+          metadataPatchNew.taxable = resolvedTaxable;
+        }
+        await updateCartItemMetadata(targetId, metadataPatchNew);
         updateProductCardDataset(
           [product.id, product.productId, product.dispenseItemId],
           {
@@ -1583,6 +1621,13 @@ const cancelScriptDispense = async (item) => {
           Number(product.wholesalePrice) !== Number(item.wholesalePrice)
         ) {
           patch.wholesalePrice = Number(product.wholesalePrice);
+        }
+        const cardTaxable = resolveTaxableFlag(product, item, card);
+        if (cardTaxable === true || cardTaxable === false) {
+          const currentTaxable = parseBooleanish(item.taxable);
+          if (currentTaxable !== cardTaxable) {
+            patch.taxable = cardTaxable;
+          }
         }
         if (Object.keys(patch).length) {
           await updateCartItemMetadata(item.id, patch);

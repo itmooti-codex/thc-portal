@@ -1176,17 +1176,41 @@ app.post("/api-thc/transaction/process", async (req, res) => {
         0,
         Math.round(
           (Number(offer.subTotal) ||
-            products.reduce((sum, p) => sum + p.total, 0)) * 100
+            products.reduce((sum, p) => sum + (Number(p.total) || 0), 0)) * 100
+        ) / 100
+      );
+      const subTotalBeforeDiscount = Math.max(
+        0,
+        Math.round(
+          (Number(offer.subTotalBeforeDiscount) || Number(offer.subTotal) ||
+            subTotal) * 100
         ) / 100
       );
       const shippingTotal = shipping.reduce(
         (sum, s) => sum + (Number(s.price) || 0),
         0
       );
+      const discountTotal = Math.max(
+        0,
+        Math.round(
+          (Number(offer.discountTotal) ||
+            Number(offer.discount) ||
+            (subTotalBeforeDiscount - subTotal)) * 100
+        ) / 100
+      );
+      const subTotalAfterDiscount = Math.max(
+        0,
+        Math.round(
+          (Number(offer.subTotalAfterDiscount) ||
+            Number(offer.netSubtotal) ||
+            (subTotalBeforeDiscount - discountTotal)) * 100
+        ) / 100
+      );
       const grandTotal = Math.max(
         0,
         Math.round(
-          (Number(offer.grandTotal) || subTotal + shippingTotal) * 100
+          (Number(offer.grandTotal) ||
+            subTotalAfterDiscount + shippingTotal) * 100
         ) / 100
       );
       return {
@@ -1194,7 +1218,12 @@ app.post("/api-thc/transaction/process", async (req, res) => {
         products,
         shipping,
         taxes,
-        subTotal: subTotal.toFixed(2),
+        subTotal: subTotalBeforeDiscount.toFixed(2),
+        subTotalBeforeDiscount: subTotalBeforeDiscount.toFixed(2),
+        subTotalAfterDiscount: subTotalAfterDiscount.toFixed(2),
+        netSubtotal: subTotalAfterDiscount.toFixed(2),
+        discountTotal: discountTotal.toFixed(2),
+        discount: discountTotal.toFixed(2),
         grandTotal: grandTotal.toFixed(2),
         hasTaxes: taxes.length > 0,
       };
