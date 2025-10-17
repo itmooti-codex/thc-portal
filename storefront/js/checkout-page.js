@@ -32,6 +32,34 @@
     return undefined;
   };
 
+  const sumRetailGstForItems = (items = []) =>
+    items.reduce((total, item) => {
+      if (!item) return total;
+      const taxable = parseBooleanish(item.taxable);
+      if (taxable === false) return total;
+      const unitTax = Number(item.retailGst);
+      const qty = Number(item.qty) || 0;
+      if (!Number.isFinite(unitTax) || unitTax <= 0 || qty <= 0) return total;
+      return total + unitTax * qty;
+    }, 0);
+
+  const roundCurrency = (value) =>
+    Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+
+  const normaliseMoneyValue = (value) => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+    if (typeof value === "string") {
+      const cleaned = value
+        .replace(/[^0-9.,-]/g, "")
+        .replace(/,/g, ".");
+      const parsed = parseFloat(cleaned);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
   const config = window.StorefrontConfig || {};
   const datasetRoot = document.querySelector(".get-url") || document.body;
   const dataset = (datasetRoot && datasetRoot.dataset) || {};
@@ -178,7 +206,18 @@
     const shippingLines = Array.isArray(offer.shipping) ? offer.shipping : [];
     const hasShipping = shippingLines.length > 0;
 
-    if (!hasTaxableProducts && !hasShipping) {
+    const cartState =
+      typeof Cart !== "undefined" &&
+      Cart &&
+      typeof Cart.getState === "function"
+        ? Cart.getState()
+        : null;
+    const itemGstTotal = cartState
+      ? sumRetailGstForItems(cartState.items || [])
+      : 0;
+    const hasItemGst = Number.isFinite(itemGstTotal) && itemGstTotal > 0;
+
+    if (!hasTaxableProducts && !hasShipping && !hasItemGst) {
       return offer;
     }
 
@@ -276,6 +315,64 @@
     taxes[existingIndex >= 0 ? existingIndex : taxes.length] = taxEntry;
     offer.taxes = taxes;
     offer.hasTaxes = true;
+    return offer;
+  };
+
+  const applyRetailGstToOffer = (offer, cartState = Cart.getState()) => {
+    if (!offer || typeof offer !== "object") return offer;
+    const items =
+      cartState && Array.isArray(cartState.items) ? cartState.items : [];
+    const gstTotalRaw = sumRetailGstForItems(items);
+    const gstTotal = roundCurrency(gstTotalRaw);
+    if (!Number.isFinite(gstTotal) || gstTotal <= 0) return offer;
+
+    const subTotalBase = normaliseMoneyValue(offer.subTotal);
+    if (Number.isFinite(subTotalBase)) {
+      offer.subTotal = roundCurrency(subTotalBase + gstTotal);
+    }
+
+    const grandTotalBase = normaliseMoneyValue(offer.grandTotal);
+    if (Number.isFinite(grandTotalBase)) {
+      offer.grandTotal = roundCurrency(grandTotalBase + gstTotal);
+    }
+
+    const taxesSource = Array.isArray(offer.taxes) ? offer.taxes : [];
+    const taxes = taxesSource
+      .map((entry) =>
+        entry && typeof entry === "object" ? { ...entry } : null
+      )
+      .filter(Boolean);
+    const idStr = String(shippingTaxId || "").trim();
+    if (idStr) {
+      const matchesId = (value) =>
+        value !== undefined && value !== null && String(value).trim() === idStr;
+      let index = taxes.findIndex((tax) => {
+        if (!tax) return false;
+        const candidates = [tax.id, tax.tax_id, tax.taxId, tax.form_id, tax.formId];
+        return candidates.some(matchesId);
+      });
+      if (index < 0) {
+        taxes.push({
+          id: idStr,
+          form_id: idStr,
+          taxTotal: 0,
+        });
+        index = taxes.length - 1;
+      }
+      const entry = { ...taxes[index] };
+      const currentTotal = normaliseMoneyValue(entry.taxTotal);
+      entry.taxTotal = roundCurrency(currentTotal + gstTotal);
+      entry.form_id =
+        entry.form_id ?? entry.formId ?? entry.tax_id ?? entry.taxId ?? idStr;
+      entry.id = entry.id ?? idStr;
+      taxes[index] = entry;
+      offer.taxes = taxes;
+      offer.hasTaxes = true;
+    } else if (taxes.length) {
+      offer.taxes = taxes;
+      offer.hasTaxes = true;
+    }
+
     return offer;
   };
 
@@ -1510,7 +1607,7 @@
         name: item.name,
         quantity: item.qty,
         price: item.price,
-        taxable: true, // Default to taxable
+        taxable: false,
         requiresShipping: true, // Default to requiring shipping
       }));
 
@@ -1533,6 +1630,7 @@
       );
 
       await ensureOfferTaxEntry(offer);
+      applyRetailGstToOffer(offer, cartState);
 
       checkoutState.currentOffer = offer;
       debugLog("updateOffer success", offer);
@@ -1550,7 +1648,10 @@
       const cartState = Cart.getState();
       const totals = calcTotals(cartState);
       checkoutState.currentOffer = {
-        subTotal: totals.subtotal,
+        subTotal:
+          totals.subtotalWithItemTax !== undefined
+            ? totals.subtotalWithItemTax
+            : totals.subtotal,
         grandTotal: totals.total,
         hasShipping: totals.shipping > 0,
         currency_code: "AUD",
@@ -1577,15 +1678,11 @@
       0
     );
 
-  const getCartItemTax = (cartState = Cart.getState()) =>
-    cartState.items.reduce((total, item) => {
-      const taxable = parseBooleanish(item.taxable);
-      if (taxable === false) return total;
-      const unitTax = Number(item.retailGst);
-      const qty = Number(item.qty) || 0;
-      if (!Number.isFinite(unitTax) || unitTax <= 0 || qty <= 0) return total;
-      return total + unitTax * qty;
-    }, 0);
+  const getCartItemTax = (cartState = Cart.getState()) => {
+    const items =
+      cartState && Array.isArray(cartState.items) ? cartState.items : [];
+    return sumRetailGstForItems(items);
+  };
 
   const normaliseCouponType = (input) => {
     const raw = String(input || "").toLowerCase();
@@ -1603,20 +1700,6 @@
     )
       return "fixed";
     return raw;
-  };
-
-  const normaliseMoneyValue = (value) => {
-    if (value === null || value === undefined) return 0;
-    if (typeof value === "number") return Number.isFinite(value) ? value : 0;
-    if (typeof value === "string") {
-      const cleaned = value
-        .replace(/[^0-9.,-]/g, "")
-        .replace(/,/g, ".");
-      const parsed = parseFloat(cleaned);
-      return Number.isFinite(parsed) ? parsed : 0;
-    }
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
   };
 
   const normaliseCouponValue = normaliseMoneyValue;
@@ -1746,12 +1829,10 @@
     return ensureNoneOption(baseList);
   };
 
-  const roundCurrency = (value) =>
-    Math.round((Number(value) + Number.EPSILON) * 100) / 100;
-
   const calcTotals = (cartState = Cart.getState()) => {
     let subtotal = roundCurrency(getCartSubtotal(cartState));
     const itemTax = roundCurrency(getCartItemTax(cartState));
+    const subtotalWithItemTax = roundCurrency(subtotal + itemTax);
     let baseShipping = 0;
     const selected = getSelectedShippingType();
     if (selected && String(selected.id) !== NONE_SHIPPING_ID) {
@@ -1867,6 +1948,7 @@
 
     return {
       subtotal,
+      subtotalWithItemTax,
       shipping,
       rawShipping,
       shippingConfirmed,
@@ -1943,8 +2025,12 @@
     const totals = calcTotals(cartState);
     checkoutState.financials = totals;
 
+    const subtotalDisplay =
+      totals.subtotalWithItemTax !== undefined
+        ? totals.subtotalWithItemTax
+        : totals.subtotal;
     if (summaryEls.subtotal)
-      summaryEls.subtotal.textContent = money(totals.subtotal);
+      summaryEls.subtotal.textContent = money(subtotalDisplay);
 
     let shippingLabel = "Select shipping";
     const shippingHasCharge =
@@ -2977,15 +3063,13 @@
     // Build final offer with current shipping selection
     const cartState = Cart.getState();
     const cartItems = cartState.items.map((item) => {
-      const taxable = parseBooleanish(item.taxable);
       const requiresShipping = parseBooleanish(item.requiresShipping);
       return {
         productId: item.productId || item.id, // Use payment ID for backend
         name: item.name,
         quantity: item.qty,
         price: item.price,
-        taxable:
-          taxable === undefined || taxable === null ? true : taxable === true,
+        taxable: false,
         requiresShipping:
           requiresShipping === undefined || requiresShipping === null
             ? true
@@ -2999,6 +3083,7 @@
       shippingType
     );
     await ensureOfferTaxEntry(finalOffer);
+    applyRetailGstToOffer(finalOffer, cartState);
     const appliedCouponCode =
       checkoutState.couponMeta?.code ||
       checkoutState.couponMeta?.coupon_code ||
