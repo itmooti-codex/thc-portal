@@ -343,6 +343,7 @@
 
   const applyRetailGstToOffer = (offer, cartState = Cart.getState()) => {
     if (!offer || typeof offer !== "object") return offer;
+    if (offer.retailGstIncluded) return offer;
     const items =
       cartState && Array.isArray(cartState.items) ? cartState.items : [];
     const gstTotalRaw = sumRetailGstForItems(items);
@@ -1879,8 +1880,11 @@
   };
 
   const calcTotals = (cartState = Cart.getState(), { ignoreOffer = false } = {}) => {
-    let subtotal = roundCurrency(getCartSubtotal(cartState));
     const items = Array.isArray(cartState?.items) ? cartState.items : [];
+    const taxRate = getEffectiveTaxRate();
+
+    const subtotal = roundCurrency(getCartSubtotal(cartState));
+
     let baseShipping = 0;
     const selected = getSelectedShippingType();
     if (selected && String(selected.id) !== NONE_SHIPPING_ID) {
@@ -1900,131 +1904,6 @@
       checkoutState.shippingMethod === NONE_SHIPPING_ID ||
       (checkoutState.shippingMethod && hasSingleOption);
     let shipping = shippingConfirmed ? rawShipping : 0;
-    let discount = 0;
-    let percentDiscountRate = null;
-    let usedOffer = false;
-    const meta = interpretCouponMeta(checkoutState.couponMeta);
-    if (meta) {
-      debugLog("calcTotals: applying coupon meta", {
-        meta,
-        subtotal,
-        rawShipping,
-        shippingConfirmed,
-      });
-      if (meta.type === "percent") {
-        percentDiscountRate = meta.percent;
-        discount = subtotal * meta.percent;
-      } else if (meta.type === "fixed") {
-        discount = meta.rawValue;
-      }
-    }
-
-    let offerSubTotal = null;
-    let offerGrandTotal = null;
-    const offer = checkoutState.currentOffer;
-    if (offer && !ignoreOffer) {
-      offerSubTotal = resolveOfferMoney(
-        offer,
-        "subTotalBeforeDiscount",
-        "preDiscountSubtotal",
-        "preDiscountTotal",
-        "subTotal"
-      );
-      const offerNetSubtotal = resolveOfferMoney(
-        offer,
-        "subTotalAfterDiscount",
-        "netSubtotal",
-        "netSubTotal",
-        "discountedSubtotal",
-        "discountedSubTotal"
-      );
-      offerGrandTotal = resolveOfferMoney(offer, "grandTotal");
-      const offerDiscountTotal = resolveOfferMoney(
-        offer,
-        "discountTotal",
-        "discount",
-        "couponAmount",
-        "couponTotal",
-        "totalDiscount"
-      );
-      const offerShippingTotal = (() => {
-        if (Array.isArray(offer.shipping)) {
-          const sum = offer.shipping.reduce(
-            (acc, entry) => acc + normaliseMoneyValue(entry?.price),
-            0
-          );
-          if (Number.isFinite(sum)) return sum;
-        }
-        return resolveOfferMoney(
-          offer,
-          "shippingTotal",
-          "shipping_amount",
-          "shippingTotalAmount"
-        );
-      })();
-
-      const haveShippingOverride = Number.isFinite(offerShippingTotal);
-      const haveSubtotalOverride = Number.isFinite(offerSubTotal);
-      const haveNetSubtotal = Number.isFinite(offerNetSubtotal);
-      const haveDiscountValue = Number.isFinite(offerDiscountTotal);
-      const haveGrandTotal = Number.isFinite(offerGrandTotal);
-
-      let resolvedDiscount = haveDiscountValue
-        ? roundCurrency(Math.max(0, offerDiscountTotal))
-        : null;
-
-      if (!resolvedDiscount) {
-        if (haveSubtotalOverride && haveNetSubtotal) {
-          resolvedDiscount = roundCurrency(
-            Math.max(0, offerSubTotal - offerNetSubtotal)
-          );
-        } else if (
-          haveSubtotalOverride &&
-          haveShippingOverride &&
-          haveGrandTotal
-        ) {
-          resolvedDiscount = roundCurrency(
-            Math.max(0, offerSubTotal + offerShippingTotal - offerGrandTotal)
-          );
-        }
-      }
-
-      if (haveSubtotalOverride) {
-        subtotal = roundCurrency(offerSubTotal);
-      }
-
-      if (haveShippingOverride) {
-        rawShipping = roundCurrency(offerShippingTotal);
-        shippingConfirmed = true;
-        shipping = rawShipping;
-      }
-
-      if (resolvedDiscount !== null && resolvedDiscount !== undefined) {
-        discount = roundCurrency(Math.max(resolvedDiscount, discount));
-      }
-
-      if (
-        haveSubtotalOverride ||
-        haveShippingOverride ||
-        (resolvedDiscount !== null && resolvedDiscount !== undefined) ||
-        haveGrandTotal
-      ) {
-        usedOffer = true;
-        debugLog("calcTotals: using offer overrides", {
-          offerSubTotal: Number.isFinite(offerSubTotal)
-            ? roundCurrency(offerSubTotal)
-            : null,
-          offerNetSubtotal: Number.isFinite(offerNetSubtotal)
-            ? roundCurrency(offerNetSubtotal)
-            : null,
-          offerGrandTotal,
-          offerShippingTotal: haveShippingOverride
-            ? roundCurrency(offerShippingTotal)
-            : null,
-          offerDiscount: resolvedDiscount,
-        });
-      }
-    }
 
     let taxableSubtotalRaw = 0;
     items.forEach((item) => {
@@ -2037,8 +1916,11 @@
     });
 
     const taxableSubtotalRounded = roundCurrency(taxableSubtotalRaw);
-    const taxRate = getEffectiveTaxRate();
-    const itemTaxBase = roundCurrency(taxableSubtotalRounded * taxRate);
+    let itemTaxBase = roundCurrency(sumRetailGstForItems(items));
+    if (itemTaxBase <= 0 && taxableSubtotalRounded > 0) {
+      itemTaxBase = roundCurrency(taxableSubtotalRounded * taxRate);
+    }
+
     const subtotalWithItemTax = roundCurrency(subtotal + itemTaxBase);
 
     const shippingTax =
@@ -2047,9 +1929,7 @@
         : 0;
     const shippingWithGst = roundCurrency(shipping + shippingTax);
 
-    const totalBeforeFees = roundCurrency(
-      subtotalWithItemTax + shippingWithGst
-    );
+    const totalBeforeFees = roundCurrency(subtotalWithItemTax + shippingWithGst);
 
     const cardFeeBase = Math.max(0, totalBeforeFees);
     const cardFeeExGst =
@@ -2058,140 +1938,49 @@
       cardFeeExGst > 0 ? roundCurrency(cardFeeExGst * taxRate) : 0;
     const cardFeeTotal = roundCurrency(cardFeeExGst + cardFeeGst);
 
-    const totalBeforeDiscount = roundCurrency(
-      totalBeforeFees + cardFeeTotal
-    );
-
-    if (percentDiscountRate !== null) {
-      discount = totalBeforeDiscount * percentDiscountRate;
+    let discount = 0;
+    const meta = interpretCouponMeta(checkoutState.couponMeta);
+    if (meta) {
+      debugLog("calcTotals: applying coupon meta", {
+        meta,
+        subtotal,
+        rawShipping,
+        shippingConfirmed,
+      });
+      if (meta.type === "percent") {
+        discount = totalBeforeFees * meta.percent;
+      } else if (meta.type === "fixed") {
+        discount = meta.rawValue;
+      }
     }
 
-    discount = roundCurrency(
-      Math.max(0, Math.min(discount, totalBeforeDiscount))
-    );
-
-    const distributeDiscount = (amount, components) => {
-      const allocations = {};
-      const eligible = components.filter(
-        (component) => component && component.amount > 0
+    const offer = checkoutState.currentOffer;
+    if (!meta && offer && !ignoreOffer) {
+      const offerDiscount = resolveOfferMoney(
+        offer,
+        "discountTotal",
+        "discount",
+        "couponAmount",
+        "couponTotal",
+        "totalDiscount"
       );
-      if (!eligible.length || amount <= 0) {
-        components.forEach((component) => {
-          if (component?.key) allocations[component.key] = 0;
-        });
-        return allocations;
+      if (Number.isFinite(offerDiscount)) {
+        discount = roundCurrency(Math.max(discount, offerDiscount));
       }
-      const totalPool = eligible.reduce(
-        (sum, component) => sum + component.amount,
-        0
-      );
-      let remaining = amount;
-      eligible.forEach((component, index) => {
-        const isLast = index === eligible.length - 1;
-        let share = 0;
-        if (isLast) {
-          share = remaining;
-        } else if (totalPool > 0) {
-          share = roundCurrency(
-            Math.min(
-              component.amount,
-              (component.amount / totalPool) * amount
-            )
-          );
-        }
-        share = Math.max(
-          0,
-          Math.min(share, component.amount, remaining)
-        );
-        allocations[component.key] = share;
-        remaining = roundCurrency(remaining - share);
-      });
-      eligible.forEach((component) => {
-        if (!(component.key in allocations)) allocations[component.key] = 0;
-      });
-      components.forEach((component) => {
-        if (component && !(component.key in allocations)) {
-          allocations[component.key] = 0;
-        }
-      });
-      return allocations;
-    };
+    }
 
-    const discountAllocations = distributeDiscount(discount, [
-      { key: "items", amount: subtotalWithItemTax },
-      { key: "shipping", amount: shippingWithGst },
-      { key: "cardFee", amount: cardFeeTotal },
-    ]);
-
-    const allocOrZero = (key) => discountAllocations[key] || 0;
-
-    const total = roundCurrency(totalBeforeDiscount - discount);
-
-    const ratioOrZero = (numerator, denominator) => {
-      if (!Number.isFinite(numerator) || numerator <= 0) return 0;
-      if (!Number.isFinite(denominator) || denominator <= 0) return 0;
-      return numerator / denominator;
-    };
-
-    const taxableItemsIncl = roundCurrency(
-      taxableSubtotalRounded + itemTaxBase
-    );
-    const taxableItemDiscountIncl = roundCurrency(
-      allocOrZero("items") * ratioOrZero(taxableItemsIncl, subtotalWithItemTax)
-    );
-    const taxableItemDiscountTax = roundCurrency(
-      taxableItemsIncl > 0
-        ? Math.min(
-            itemTaxBase,
-            taxableItemDiscountIncl * ratioOrZero(itemTaxBase, taxableItemsIncl)
-          )
-        : 0
-    );
-    const discountTaxableShare = roundCurrency(
-      Math.max(
-        0,
-        Math.min(
-          taxableSubtotalRounded,
-          taxableItemDiscountIncl - taxableItemDiscountTax
-        )
-      )
-    );
-    const taxableAfterDiscount = roundCurrency(
-      Math.max(taxableSubtotalRounded - discountTaxableShare, 0)
+    const totalBeforeDiscount = roundCurrency(totalBeforeFees + cardFeeTotal);
+    discount = roundCurrency(
+      Math.max(0, Math.min(discount, totalBeforeDiscount, totalBeforeFees))
     );
 
-    const itemTaxAfterDiscount = roundCurrency(
-      Math.max(itemTaxBase - taxableItemDiscountTax, 0)
-    );
-    const shippingDiscountTax = roundCurrency(
-      shippingWithGst > 0
-        ? Math.min(
-            shippingTax,
-            allocOrZero("shipping") * ratioOrZero(shippingTax, shippingWithGst)
-          )
-        : 0
-    );
-    const cardFeeDiscountTax = roundCurrency(
-      cardFeeTotal > 0
-        ? Math.min(
-            cardFeeGst,
-            allocOrZero("cardFee") * ratioOrZero(cardFeeGst, cardFeeTotal)
-          )
-        : 0
-    );
-
-    const taxTotal = roundCurrency(
-      Math.max(
-        0,
-        itemTaxAfterDiscount +
-          Math.max(shippingTax - shippingDiscountTax, 0) +
-          Math.max(cardFeeGst - cardFeeDiscountTax, 0)
-      )
-    );
+    const total = roundCurrency(Math.max(totalBeforeDiscount - discount, 0));
 
     const subtotalAfterDiscount = roundCurrency(
-      Math.max(subtotalWithItemTax - allocOrZero("items"), 0)
+      Math.max(subtotalWithItemTax - Math.min(discount, subtotalWithItemTax), 0)
     );
+
+    const taxTotal = roundCurrency(itemTaxBase + shippingTax + cardFeeGst);
 
     debugLog("calcTotals result", {
       subtotal,
@@ -2202,23 +1991,19 @@
       shippingTax,
       shippingWithGst,
       discount,
-      discountTaxableShare,
       taxableSubtotal: taxableSubtotalRounded,
-      taxableAfterDiscount,
       itemTaxBeforeDiscount: itemTaxBase,
-      itemTax: itemTaxAfterDiscount,
+      itemTax: itemTaxBase,
+      taxRate,
+      taxTotal,
       cardFeeBase,
       cardFeeExGst,
       cardFeeGst,
       cardFeeTotal,
-      taxRate,
+      cardFeeTaxRate: taxRate,
       totalBeforeDiscount,
-      taxTotal,
       totalBeforeFees,
       total,
-      offerSubTotal,
-      offerGrandTotal,
-      usedOffer,
     });
 
     return {
@@ -2231,11 +2016,11 @@
       shippingTax,
       shippingWithGst,
       discount,
-      discountTaxableShare,
+      discountTaxableShare: 0,
       taxableSubtotal: taxableSubtotalRounded,
-      taxableAfterDiscount,
+      taxableAfterDiscount: taxableSubtotalRounded,
       itemTaxBeforeDiscount: itemTaxBase,
-      itemTax: itemTaxAfterDiscount,
+      itemTax: itemTaxBase,
       taxRate,
       taxTotal,
       cardFeeBase,
@@ -2246,9 +2031,9 @@
       totalBeforeDiscount,
       totalBeforeFees,
       total,
-      usedOffer,
-      offerSubTotal: offerSubTotal !== null ? roundCurrency(offerSubTotal) : null,
-      offerGrandTotal: offerGrandTotal !== null ? roundCurrency(offerGrandTotal) : null,
+      usedOffer: Boolean(offer && !ignoreOffer),
+      offerSubTotal: null,
+      offerGrandTotal: null,
     };
   };
 
@@ -2415,7 +2200,7 @@
       const shippingAmount = Number.isFinite(totals.shippingWithGst)
         ? totals.shippingWithGst
         : totals.shipping;
-      shippingLabel = `Shipping (incl GST) ${formatMoney(shippingAmount)}`;
+      shippingLabel = formatMoney(shippingAmount);
     } else if (totals.shippingConfirmed) {
       shippingLabel = "Free";
     }

@@ -1758,7 +1758,7 @@ const cancelScriptDispense = async (item) => {
         const amount = Number.isFinite(totals.shippingWithGst)
           ? totals.shippingWithGst
           : totals.shipping;
-        return `Shipping (incl GST) ${formatMoney(amount)}`;
+        return formatMoney(amount);
       })();
       if (shippingEl)
         shippingEl.textContent = shippingLabel || fallbackShippingText;

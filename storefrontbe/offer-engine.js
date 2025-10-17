@@ -3,14 +3,32 @@
  * Implements the pricing logic as specified in the requirements
  */
 
+const CARD_FEE_PRODUCT_ID = "31";
+const CARD_FEE_RATE = 0.018;
+const DEFAULT_TAX_RATE = 0.1;
+
 const roundCurrency = (value) =>
   Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 
 const formatCurrency = (value) => roundCurrency(value).toFixed(2);
 
+const normaliseCouponType = (input) => {
+  const raw = String(input || "").toLowerCase();
+  if (raw === "shipping" || raw === "free_shipping") return "shipping";
+  if (["percent", "percentage", "percent_off"].includes(raw)) return "percent";
+  if (["flat", "fixed", "amount", "dollar", "value"].includes(raw)) return "fixed";
+  return raw;
+};
+
+const toNumber = (value, fallback = 0) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+};
+
 export class OfferEngine {
-  constructor() {
+  constructor({ taxRate = DEFAULT_TAX_RATE } = {}) {
     this.currency = "AUD";
+    this.taxRate = Number.isFinite(taxRate) ? taxRate : DEFAULT_TAX_RATE;
   }
 
   /**
@@ -22,108 +40,220 @@ export class OfferEngine {
    * @returns {Object} Complete offer object
    */
   buildOffer({ cartItems = [], appliedCoupon = null, shippingType = null }) {
-    // Validate inputs
     if (!Array.isArray(cartItems) || cartItems.length === 0) {
       throw new Error("Cart items are required");
     }
 
-    // Calculate line subtotals
-    const baseProducts = cartItems.map((item) => {
-      const unitPrice = Math.max(0, Number(item.price) || 0);
-      const quantity = Math.max(1, Number(item.quantity) || 1);
-      const total = roundCurrency(unitPrice * quantity);
+    const taxRate = Number.isFinite(this.taxRate) ? this.taxRate : DEFAULT_TAX_RATE;
+
+    const preparedItems = cartItems.map((item) => {
+      const quantityRaw = item.quantity ?? item.qty ?? 1;
+      const quantity = Math.max(1, Math.round(toNumber(quantityRaw, 1)));
+      const unitPrice = Math.max(0, toNumber(item.price, 0));
+      const id = item.productId ?? item.id ?? item.product_id ?? null;
+      const taxable = item.taxable !== undefined ? Boolean(item.taxable) : true;
+      const requiresShipping =
+        item.requiresShipping !== undefined
+          ? Boolean(item.requiresShipping)
+          : true;
+      const totalEx = roundCurrency(unitPrice * quantity);
+      const taxAmount = taxable ? roundCurrency(totalEx * taxRate) : 0;
+      const totalIncl = roundCurrency(totalEx + taxAmount);
 
       return {
-        id: item.productId,
+        id,
         quantity,
         unitPrice,
-        total,
-        taxable: Boolean(item.taxable),
-        type: "one_time",
-        shipping: Boolean(item.requiresShipping),
+        totalEx,
+        totalIncl,
+        taxable,
+        requiresShipping,
+        taxAmount,
+        isCardFee: id != null && String(id) === CARD_FEE_PRODUCT_ID,
       };
     });
 
-    // Calculate subtotal before discounts
-    const subTotalBeforeDiscount = roundCurrency(
-      baseProducts.reduce((sum, product) => sum + product.total, 0)
+    const productItems = preparedItems.filter((item) => !item.isCardFee);
+    const cardFeeItems = preparedItems.filter((item) => item.isCardFee);
+
+    const productSubtotalEx = roundCurrency(
+      productItems.reduce((sum, item) => sum + item.totalEx, 0)
+    );
+    const productTaxTotal = roundCurrency(
+      productItems.reduce((sum, item) => sum + item.taxAmount, 0)
+    );
+    const productSubtotalIncl = roundCurrency(
+      productSubtotalEx + productTaxTotal
     );
 
-    // Work out discount allocations per product (if any)
-    const { amount: discountAmount, allocations } = this.calculateDiscount(
-      baseProducts,
-      appliedCoupon
+    let cardFeeEx = roundCurrency(
+      cardFeeItems.reduce((sum, item) => sum + item.totalEx, 0)
+    );
+    let cardFeeTax = roundCurrency(
+      cardFeeItems.reduce((sum, item) => sum + item.taxAmount, 0)
     );
 
-    // Calculate shipping
-    const shipping = this.calculateShipping(baseProducts, shippingType);
-    const shippingTotal = roundCurrency(
-      shipping.reduce((sum, ship) => sum + (Number(ship.price) || 0), 0)
+    const requiresShipping = preparedItems.some((item) => item.requiresShipping);
+    let shippingEx = 0;
+    let shippingName = shippingType?.name ?? "Shipping";
+    let shippingId =
+      shippingType?.id ??
+      shippingType?.shipping_type_id ??
+      shippingType?.code ??
+      null;
+    if (requiresShipping && shippingType && shippingType.price != null) {
+      shippingEx = Math.max(0, toNumber(shippingType.price, 0));
+    }
+    let shippingTax = shippingEx > 0 ? roundCurrency(shippingEx * taxRate) : 0;
+    let shippingIncl = roundCurrency(shippingEx + shippingTax);
+
+    const couponType = normaliseCouponType(
+      appliedCoupon?.discount_type || appliedCoupon?.type
+    );
+    const couponValue = toNumber(
+      appliedCoupon?.discount_value ?? appliedCoupon?.value,
+      0
     );
 
-    const adjustedProducts = baseProducts.map((product) => {
-      const discountForProduct = allocations.get(product.id) || 0;
-      const adjustedTotal = roundCurrency(
-        Math.max(0, product.total - discountForProduct)
-      );
-      const unitAdjusted =
-        product.quantity > 0
-          ? roundCurrency(adjustedTotal / product.quantity)
-          : adjustedTotal;
-      const unitDiscount =
-        product.quantity > 0
-          ? roundCurrency(discountForProduct / product.quantity)
-          : discountForProduct;
+    if (couponType === "shipping") {
+      shippingEx = 0;
+      shippingTax = 0;
+      shippingIncl = 0;
+    }
 
-      return {
-        id: product.id,
-        quantity: product.quantity,
-        total: formatCurrency(adjustedTotal),
-        price: formatCurrency(unitAdjusted),
-        amount: formatCurrency(unitAdjusted),
-        price_each: formatCurrency(unitAdjusted),
-        unit_price: formatCurrency(unitAdjusted),
-        price_override: 1,
-        override_product_price: 1,
-        taxable: product.taxable,
-        type: product.type,
-        shipping: product.shipping,
-        original_unit_price: formatCurrency(product.unitPrice),
-        original_total: formatCurrency(product.total),
-        discount_total: formatCurrency(discountForProduct),
-        discount_unit: formatCurrency(unitDiscount),
-      };
-    });
+    const totalBeforeFees = roundCurrency(productSubtotalIncl + shippingIncl);
 
-    const subTotalAfterDiscount = roundCurrency(
-      adjustedProducts.reduce(
-        (sum, product) => sum + Number(product.total || 0),
+    if (cardFeeEx <= 0 && cardFeeTax <= 0) {
+      cardFeeEx =
+        totalBeforeFees > 0 ? roundCurrency(totalBeforeFees * CARD_FEE_RATE) : 0;
+      cardFeeTax =
+        cardFeeEx > 0 ? roundCurrency(cardFeeEx * taxRate) : 0;
+    }
+    const cardFeeIncl = roundCurrency(cardFeeEx + cardFeeTax);
+
+    const totalBeforeDiscount = roundCurrency(totalBeforeFees + cardFeeIncl);
+
+    const eligibleProductIds = new Set(
+      Array.isArray(appliedCoupon?.applicable_products)
+        ? appliedCoupon.applicable_products.map(String)
+        : []
+    );
+    const hasSpecificProducts =
+      appliedCoupon?.product_selection === "specific" &&
+      eligibleProductIds.size > 0;
+
+    const eligibleLines = hasSpecificProducts
+      ? productItems.filter((item) => eligibleProductIds.has(String(item.id)))
+      : productItems;
+
+    const eligibleBaseIncl = roundCurrency(
+      eligibleLines.reduce((sum, item) => sum + item.totalIncl, 0)
+    );
+
+    const percentValue =
+      couponType === "percent"
+        ? couponValue > 1
+          ? couponValue / 100
+          : couponValue
+        : 0;
+
+    let discountAmount = 0;
+    if (percentValue > 0) {
+      const base = hasSpecificProducts ? eligibleBaseIncl : totalBeforeFees;
+      discountAmount = roundCurrency(base * percentValue);
+    } else if (couponType === "fixed" && couponValue > 0) {
+      const base = hasSpecificProducts ? eligibleBaseIncl : totalBeforeFees;
+      discountAmount = roundCurrency(Math.min(couponValue, base));
+    }
+
+    if (!hasSpecificProducts) {
+      discountAmount = Math.min(discountAmount, totalBeforeFees);
+    }
+
+    discountAmount = Math.min(discountAmount, totalBeforeDiscount);
+    const total = roundCurrency(Math.max(totalBeforeDiscount - discountAmount, 0));
+
+    const productSubtotalAfterDiscount = roundCurrency(
+      Math.max(
+        productSubtotalIncl - Math.min(discountAmount, productSubtotalIncl),
         0
       )
     );
 
-    const grandTotal = roundCurrency(subTotalAfterDiscount + shippingTotal);
+    const taxTotal = roundCurrency(productTaxTotal + shippingTax + cardFeeTax);
 
-    const discountFormatted = formatCurrency(discountAmount);
-    const subTotalBeforeFormatted = formatCurrency(subTotalBeforeDiscount);
-    const subTotalAfterFormatted = formatCurrency(subTotalAfterDiscount);
-    const grandTotalFormatted = formatCurrency(grandTotal);
+    const formattedProducts = preparedItems.map((item) => ({
+      id: item.id,
+      quantity: item.quantity,
+      total: formatCurrency(item.totalEx),
+      price: formatCurrency(item.unitPrice),
+      amount: formatCurrency(item.unitPrice),
+      price_each: formatCurrency(item.unitPrice),
+      unit_price: formatCurrency(item.unitPrice),
+      price_override: 1,
+      override_product_price: 1,
+      taxable: item.taxable,
+      type: "one_time",
+      shipping: item.requiresShipping,
+      original_unit_price: formatCurrency(item.unitPrice),
+      original_total: formatCurrency(item.totalEx),
+      discount_total: formatCurrency(0),
+      discount_unit: formatCurrency(0),
+    }));
+
+    const shippingEntries = [];
+    if (requiresShipping && shippingType) {
+      shippingEntries.push({
+        id: shippingId,
+        name: shippingName,
+        price: formatCurrency(shippingEx),
+        total: formatCurrency(shippingIncl),
+      });
+    }
 
     const offer = {
-      products: adjustedProducts,
-      shipping,
-      subTotal: subTotalBeforeFormatted,
-      subTotalBeforeDiscount: subTotalBeforeFormatted,
-      subTotalAfterDiscount: subTotalAfterFormatted,
-      netSubtotal: subTotalAfterFormatted,
-      grandTotal: grandTotalFormatted,
-      discountTotal: discountFormatted,
-      discount: discountFormatted,
-      hasTaxes: false, // Not implemented in this version
-      hasShipping: shipping.length > 0,
+      products: formattedProducts,
+      shipping: shippingEntries,
+      subTotal: formatCurrency(productSubtotalIncl),
+      subTotalBeforeDiscount: formatCurrency(productSubtotalIncl),
+      subTotalAfterDiscount: formatCurrency(productSubtotalAfterDiscount),
+      netSubtotal: formatCurrency(productSubtotalAfterDiscount),
+      grandTotal: formatCurrency(total),
+      discountTotal: formatCurrency(discountAmount),
+      discount: formatCurrency(discountAmount),
+      hasTaxes: taxTotal > 0,
+      hasShipping: shippingEntries.length > 0,
       currency_code: this.currency,
       shipping_charge_recurring_orders: false,
+      retailGstIncluded: true,
+      cardFee: {
+        base: formatCurrency(totalBeforeFees),
+        exGst: formatCurrency(cardFeeEx),
+        gst: formatCurrency(cardFeeTax),
+        total: formatCurrency(cardFeeIncl),
+      },
+      totals: {
+        productSubtotalEx: formatCurrency(productSubtotalEx),
+        productSubtotalIncl: formatCurrency(productSubtotalIncl),
+        shippingEx: formatCurrency(shippingEx),
+        shippingIncl: formatCurrency(shippingIncl),
+        cardFeeEx: formatCurrency(cardFeeEx),
+        cardFeeIncl: formatCurrency(cardFeeIncl),
+        taxTotal: formatCurrency(taxTotal),
+      },
     };
+
+    if (taxTotal > 0) {
+      offer.taxes = [
+        {
+          id: "gst",
+          name: "GST",
+          rate: taxRate,
+          taxTotal: formatCurrency(taxTotal),
+          taxShipping: shippingIncl > 0,
+        },
+      ];
+    }
 
     const couponCode =
       appliedCoupon?.code || appliedCoupon?.coupon_code || null;
@@ -132,125 +262,14 @@ export class OfferEngine {
         code: String(couponCode).trim(),
         discount_type: appliedCoupon?.discount_type,
         discount_value: appliedCoupon?.discount_value,
-        amount: discountFormatted,
-        discount_total: discountFormatted,
+        amount: formatCurrency(discountAmount),
+        discount_total: formatCurrency(discountAmount),
         applicable_products: appliedCoupon?.applicable_products,
         recurring: appliedCoupon?.recurring || false,
       };
     }
 
-    if (discountAmount > 0) {
-      offer.discounts = adjustedProducts
-        .map((product) => ({
-          id: product.id,
-          amount: product.discount_total,
-        }))
-        .filter((entry) => Number(entry.amount) > 0);
-    }
-
     return offer;
-  }
-
-  /**
-   * Calculate discount amount based on coupon type and product eligibility
-   * @param {Array} products - Product lines (with totals)
-   * @param {Object} coupon - Coupon details
-   * @returns {{ amount: number, allocations: Map<string, number> }} Discount summary
-   */
-  calculateDiscount(products, coupon) {
-    const allocations = new Map();
-    if (!coupon) return { amount: 0, allocations };
-
-    const discountType = coupon.discount_type || coupon.type;
-    let discountValue =
-      coupon.discount_value != null ? coupon.discount_value : coupon.value;
-    if (discountType === "percent" && discountValue > 1) {
-      discountValue = discountValue / 100;
-    }
-    if (!discountType || !discountValue) {
-      return { amount: 0, allocations };
-    }
-
-    // Determine eligible products based on coupon product selection
-    let eligibleProducts = products;
-    if (coupon.product_selection === "specific") {
-      const applicable = Array.isArray(coupon.applicable_products)
-        ? coupon.applicable_products.map(String)
-        : [];
-      eligibleProducts = applicable.length
-        ? products.filter((product) =>
-            applicable.includes(String(product.id))
-          )
-        : [];
-    }
-
-    if (eligibleProducts.length === 0) {
-      return { amount: 0, allocations };
-    }
-
-    const eligibleSubtotal = eligibleProducts.reduce(
-      (sum, product) => sum + product.total,
-      0
-    );
-
-    let discountAmount = 0;
-
-    if (discountType === "flat" || discountType === "fixed") {
-      discountAmount = Math.min(Number(discountValue) || 0, eligibleSubtotal);
-      if (discountAmount > 0 && eligibleSubtotal > 0) {
-        const discountRatio = discountAmount / eligibleSubtotal;
-        eligibleProducts.forEach((product, index) => {
-          const lineDiscount = roundCurrency(product.total * discountRatio);
-          allocations.set(product.id, lineDiscount);
-        });
-        const allocatedTotal = Array.from(allocations.values()).reduce(
-          (sum, value) => sum + value,
-          0
-        );
-        const roundingDiff = roundCurrency(discountAmount - allocatedTotal);
-        if (roundingDiff !== 0) {
-          const lastEligible = eligibleProducts[eligibleProducts.length - 1];
-          allocations.set(
-            lastEligible.id,
-            roundCurrency((allocations.get(lastEligible.id) || 0) + roundingDiff)
-          );
-        }
-      }
-    } else if (discountType === "percent") {
-      const discountRate = Math.min(Number(discountValue) || 0, 1);
-      eligibleProducts.forEach((product) => {
-        const lineDiscount = roundCurrency(product.total * discountRate);
-        if (lineDiscount > 0) {
-          allocations.set(product.id, lineDiscount);
-          discountAmount += lineDiscount;
-        }
-      });
-    }
-
-    discountAmount = Math.min(discountAmount, eligibleSubtotal);
-
-    return { amount: roundCurrency(discountAmount), allocations };
-  }
-
-  /**
-   * Calculate shipping based on products and selected shipping type
-   * @param {Array} products - Product lines
-   * @param {Object} shippingType - Selected shipping type
-   * @returns {Array} Shipping options array
-   */
-  calculateShipping(products, shippingType) {
-    // Check if any products require shipping
-    const requiresShipping = products.some(product => product.shipping);
-    
-    if (!requiresShipping || !shippingType) {
-      return [];
-    }
-
-    return [{
-      id: shippingType.id,
-      name: shippingType.name,
-      price: Number(shippingType.price) || 0
-    }];
   }
 
   /**
@@ -263,14 +282,7 @@ export class OfferEngine {
       return false;
     }
 
-    return cart.items.every(item => 
-      item.productId && 
-      typeof item.name === 'string' && 
-      typeof item.quantity === 'number' && 
-      typeof item.price === 'number' &&
-      typeof item.taxable === 'boolean' &&
-      typeof item.requiresShipping === 'boolean'
-    );
+    return cart.items.every((item) => item && (item.productId || item.id));
   }
 
   /**
@@ -283,7 +295,7 @@ export class OfferEngine {
       return [];
     }
 
-    return cart.items.map(item => item.productId);
+    return cart.items.map((item) => item.productId || item.id);
   }
 }
 
