@@ -1750,6 +1750,7 @@
         "price",
         "dollar",
         "value",
+        "flat",
       ].includes(raw)
     )
       return "fixed";
