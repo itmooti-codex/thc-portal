@@ -27,7 +27,10 @@
     </section>
 
     <footer class="border-t p-4 space-y-4">
-      <div class="flex justify-between text-sm"><span>Subtotal (incl GST)</span><span class="cart-subtotal">$0.00</span></div>
+      <div class="space-y-1">
+        <div class="flex justify-between text-sm"><span>Subtotal (incl GST)</span><span class="cart-subtotal">$0.00</span></div>
+        <div class="cart-subtotal-breakdown mt-1 space-y-1 text-xs text-gray-500 hidden"></div>
+      </div>
       <div class="flex justify-between text-sm"><span>Shipping (incl GST)</span><span class="cart-shipping font-medium">Select shipping</span></div>
       <div class="flex justify-between text-sm"><span>Credit card fee (incl GST)</span><span class="cart-processing font-medium">$0.00</span></div>
       <div class="flex justify-between text-sm"><span>GST Only Total</span><span class="cart-gst font-medium">$0.00</span></div>
@@ -186,6 +189,106 @@ const dlog = (...args) => {
     return `This transaction includes a credit card processing fee of 1.8% of the order amount (products and shipping). Credit card fee = ${formatMoney(exGst)} + ${gstLabel} ${formatMoney(gstAmount)} = ${formatMoney(total)}.`;
   };
 
+  const renderSubtotalBreakdown = (container, breakdown) => {
+    if (!container) return;
+    container.innerHTML = "";
+    const items = Array.isArray(breakdown)
+      ? breakdown.filter((item) => item && Number.isFinite(item.lineTotal))
+      : [];
+    if (!items.length) {
+      container.classList.add("hidden");
+      return;
+    }
+    container.classList.remove("hidden");
+    items.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "flex items-start justify-between gap-2";
+      const label = document.createElement("span");
+      label.className = "truncate";
+      const quantity = Number(item.quantity) || 0;
+      const qtyLabel = quantity > 1 ? ` ×${quantity}` : "";
+      const taxAmount = Number.isFinite(item.taxAmount)
+        ? item.taxAmount
+        : Number.isFinite(item.lineTax)
+        ? item.lineTax
+        : 0;
+      const name = item.name ? String(item.name).trim() : "Item";
+      label.textContent = `${name}${qtyLabel} (Incl ${formatMoney(
+        taxAmount
+      )} GST)`;
+      const value = document.createElement("span");
+      value.className = "font-medium text-gray-900";
+      const lineTotal = Number.isFinite(item.lineTotal)
+        ? item.lineTotal
+        : Number.isFinite(item.totalIncl)
+        ? item.totalIncl
+        : Number.isFinite(item.lineTotalIncl)
+        ? item.lineTotalIncl
+        : 0;
+      value.textContent = formatMoney(lineTotal);
+      row.appendChild(label);
+      row.appendChild(value);
+      container.appendChild(row);
+    });
+  };
+
+  const buildFallbackItemBreakdown = (items = [], taxRate, targetTax) => {
+    const rate = Number.isFinite(taxRate) ? taxRate : getCartTaxRate();
+    const breakdown = [];
+    items.forEach((item, index) => {
+      if (!item) return;
+      const price = Number(item.price) || 0;
+      const qty = Number(item.qty) || 0;
+      if (price <= 0 || qty <= 0) return;
+      const lineEx = roundCurrency(price * qty);
+      if (lineEx <= 0) return;
+      const taxable = parseBooleanish(item.taxable) === true;
+      const entry = {
+        id: item.id,
+        name: item.name,
+        quantity: qty,
+        taxable,
+        lineEx,
+        lineDiscount: 0,
+        lineExAfterDiscount: lineEx,
+        taxAmount: taxable ? roundCurrency(lineEx * rate) : 0,
+        index,
+      };
+      entry.lineTotal = roundCurrency(entry.lineExAfterDiscount + entry.taxAmount);
+      breakdown.push(entry);
+    });
+    const taxableEntries = breakdown.filter((entry) => entry.taxable);
+    const target = Number.isFinite(targetTax)
+      ? roundCurrency(targetTax)
+      : roundCurrency(
+          taxableEntries.reduce((sum, entry) => sum + entry.lineExAfterDiscount, 0) *
+            rate
+        );
+    const current = roundCurrency(
+      taxableEntries.reduce((sum, entry) => sum + entry.taxAmount, 0)
+    );
+    const diff = roundCurrency(target - current);
+    if (diff !== 0 && taxableEntries.length) {
+      const last = taxableEntries[taxableEntries.length - 1];
+      last.taxAmount = roundCurrency(Math.max(last.taxAmount + diff, 0));
+      last.lineTotal = roundCurrency(last.lineExAfterDiscount + last.taxAmount);
+    }
+    return breakdown
+      .map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        quantity: entry.quantity,
+        taxable: entry.taxable,
+        lineEx: entry.lineEx,
+        lineDiscount: entry.lineDiscount,
+        lineExAfterDiscount: entry.lineExAfterDiscount,
+        taxAmount: entry.taxAmount,
+        lineTotal: entry.lineTotal,
+        index: entry.index,
+      }))
+      .sort((a, b) => a.index - b.index);
+  };
+
   const computeDrawerFallbackTotals = (state) => {
     const items = Array.isArray(state?.items) ? state.items : [];
     const subtotal = roundCurrency(
@@ -217,6 +320,7 @@ const dlog = (...args) => {
       subtotalWithItemTax + shippingWithGst + cardFeeTotal
     );
     const total = totalBeforeDiscount;
+    const itemBreakdown = buildFallbackItemBreakdown(items, taxRate, itemTaxBase);
     return {
       subtotal,
       subtotalWithItemTax,
@@ -230,6 +334,7 @@ const dlog = (...args) => {
       discountDisplay: "-$0.00",
       processingNote: formatCardFeeNote(cardFeeExGst, cardFeeGst, taxRate),
       cardFeeTaxRate: taxRate,
+      itemBreakdown,
     };
   };
 
@@ -478,6 +583,7 @@ const dlog = (...args) => {
   let drawerEl;
   let itemsContainer;
   let subtotalEl;
+  let subtotalBreakdownEl;
   let shippingEl;
   let processingEl;
   let gstEl;
@@ -500,6 +606,7 @@ const dlog = (...args) => {
 
     itemsContainer = document.querySelector(".cart-items");
     subtotalEl = document.querySelector(".cart-subtotal");
+    subtotalBreakdownEl = document.querySelector(".cart-subtotal-breakdown");
     shippingEl = document.querySelector(".cart-shipping");
     processingEl = document.querySelector(".cart-processing");
     gstEl = document.querySelector(".cart-gst");
@@ -1740,6 +1847,7 @@ const cancelScriptDispense = async (item) => {
       });
     }
     const summaryContext = window.__checkoutSummary;
+    let subtotalBreakdownData = [];
     if (summaryContext && summaryContext.totals) {
       const { totals, shippingLabel, discountDisplay, processingNote } = summaryContext;
       debugLog("renderCart using checkoutSummary", {
@@ -1752,6 +1860,9 @@ const cancelScriptDispense = async (item) => {
           ? totals.subtotalWithItemTax
           : totals.subtotal;
       if (subtotalEl) subtotalEl.textContent = formatMoney(subtotalDisplay);
+      subtotalBreakdownData = Array.isArray(totals.itemBreakdown)
+        ? totals.itemBreakdown
+        : [];
       const fallbackShippingText = (() => {
         if (!totals.shippingConfirmed) return "Select shipping";
         if (totals.shipping <= 0) return "Free";
@@ -1789,6 +1900,9 @@ const cancelScriptDispense = async (item) => {
           ? fallback.subtotalWithItemTax
           : fallback.subtotal;
       if (subtotalEl) subtotalEl.textContent = formatMoney(fallbackSubtotal);
+      subtotalBreakdownData = Array.isArray(fallback.itemBreakdown)
+        ? fallback.itemBreakdown
+        : [];
       if (shippingEl) shippingEl.textContent = fallback.shippingLabel;
       if (processingEl)
         processingEl.textContent = formatMoney(fallback.cardFeeTotal);
@@ -1805,6 +1919,8 @@ const cancelScriptDispense = async (item) => {
         }
       }
     }
+    if (!state.items.length) subtotalBreakdownData = [];
+    renderSubtotalBreakdown(subtotalBreakdownEl, subtotalBreakdownData);
     updateCheckoutButton(state);
     dlog(
       "renderCart: items",
