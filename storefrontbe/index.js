@@ -841,7 +841,7 @@ app.post("/api-thc/scripts/:scriptId/dispense", async (req, res) => {
       return res.status(400).json({ error: "scriptId is required" });
     }
 
-    const body = new URLSearchParams({ id: scriptId, f3163: "1" }).toString();
+    const body = new URLSearchParams({ id: scriptId, f3186: "1" }).toString();
     await ontraportRequest("/Scripts", {
       method: "PUT",
       headers: {
