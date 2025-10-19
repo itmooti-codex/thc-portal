@@ -1572,12 +1572,56 @@
   const summaryEls = {
     list: $use(".checkout-summary"),
     subtotal: $use(".summary-subtotal"),
+    subtotalBreakdown: $use(".summary-subtotal-breakdown"),
     shipping: $use(".summary-shipping"),
     processing: $use(".summary-processing"),
     processingNote: $use(".summary-processing-note"),
     gst: $use(".summary-gst"),
     discount: $use(".summary-discount"),
     total: $use(".summary-total"),
+  };
+
+  const renderSubtotalBreakdown = (container, breakdown) => {
+    if (!container) return;
+    container.innerHTML = "";
+    const items = Array.isArray(breakdown)
+      ? breakdown.filter((item) => item && Number.isFinite(item.lineTotal))
+      : [];
+    if (!items.length) {
+      container.classList.add("hidden");
+      return;
+    }
+    container.classList.remove("hidden");
+    items.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "flex items-start justify-between gap-2";
+      const label = document.createElement("span");
+      label.className = "truncate";
+      const quantity = Number(item.quantity) || 0;
+      const qtyLabel = quantity > 1 ? ` ×${quantity}` : "";
+      const taxAmount = Number.isFinite(item.taxAmount)
+        ? item.taxAmount
+        : Number.isFinite(item.lineTax)
+        ? item.lineTax
+        : 0;
+      const name = item.name ? String(item.name).trim() : "Item";
+      label.textContent = `${name}${qtyLabel} (Incl ${formatMoney(
+        taxAmount
+      )} GST)`;
+      const value = document.createElement("span");
+      value.className = "font-medium text-gray-900";
+      const lineTotal = Number.isFinite(item.lineTotal)
+        ? item.lineTotal
+        : Number.isFinite(item.totalIncl)
+        ? item.totalIncl
+        : Number.isFinite(item.lineTotalIncl)
+        ? item.lineTotalIncl
+        : 0;
+      value.textContent = formatMoney(lineTotal);
+      row.appendChild(label);
+      row.appendChild(value);
+      container.appendChild(row);
+    });
   };
 
   const checkoutProductsSection = document.querySelector(
@@ -1983,6 +2027,159 @@
       shippingConfirmed && shippingExAfterDiscount > 0
         ? roundCurrency(shippingExAfterDiscount * taxRate)
         : 0;
+    const allocateDiscountAcrossItems = (entries, totalDiscount) => {
+      const allocations = entries.map(() => 0);
+      if (!entries.length || !Number.isFinite(totalDiscount) || totalDiscount <= 0)
+        return allocations;
+      let remainingDiscount = roundCurrency(totalDiscount);
+      let remainingBase = roundCurrency(
+        entries.reduce((sum, entry) => sum + entry.lineEx, 0)
+      );
+      entries.forEach((entry, index) => {
+        if (remainingDiscount <= 0) return;
+        const base = roundCurrency(entry.lineEx);
+        if (base <= 0) return;
+        const isLast = index === entries.length - 1;
+        let shareAmount = 0;
+        if (remainingBase > 0) {
+          shareAmount = roundCurrency((remainingDiscount * base) / remainingBase);
+        }
+        shareAmount = Math.min(shareAmount, base, remainingDiscount);
+        if (isLast) {
+          shareAmount = Math.min(roundCurrency(remainingDiscount), base);
+        }
+        allocations[index] = shareAmount;
+        remainingDiscount = roundCurrency(remainingDiscount - shareAmount);
+        remainingBase = roundCurrency(Math.max(remainingBase - base, 0));
+      });
+      return allocations;
+    };
+
+    const adjustGroupExTotals = (entries, targetTotal) => {
+      if (!entries.length || !Number.isFinite(targetTotal)) return;
+      const target = roundCurrency(targetTotal);
+      let computed = roundCurrency(
+        entries.reduce((sum, entry) => sum + (entry.lineExAfterDiscount || 0), 0)
+      );
+      const diff = roundCurrency(target - computed);
+      if (diff === 0) return;
+      const last = entries[entries.length - 1];
+      if (!last) return;
+      last.lineExAfterDiscount = roundCurrency(
+        Math.max((last.lineExAfterDiscount || 0) + diff, 0)
+      );
+    };
+
+    const adjustGroupTaxTotals = (entries, targetTax) => {
+      if (!entries.length || !Number.isFinite(targetTax)) return;
+      const target = roundCurrency(targetTax);
+      let computed = roundCurrency(
+        entries.reduce((sum, entry) => sum + (entry.lineTax || 0), 0)
+      );
+      const diff = roundCurrency(target - computed);
+      if (diff === 0) return;
+      const last = entries[entries.length - 1];
+      if (!last) return;
+      last.lineTax = roundCurrency(Math.max((last.lineTax || 0) + diff, 0));
+    };
+
+    const breakdownSeed = [];
+    items.forEach((item, index) => {
+      if (!item) return;
+      const price = Number(item.price) || 0;
+      const qty = Number(item.qty) || 0;
+      if (price <= 0 || qty <= 0) return;
+      const lineEx = roundCurrency(price * qty);
+      if (lineEx <= 0) return;
+      const taxable = parseBooleanish(item.taxable) === true;
+      breakdownSeed.push({
+        id: item.id,
+        name: item.name,
+        quantity: qty,
+        lineEx,
+        taxable,
+        index,
+      });
+    });
+
+    const taxableEntries = breakdownSeed.filter((entry) => entry.taxable);
+    const nonTaxableEntries = breakdownSeed.filter((entry) => !entry.taxable);
+
+    const taxableAllocations = allocateDiscountAcrossItems(
+      taxableEntries,
+      discountOnTaxableEx
+    );
+    taxableEntries.forEach((entry, idx) => {
+      const discountShare = Math.min(
+        Number(taxableAllocations[idx]) || 0,
+        entry.lineEx
+      );
+      entry.lineDiscount = roundCurrency(discountShare);
+      entry.lineExAfterDiscount = roundCurrency(
+        Math.max(entry.lineEx - entry.lineDiscount, 0)
+      );
+    });
+
+    const nonTaxableAllocations = allocateDiscountAcrossItems(
+      nonTaxableEntries,
+      discountOnNonTaxableEx
+    );
+    nonTaxableEntries.forEach((entry, idx) => {
+      const discountShare = Math.min(
+        Number(nonTaxableAllocations[idx]) || 0,
+        entry.lineEx
+      );
+      entry.lineDiscount = roundCurrency(discountShare);
+      entry.lineExAfterDiscount = roundCurrency(
+        Math.max(entry.lineEx - entry.lineDiscount, 0)
+      );
+    });
+
+    adjustGroupExTotals(taxableEntries, taxableExAfterDiscount);
+    adjustGroupExTotals(nonTaxableEntries, nonTaxableExAfterDiscount);
+
+    taxableEntries.forEach((entry) => {
+      entry.lineDiscount = roundCurrency(
+        Math.max(entry.lineEx - (entry.lineExAfterDiscount || 0), 0)
+      );
+      entry.lineTax = roundCurrency(
+        (entry.lineExAfterDiscount || 0) * taxRate
+      );
+      entry.lineTotal = roundCurrency(
+        (entry.lineExAfterDiscount || 0) + (entry.lineTax || 0)
+      );
+    });
+
+    adjustGroupTaxTotals(taxableEntries, itemTaxBase);
+
+    taxableEntries.forEach((entry) => {
+      entry.lineTotal = roundCurrency(
+        (entry.lineExAfterDiscount || 0) + (entry.lineTax || 0)
+      );
+    });
+
+    nonTaxableEntries.forEach((entry) => {
+      entry.lineDiscount = roundCurrency(
+        Math.max(entry.lineEx - (entry.lineExAfterDiscount || 0), 0)
+      );
+      entry.lineTax = 0;
+      entry.lineTotal = roundCurrency(entry.lineExAfterDiscount || 0);
+    });
+
+    const itemBreakdown = breakdownSeed
+      .map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        quantity: entry.quantity,
+        taxable: entry.taxable,
+        lineEx: entry.lineEx,
+        lineDiscount: entry.lineDiscount || 0,
+        lineExAfterDiscount: entry.lineExAfterDiscount ?? entry.lineEx,
+        taxAmount: entry.lineTax || 0,
+        lineTotal: entry.lineTotal ?? entry.lineEx,
+        index: entry.index,
+      }))
+      .sort((a, b) => a.index - b.index);
     const subtotalAfterDiscountEx = roundCurrency(
       taxableExAfterDiscount + nonTaxableExAfterDiscount
     );
@@ -2043,12 +2240,14 @@
       shippingWithGst,
       discount,
       discountTaxableShare: discountOnTaxableEx,
+      discountNonTaxableShare: discountOnNonTaxableEx,
       taxableSubtotal: taxableSubtotalRounded,
       taxableAfterDiscount: taxableExAfterDiscount,
       itemTaxBeforeDiscount: null,
       itemTax: itemTaxBase,
       taxRate,
       taxTotal,
+      itemBreakdown,
       cardFeeBase,
       cardFeeExGst,
       cardFeeGst,
@@ -2163,6 +2362,7 @@
     if (!cartState.items.length) {
       summaryEls.list.innerHTML =
         '<div class="p-4 text-sm text-gray-500">Your cart is empty.</div>';
+      renderSubtotalBreakdown(summaryEls.subtotalBreakdown, []);
     } else {
       cartState.items.forEach((item) => {
         const row = document.createElement("div");
@@ -2225,6 +2425,7 @@
         : totals.subtotal;
     if (summaryEls.subtotal)
       summaryEls.subtotal.textContent = formatMoney(subtotalDisplay);
+    renderSubtotalBreakdown(summaryEls.subtotalBreakdown, totals.itemBreakdown);
 
     let shippingLabel = "Select shipping";
     const shippingHasCharge =

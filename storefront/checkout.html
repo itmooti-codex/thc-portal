@@ -441,9 +441,12 @@
                             <p data-cart-empty-notice class="mt-2 text-sm text-red-600 hidden">Add at least one item to continue checkout.</p>
                             <div class="checkout-summary mt-4 divide-y border-t border-gray-200"></div>
                             <dl class="mt-4 space-y-2 text-sm text-gray-600">
-                                <div class="flex items-center justify-between">
-                                    <dt>Subtotal (incl GST)</dt>
-                                    <dd class="summary-subtotal font-medium text-gray-900">$0.00</dd>
+                                <div class="flex flex-col gap-1">
+                                    <div class="flex items-center justify-between">
+                                        <dt>Subtotal (incl GST)</dt>
+                                        <dd class="summary-subtotal font-medium text-gray-900">$0.00</dd>
+                                    </div>
+                                    <div class="summary-subtotal-breakdown mt-1 space-y-1 text-xs text-gray-500 hidden"></div>
                                 </div>
                                 <div class="flex items-center justify-between">
                                     <dt>Shipping (incl GST)</dt>
