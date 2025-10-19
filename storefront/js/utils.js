@@ -148,6 +148,7 @@
         panel.setAttribute("aria-hidden", String(!isActive));
         panel.hidden = !isActive;
         panel.classList.toggle("hidden", !isActive);
+        panel.classList.toggle("catalog-panel-hidden", !isActive);
         if (isActive) {
           panel.removeAttribute("tabindex");
           panel.style.removeProperty("display");
