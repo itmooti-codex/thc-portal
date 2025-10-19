@@ -118,17 +118,26 @@
       if (canDispense) {
         if (viewBtn) viewBtn.classList.remove("hidden");
         if (addBtn) addBtn.classList.remove("hidden");
+        reasonEl.replaceChildren();
         reasonEl.textContent = "";
         reasonEl.style.display = "none";
       } else {
         if (viewBtn) viewBtn.classList.add("hidden");
         if (addBtn) addBtn.classList.add("hidden");
-        const combinedReason = [reason, nextDispenseDate]
-          .filter((part) => !!part)
-          .join(" - ")
-          .trim();
-        reasonEl.textContent =
-          combinedReason || "This script is not ready to dispense.";
+        const fallbackReason = "This script is not ready to dispense.";
+
+        const primaryLine = document.createElement("span");
+        primaryLine.textContent = (reason || fallbackReason).trim();
+
+        reasonEl.replaceChildren(primaryLine);
+
+        if (nextDispenseDate) {
+          reasonEl.appendChild(document.createElement("br"));
+          const nextLine = document.createElement("span");
+          nextLine.textContent = `Next Dispense Date - ${nextDispenseDate}`.trim();
+          reasonEl.appendChild(nextLine);
+        }
+
         reasonEl.style.display = "";
         const productId = card.dataset?.productId?.trim();
         if (productId && window.Cart?.getItem) {
