@@ -1375,14 +1375,22 @@
       statusId === resolveDispenseStatusId("PAID")
         ? resolveShippingCompanyId()
         : null;
+    const paidStatusId = resolveDispenseStatusId("PAID");
     const contactId = getContactId();
     for (const item of cartState.items) {
       if (!item) continue;
       if (isScriptCartItem(item)) {
         const enriched = await ensureScriptDispenseMetadata(item);
-        if (!enriched.dispenseId) continue;
         try {
-          await service.updateDispenseStatus(enriched.dispenseId, statusId);
+          const scriptId = enriched.scriptId || item.scriptId;
+          const shouldMarkScript =
+            paidStatusId &&
+            statusId === paidStatusId &&
+            scriptId &&
+            typeof service.markScriptDispensed === "function";
+          if (shouldMarkScript) {
+            await service.markScriptDispensed(scriptId);
+          }
           if (typeof Cart.updateItemMetadata === "function") {
             await Cart.updateItemMetadata(enriched.id || item.id, {
               dispenseStatusId: statusId,

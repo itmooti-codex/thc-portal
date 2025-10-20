@@ -134,7 +134,7 @@
     return latest;
   };
 
-  const ensureScriptDispense = async (scriptId, options = {}) => {
+  const markScriptDispensed = async (scriptId) => {
     if (!scriptId) {
       throw new Error("scriptId is required");
     }
@@ -142,10 +142,16 @@
     if (!id) {
       throw new Error("scriptId is required");
     }
-    await apiCall(`/api-thc/scripts/${encodeURIComponent(id)}/dispense`, {
-      method: "POST",
+    const result = await apiCall(
+      `/api-thc/scripts/${encodeURIComponent(id)}/dispense`,
+      {
+        method: "POST",
+      }
+    ).catch((err) => {
+      console.error("[DispenseService] markScriptDispensed failed", err);
+      throw err;
     });
-    return await waitForScriptDispense(id, options);
+    return result?.script || result || null;
   };
 
   const updateDispenseStatus = async (dispenseId, status) => {
@@ -229,7 +235,7 @@
     getApiBase,
     apiCall,
     fetchScript,
-    ensureScriptDispense,
+    markScriptDispensed,
     waitForScriptDispense,
     updateDispenseStatus,
     createItemDispense,
