@@ -51,6 +51,39 @@
   const actionRow = $use(".product-action-row");
   const addToCartBtn = $use(".add-to-cart-btn");
   const warningEl = $use(".product-cant-dispense");
+  const qtyWrapper = qtyInput ? qtyInput.closest(".input-wrapper") : null;
+
+  const setAriaDisabled = (el, disabled) => {
+    if (!el) return;
+    if (disabled) {
+      el.setAttribute("aria-disabled", "true");
+    } else {
+      el.removeAttribute("aria-disabled");
+    }
+  };
+
+  const setQuantityControlsEnabled = (enabled) => {
+    const disabled = !enabled;
+    [decBtn, incBtn].forEach((btn) => {
+      if (!btn) return;
+      btn.disabled = disabled;
+      btn.classList.toggle("opacity-50", disabled);
+      btn.classList.toggle("cursor-not-allowed", disabled);
+      setAriaDisabled(btn, disabled);
+    });
+
+    if (qtyInput) {
+      qtyInput.disabled = disabled;
+      qtyInput.classList.toggle("text-gray-400", disabled);
+      qtyInput.classList.toggle("cursor-not-allowed", disabled);
+      setAriaDisabled(qtyInput, disabled);
+    }
+
+    if (qtyWrapper) {
+      qtyWrapper.classList.toggle("opacity-60", disabled);
+      qtyWrapper.classList.toggle("cursor-not-allowed", disabled);
+    }
+  };
 
   const hideElement = (el) => {
     if (!el) return;
@@ -80,12 +113,20 @@
       params.get("nextDispenseDate")
     );
 
-    const isScriptFlag = parseBooleanish(scriptParam) === true;
-    const hasScriptParam = scriptParam != null && String(scriptParam).trim() !== "";
-    const isScript = isScriptFlag || hasScriptParam;
+    const normalizedScriptParam =
+      scriptParam == null ? "" : String(scriptParam).trim();
+    const scriptFlag = parseBooleanish(scriptParam);
+    const isScript =
+      scriptFlag === true ||
+      (scriptFlag === null && normalizedScriptParam.length > 0);
     const cantDispenseFlag = parseBooleanish(cantDispenseParam) === true;
     const hasRestrictionInfo = Boolean(reasonParam || nextDispenseParam);
     const blockDispense = isScript && (cantDispenseFlag || hasRestrictionInfo);
+
+    setQuantityControlsEnabled(!isScript);
+    if (isScript) {
+      clampAndSyncInput("1");
+    }
 
     if (!blockDispense) {
       showElement(actionRow);
