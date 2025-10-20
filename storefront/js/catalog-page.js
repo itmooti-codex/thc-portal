@@ -40,6 +40,185 @@
     return normalized;
   };
 
+  const BOOLEAN_TRUE_TOKENS = ["true", "1", "yes", "y", "on"];
+  const BOOLEAN_FALSE_TOKENS = ["false", "0", "no", "n", "off", "blocked", "denied"];
+
+  const parseBooleanish = (value) => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") {
+      if (Number.isNaN(value)) return null;
+      return value !== 0;
+    }
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (!normalized) return null;
+      if (BOOLEAN_TRUE_TOKENS.includes(normalized)) return true;
+      if (BOOLEAN_FALSE_TOKENS.includes(normalized)) return false;
+      return null;
+    }
+    return null;
+  };
+
+  const tryParseJson = (value) => {
+    if (value == null) return null;
+    if (typeof value === "object") return value;
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (!/^[[{]/.test(trimmed)) return null;
+    try {
+      return JSON.parse(trimmed);
+    } catch (err) {
+      console.warn("Failed to parse dispense metadata", err);
+      return null;
+    }
+  };
+
+  const walkPayload = (payload, visitor) => {
+    const queue = [];
+    if (Array.isArray(payload)) queue.push(...payload);
+    else if (payload !== null && payload !== undefined) queue.push(payload);
+    const seen = new Set();
+    while (queue.length) {
+      const current = queue.shift();
+      if (current === null || current === undefined) continue;
+      if (typeof current === "object") {
+        if (seen.has(current)) continue;
+        seen.add(current);
+        if (visitor(current) === true) return;
+        Object.values(current).forEach((value) => {
+          if (value && typeof value === "object") queue.push(value);
+          else if (value !== null && value !== undefined) queue.push(value);
+        });
+      } else {
+        if (visitor(current) === true) return;
+      }
+    }
+  };
+
+  const extractBooleanFromPayload = (payload, keys) => {
+    let result = null;
+    if (!payload) return result;
+    walkPayload(payload, (node) => {
+      if (typeof node === "object" && !Array.isArray(node)) {
+        for (const key of keys) {
+          if (key in node) {
+            const bool = parseBooleanish(node[key]);
+            if (bool !== null) {
+              result = bool;
+              return true;
+            }
+          }
+        }
+      } else {
+        const bool = parseBooleanish(node);
+        if (bool !== null) {
+          result = bool;
+          return true;
+        }
+      }
+      return false;
+    });
+    return result;
+  };
+
+  const extractTextFromPayload = (payload, keys) => {
+    let result = "";
+    if (!payload) return result;
+    walkPayload(payload, (node) => {
+      if (typeof node === "object" && !Array.isArray(node)) {
+        for (const key of keys) {
+          if (key in node) {
+            const value = node[key];
+            if (typeof value === "string") {
+              const sanitized = sanitizeRestrictionValue(value);
+              if (sanitized) {
+                result = sanitized;
+                return true;
+              }
+            } else if (value !== null && value !== undefined) {
+              const nested = extractTextFromPayload(value, keys);
+              if (nested) {
+                result = nested;
+                return true;
+              }
+            }
+          }
+        }
+      } else if (typeof node === "string") {
+        const sanitized = sanitizeRestrictionValue(node);
+        if (sanitized) {
+          result = sanitized;
+          return true;
+        }
+      }
+      return false;
+    });
+    return result;
+  };
+
+  const parseCanDispense = (value, payloadHint) => {
+    const payload = payloadHint ?? tryParseJson(value);
+    const payloadBoolean = extractBooleanFromPayload(payload, [
+      "canDispense",
+      "can_dispense",
+      "dispensable",
+      "isDispensable",
+      "allowed",
+      "available",
+      "value",
+      "status",
+    ]);
+    if (payloadBoolean !== null) return payloadBoolean;
+    const fallback = parseBooleanish(value);
+    if (fallback !== null) return fallback;
+    return true;
+  };
+
+  const resolveScriptRestriction = (card) => {
+    if (!card) {
+      return {
+        canDispense: true,
+        reason: "",
+        nextDispenseDate: "",
+      };
+    }
+
+    const dataset = card.dataset || {};
+    const payload = tryParseJson(dataset?.canDispense);
+
+    const reasonFromDataset =
+      sanitizeRestrictionValue(dataset?.cantDispenseReason) ||
+      sanitizeRestrictionValue(dataset?.reasonCantDispense);
+    const reasonFromPayload = extractTextFromPayload(payload, [
+      "cantDispenseReason",
+      "reasonCantDispense",
+      "reason",
+      "message",
+      "note",
+      "details",
+    ]);
+
+    const nextDispenseFromDataset = sanitizeRestrictionValue(
+      dataset?.nextDispenseDate
+    );
+    const nextDispenseFromPayload = extractTextFromPayload(payload, [
+      "nextDispenseDate",
+      "nextDispense",
+      "availableFrom",
+      "availableAt",
+    ]);
+
+    const canDispense = parseCanDispense(dataset?.canDispense, payload);
+
+    return {
+      canDispense,
+      reason: reasonFromDataset || reasonFromPayload,
+      nextDispenseDate: nextDispenseFromDataset || nextDispenseFromPayload,
+    };
+  };
+
   const filterProducts = (query) => {
     const q = (query || "").trim().toLowerCase();
     let matches = 0;
@@ -97,14 +276,6 @@
     return msg;
   };
 
-  const parseCanDispense = (value) => {
-    if (value == null) return true;
-    const normalized = String(value).trim().toLowerCase();
-    if (!normalized) return true;
-    if (["false", "0", "no", "n"].includes(normalized)) return false;
-    return true;
-  };
-
   const applyDispensableLayout = (actions, viewBtn) => {
     if (!actions) return;
     actions.classList.add("flex");
@@ -124,13 +295,8 @@
     const scriptsGrid = document.getElementById("catalog-scripts-grid");
     if (!scriptsGrid) return;
     scriptsGrid.querySelectorAll(".product-card").forEach((card) => {
-      const canDispense = parseCanDispense(card.dataset?.canDispense);
-      const reason =
-        sanitizeRestrictionValue(card.dataset?.cantDispenseReason) ||
-        sanitizeRestrictionValue(card.dataset?.reasonCantDispense);
-      const nextDispenseDate = sanitizeRestrictionValue(
-        card.dataset?.nextDispenseDate
-      );
+      const { canDispense, reason, nextDispenseDate } =
+        resolveScriptRestriction(card);
 
       const viewBtn = card.querySelector(".view-product-btn");
       const addBtn = card.querySelector(".add-to-cart-btn");
@@ -350,16 +516,10 @@
       const scriptId = card.dataset?.scriptId || card.dataset?.scriptID;
       if (scriptId) {
         url.searchParams.set("script", "1");
-        const canDispenseAttr = card.dataset?.canDispense;
-        const canDispense = parseCanDispense(canDispenseAttr);
+        const { canDispense, reason, nextDispenseDate } =
+          resolveScriptRestriction(card);
         if (!canDispense) {
           url.searchParams.set("cantDispense", "1");
-          const reason =
-            sanitizeRestrictionValue(card.dataset?.cantDispenseReason) ||
-            sanitizeRestrictionValue(card.dataset?.reasonCantDispense);
-          const nextDispenseDate = sanitizeRestrictionValue(
-            card.dataset?.nextDispenseDate
-          );
           if (reason) url.searchParams.set("cantDispenseReason", reason);
           if (nextDispenseDate)
             url.searchParams.set("nextDispenseDate", nextDispenseDate);
