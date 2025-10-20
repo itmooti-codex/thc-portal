@@ -32,6 +32,14 @@
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='100%25' height='100%25' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='24' fill='%239ca3af'%3ENo Image%3C/text%3E%3C/svg%3E";
   const placeholderTokenRegex = /^\s*\[[^\]]*\]\s*$/;
 
+  const sanitizeRestrictionValue = (value) => {
+    if (value == null) return "";
+    const normalized = String(value).replace(/\s+/g, " ").trim();
+    if (!normalized) return "";
+    if (placeholderTokenRegex.test(normalized)) return "";
+    return normalized;
+  };
+
   const filterProducts = (query) => {
     const q = (query || "").trim().toLowerCase();
     let matches = 0;
@@ -117,8 +125,12 @@
     if (!scriptsGrid) return;
     scriptsGrid.querySelectorAll(".product-card").forEach((card) => {
       const canDispense = parseCanDispense(card.dataset?.canDispense);
-      const reason = card.dataset?.cantDispenseReason?.trim();
-      const nextDispenseDate = card.dataset?.nextDispenseDate?.trim();
+      const reason =
+        sanitizeRestrictionValue(card.dataset?.cantDispenseReason) ||
+        sanitizeRestrictionValue(card.dataset?.reasonCantDispense);
+      const nextDispenseDate = sanitizeRestrictionValue(
+        card.dataset?.nextDispenseDate
+      );
 
       const viewBtn = card.querySelector(".view-product-btn");
       const addBtn = card.querySelector(".add-to-cart-btn");
@@ -259,6 +271,68 @@
     maybeHideLoader();
   });
 
+  const resolveProductDetailUrl = (view, productId) => {
+    const rawHref =
+      (typeof view?.getAttribute === "function" && view.getAttribute("href")) ||
+      (typeof view?.dataset?.href === "string" ? view.dataset.href : "");
+
+    const buildUrl = (base) => {
+      try {
+        return new URL(base, window.location.href);
+      } catch {
+        try {
+          return new URL(base, window.location.origin);
+        } catch {
+          return null;
+        }
+      }
+    };
+
+    let url = null;
+    if (rawHref) {
+      url = buildUrl(rawHref);
+    }
+
+    if (!url) {
+      url = buildUrl("product.html");
+    }
+
+    if (!url) return null;
+
+    const productIdStr = productId != null ? String(productId) : "";
+    const pathSegments = url.pathname
+      .split("/")
+      .filter(Boolean)
+      .map((segment) => {
+        try {
+          return decodeURIComponent(segment);
+        } catch {
+          return segment;
+        }
+      });
+    const pathAlreadyHasId =
+      productIdStr && pathSegments.includes(productIdStr);
+
+    if (productIdStr && !pathAlreadyHasId) {
+      const isHtmlPath = /product\.html?$/i.test(url.pathname);
+      if (isHtmlPath) {
+        if (!url.searchParams.has("id")) {
+          url.searchParams.set("id", productIdStr);
+        }
+      } else if (/product-detail\/?$/i.test(url.pathname)) {
+        url.pathname = `${url.pathname.replace(/\/?$/, "/")}${encodeURIComponent(
+          productIdStr
+        )}`;
+      } else if (url.pathname.endsWith("/")) {
+        url.pathname = `${url.pathname}${encodeURIComponent(productIdStr)}`;
+      } else if (!url.searchParams.has("id")) {
+        url.searchParams.set("id", productIdStr);
+      }
+    }
+
+    return url;
+  };
+
   document.addEventListener("click", (event) => {
     const view = event.target.closest(".view-product-btn, .view-product-link");
     if (!view) return;
@@ -270,9 +344,36 @@
     }
 
     if (product && product.id) {
+      const url = resolveProductDetailUrl(view, product.id);
+      if (!url) return;
       event.preventDefault();
-      const url = new URL("product.html", window.location.origin);
-      url.searchParams.set("id", String(product.id));
+      const scriptId = card.dataset?.scriptId || card.dataset?.scriptID;
+      if (scriptId) {
+        url.searchParams.set("script", "1");
+        const canDispenseAttr = card.dataset?.canDispense;
+        const canDispense = parseCanDispense(canDispenseAttr);
+        if (!canDispense) {
+          url.searchParams.set("cantDispense", "1");
+          const reason =
+            sanitizeRestrictionValue(card.dataset?.cantDispenseReason) ||
+            sanitizeRestrictionValue(card.dataset?.reasonCantDispense);
+          const nextDispenseDate = sanitizeRestrictionValue(
+            card.dataset?.nextDispenseDate
+          );
+          if (reason) url.searchParams.set("cantDispenseReason", reason);
+          if (nextDispenseDate)
+            url.searchParams.set("nextDispenseDate", nextDispenseDate);
+        }
+      }
+
+      if (typeof view?.setAttribute === "function") {
+        try {
+          view.setAttribute("href", url.toString());
+        } catch {
+          /* ignore */
+        }
+      }
+
       window.location.href = url.toString();
     }
   });

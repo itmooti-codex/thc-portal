@@ -24,12 +24,105 @@
   const $use = $ || fallback$;
 
   const clampQty = (value) => (typeof clamp === "function" ? clamp(value, 1, 99) : Math.max(1, Math.min(99, parseInt(value || "1", 10) || 1)));
+  const placeholderTokenRegex = /^\s*\[[^\]]*\]\s*$/;
+
+  const normalizeRestrictionValue = (value) => {
+    if (value == null) return "";
+    const normalized = String(value).replace(/\s+/g, " ").trim();
+    if (!normalized) return "";
+    if (placeholderTokenRegex.test(normalized)) return "";
+    return normalized;
+  };
+
+  const parseBooleanish = (value) => {
+    if (value == null) return null;
+    const normalized = String(value).trim().toLowerCase();
+    if (!normalized) return null;
+    if (["true", "1", "yes", "y", "on"].includes(normalized)) return true;
+    if (["false", "0", "no", "n", "off"].includes(normalized)) return false;
+    return null;
+  };
 
   const cardEl = $use(".product-card");
   const qtyInput = byId && byId("product_qty");
   const decBtn = $use(".product-qty-decr");
   const incBtn = $use(".product-qty-incr");
   const checkoutBtn = $use(".product-checkout-btn");
+  const actionRow = $use(".product-action-row");
+  const addToCartBtn = $use(".add-to-cart-btn");
+  const warningEl = $use(".product-cant-dispense");
+
+  const applyDispenseRestrictionsFromUrl = () => {
+    if (!cardEl) return;
+    const params = new URLSearchParams(window.location.search);
+    const scriptParam = params.get("script");
+    const cantDispenseParam = params.get("cantDispense");
+    const reasonParam = normalizeRestrictionValue(
+      params.get("cantDispenseReason")
+    );
+    const nextDispenseParam = normalizeRestrictionValue(
+      params.get("nextDispenseDate")
+    );
+
+    const isScriptFlag = parseBooleanish(scriptParam) === true;
+    const hasScriptParam = scriptParam != null && String(scriptParam).trim() !== "";
+    const isScript = isScriptFlag || hasScriptParam;
+    const cantDispenseFlag = parseBooleanish(cantDispenseParam) === true;
+    const hasRestrictionInfo = Boolean(reasonParam || nextDispenseParam);
+    const blockDispense = isScript && (cantDispenseFlag || hasRestrictionInfo);
+
+    if (!blockDispense) {
+      if (actionRow) actionRow.classList.remove("hidden");
+      if (addToCartBtn) addToCartBtn.classList.remove("hidden");
+      if (checkoutBtn) checkoutBtn.classList.remove("hidden");
+      if (warningEl) {
+        warningEl.textContent = "";
+        warningEl.classList.add("hidden");
+        warningEl.removeAttribute("role");
+      }
+      return;
+    }
+
+    if (actionRow) actionRow.classList.add("hidden");
+    if (addToCartBtn) addToCartBtn.classList.add("hidden");
+    if (checkoutBtn) checkoutBtn.classList.add("hidden");
+
+    if (cardEl?.dataset?.productId && window.Cart?.getItem) {
+      const productId = cardEl.dataset.productId;
+      const existing = window.Cart.getItem(productId);
+      if (existing) {
+        window.Cart.removeItem(existing.id || productId).catch((err) => {
+          console.warn("Failed to remove non-dispensable script", err);
+        });
+      }
+    }
+
+    if (warningEl) {
+      const fallbackReason = "This script is not ready to dispense.";
+      warningEl.replaceChildren();
+
+      const fallbackLine = document.createElement("span");
+      fallbackLine.textContent = fallbackReason;
+      warningEl.appendChild(fallbackLine);
+
+      if (reasonParam && reasonParam.toLowerCase() !== fallbackReason.toLowerCase()) {
+        warningEl.appendChild(document.createElement("br"));
+        const reasonLine = document.createElement("span");
+        reasonLine.textContent = `Reason - ${reasonParam}`;
+        warningEl.appendChild(reasonLine);
+      }
+
+      if (nextDispenseParam) {
+        warningEl.appendChild(document.createElement("br"));
+        warningEl.appendChild(
+          document.createTextNode(`Available From - ${nextDispenseParam}`)
+        );
+      }
+
+      warningEl.classList.remove("hidden");
+      warningEl.setAttribute("role", "alert");
+    }
+  };
 
   const getCheckoutUrl = () => {
     const candidate =
@@ -119,6 +212,7 @@
     attachQuantityHandlers();
     handleProceedToCheckout();
     clampAndSyncInput(qtyInput?.value || "1", { syncCart: false });
+    applyDispenseRestrictionsFromUrl();
   };
 
   try {
