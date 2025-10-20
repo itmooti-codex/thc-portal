@@ -82,7 +82,7 @@
     if (!msg) {
       msg = document.createElement("p");
       msg.className =
-        "cant-dispense-msg text-[12px] font-semibold text-red-600 leading-snug";
+        "cant-dispense-msg text-[12px] font-semibold text-red-600 leading-snug w-full";
       msg.style.display = "none";
       actions.appendChild(msg);
     }
@@ -95,6 +95,21 @@
     if (!normalized) return true;
     if (["false", "0", "no", "n"].includes(normalized)) return false;
     return true;
+  };
+
+  const applyDispensableLayout = (actions, viewBtn) => {
+    if (!actions) return;
+    actions.classList.add("flex");
+    actions.classList.remove("flex-col", "items-stretch", "items-start");
+    actions.classList.add("items-center");
+    if (viewBtn) viewBtn.classList.remove("w-full");
+  };
+
+  const applyNonDispensableLayout = (actions, viewBtn) => {
+    if (!actions) return;
+    actions.classList.add("flex", "flex-col", "items-stretch", "items-start");
+    actions.classList.remove("items-center");
+    if (viewBtn) viewBtn.classList.add("w-full");
   };
 
   const syncScriptDispenseState = () => {
@@ -118,12 +133,14 @@
       if (canDispense) {
         if (viewBtn) viewBtn.classList.remove("hidden");
         if (addBtn) addBtn.classList.remove("hidden");
+        applyDispensableLayout(actions, viewBtn);
         reasonEl.replaceChildren();
         reasonEl.textContent = "";
         reasonEl.style.display = "none";
       } else {
-        if (viewBtn) viewBtn.classList.add("hidden");
+        if (viewBtn) viewBtn.classList.remove("hidden");
         if (addBtn) addBtn.classList.add("hidden");
+        applyNonDispensableLayout(actions, viewBtn);
         const fallbackReason = "This script is not ready to dispense.";
 
         const primaryLine = document.createElement("span");
@@ -134,7 +151,7 @@
         if (nextDispenseDate) {
           reasonEl.appendChild(document.createElement("br"));
           const nextLine = document.createElement("span");
-          nextLine.textContent = `Next Dispense Date - ${nextDispenseDate}`.trim();
+          nextLine.textContent = `Available From - ${nextDispenseDate}`.trim();
           reasonEl.appendChild(nextLine);
         }
 
