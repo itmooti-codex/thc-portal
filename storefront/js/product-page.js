@@ -110,16 +110,9 @@
       const fallbackReason = "This script is not ready to dispense.";
       warningEl.replaceChildren();
 
-      const fallbackLine = document.createElement("span");
-      fallbackLine.textContent = fallbackReason;
-      warningEl.appendChild(fallbackLine);
-
-      if (reasonParam && reasonParam.toLowerCase() !== fallbackReason.toLowerCase()) {
-        warningEl.appendChild(document.createElement("br"));
-        const reasonLine = document.createElement("span");
-        reasonLine.textContent = `Reason - ${reasonParam}`;
-        warningEl.appendChild(reasonLine);
-      }
+      const primaryLine = document.createElement("span");
+      primaryLine.textContent = (reasonParam || fallbackReason).trim();
+      warningEl.appendChild(primaryLine);
 
       if (nextDispenseParam) {
         warningEl.appendChild(document.createElement("br"));
