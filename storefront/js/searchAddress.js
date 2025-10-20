@@ -5,6 +5,25 @@
   const hasAddressFields = () => $("autocomplete") && $("ship_addr1");
   let initialized = false;
 
+  const AUSTRALIA_LABEL = "Australia";
+
+  const isCountrySelect = (el) =>
+    el && el.tagName === "SELECT" && /country$/i.test(el.id || "");
+
+  const forceAustraliaSelection = (el) => {
+    if (!el) return;
+    const options = Array.from(el.options || []);
+    const match =
+      options.find((option) =>
+        /^australia$/i.test(option.text || option.value)
+      ) || options[0];
+    if (match) {
+      el.value = match.value || AUSTRALIA_LABEL;
+    } else {
+      el.value = AUSTRALIA_LABEL;
+    }
+  };
+
   const GOOGLE_READY_FLAG = "__thcGooglePlacesReady";
   if (typeof window !== "undefined" && window[GOOGLE_READY_FLAG] === undefined) {
     window[GOOGLE_READY_FLAG] = false;
@@ -21,20 +40,15 @@
     const stateSel = $("ship_state");
     if (stateSel) stateSel.value = "";
 
-    const countrySel = $("ship_country");
-    if (countrySel) {
-      // default to Australia (first option) but clear first
-      countrySel.value =
-        [...countrySel.options].find((o) =>
-          /^australia$/i.test(o.text || o.value)
-        )?.value ??
-        countrySel.options[0]?.value ??
-        "";
-    }
+    forceAustraliaSelection($("ship_country"));
   }
 
   function setSelectValue(selectEl, value) {
     if (!selectEl) return;
+    if (isCountrySelect(selectEl)) {
+      forceAustraliaSelection(selectEl);
+      return;
+    }
     const target = String(value || "")
       .trim()
       .toUpperCase();
