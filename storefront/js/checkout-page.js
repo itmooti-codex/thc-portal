@@ -3028,6 +3028,11 @@
             el.classList?.remove("bg-gray-100");
           }
         );
+        const billSearch = byId("bill_autocomplete");
+        if (billSearch) {
+          billSearch.disabled = false;
+          billSearch.classList?.remove("bg-gray-100");
+        }
       }
     }
   };
@@ -4241,6 +4246,15 @@
         bEl.disabled = on;
         bEl.classList.toggle("bg-gray-100", on);
       });
+      const billSearch = byId("bill_autocomplete");
+      if (billSearch) {
+        if (on) {
+          const shipSearch = byId("autocomplete");
+          if (shipSearch) billSearch.value = shipSearch.value;
+        }
+        billSearch.disabled = on;
+        billSearch.classList.toggle("bg-gray-100", on);
+      }
       if (on) {
         [
           "bill_addr1",

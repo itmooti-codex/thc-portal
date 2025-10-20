@@ -2,7 +2,30 @@
   // --------- Safe getters ----------
   const $ = (id) => document.getElementById(id);
 
-  const hasAddressFields = () => $("autocomplete") && $("ship_addr1");
+  const AUTOCOMPLETE_SELECTOR = "[data-address-autocomplete]";
+
+  const getGroups = () =>
+    Array.from(document.querySelectorAll(AUTOCOMPLETE_SELECTOR))
+      .map((input) => {
+        const prefix = (input.dataset.addressAutocomplete || "").trim();
+        if (!prefix) return null;
+        const field = (suffix) => $(`${prefix}_${suffix}`);
+        const group = {
+          input,
+          prefix,
+          fields: {
+            addr1: field("addr1"),
+            addr2: field("addr2"),
+            city: field("city"),
+            state: field("state"),
+            postal: field("postal"),
+            country: field("country"),
+          },
+        };
+        return group.fields.addr1 ? group : null;
+      })
+      .filter(Boolean);
+
   let initialized = false;
 
   const AUSTRALIA_LABEL = "Australia";
@@ -30,17 +53,18 @@
   }
 
   // --------- Field helpers ----------
-  function clearShipFields() {
-    ["ship_addr1", "ship_addr2", "ship_city", "ship_postal"].forEach((id) => {
-      const el = $(id);
+  function clearGroupFields(group) {
+    if (!group) return;
+
+    ["addr1", "addr2", "city", "postal"].forEach((key) => {
+      const el = group.fields[key];
       if (el) el.value = "";
     });
 
-    // State & Country are selects
-    const stateSel = $("ship_state");
+    const stateSel = group.fields.state;
     if (stateSel) stateSel.value = "";
 
-    forceAustraliaSelection($("ship_country"));
+    forceAustraliaSelection(group.fields.country);
   }
 
   function setSelectValue(selectEl, value) {
@@ -70,18 +94,17 @@
   }
 
   // --------- Google Places Autocomplete ----------
-  function setupAutocomplete() {
-    const input = $("autocomplete");
-    if (!input) return;
+  function setupAutocomplete(group) {
+    if (!group || !group.input) return;
 
-    const ac = new google.maps.places.Autocomplete(input, {
+    const ac = new google.maps.places.Autocomplete(group.input, {
       types: ["geocode"],
       componentRestrictions: { country: "au" },
     });
 
     ac.addListener("place_changed", () => {
-      input.blur();
-      clearShipFields();
+      group.input.blur();
+      clearGroupFields(group);
 
       const place = ac.getPlace();
       if (!place || !place.address_components) return;
@@ -110,31 +133,33 @@
       const addr1 = [streetNumber, route].filter(Boolean).join(" ").trim();
       const addr2 = subpremise; // keep simple (no lot/property name as requested)
 
-      // Populate fields
-      if ($("ship_addr1")) $("ship_addr1").value = addr1;
-      if ($("ship_addr2")) $("ship_addr2").value = addr2;
-      if ($("ship_city")) $("ship_city").value = locality;
-      if ($("ship_postal")) $("ship_postal").value = postalCode;
+      const { fields } = group;
+      if (fields.addr1) fields.addr1.value = addr1;
+      if (fields.addr2) fields.addr2.value = addr2;
+      if (fields.city) fields.city.value = locality;
+      if (fields.postal) fields.postal.value = postalCode;
 
-      setSelectValue($("ship_state"), stateShort || "");
-      setSelectValue($("ship_country"), countryLong || "Australia");
+      setSelectValue(fields.state, stateShort || "");
+      setSelectValue(fields.country, countryLong || "Australia");
 
-      // Optional: scroll next required field into view if addr1 is empty
-      if (!addr1 && $("ship_addr1")) $("ship_addr1").focus();
+      if (!addr1 && fields.addr1) fields.addr1.focus();
     });
 
     // Small UX: prevent Enter from submitting the whole form while choosing a suggestion
-    input.addEventListener("keydown", (e) => {
+    group.input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") e.preventDefault();
     });
+
+    group.input.__thcAutocomplete = ac;
   }
 
   function tryInitAutocomplete() {
     if (initialized) return;
-    if (!hasAddressFields()) return;
+    const groups = getGroups();
+    if (!groups.length) return;
     if (!window.google || !google.maps || !google.maps.places) return;
 
-    setupAutocomplete();
+    groups.forEach((group) => setupAutocomplete(group));
     initialized = true;
   }
 
