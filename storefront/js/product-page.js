@@ -43,6 +43,15 @@
     return null;
   };
 
+  const parseBooleanish = (value) => {
+    if (value == null) return null;
+    const normalized = String(value).trim().toLowerCase();
+    if (!normalized) return null;
+    if (["true", "1", "yes", "y", "on"].includes(normalized)) return true;
+    if (["false", "0", "no", "n", "off"].includes(normalized)) return false;
+    return null;
+  };
+
   const cardEl = $use(".product-card");
   const qtyInput = byId && byId("product_qty");
   const decBtn = $use(".product-qty-decr");
