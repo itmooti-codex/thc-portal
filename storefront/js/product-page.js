@@ -61,6 +61,22 @@
   const addToCartBtn = $use(".add-to-cart-btn");
   const warningEl = $use(".product-cant-dispense");
 
+  const hideElement = (el) => {
+    if (!el) return;
+    el.classList.add("hidden");
+    if (!el.hasAttribute("hidden")) {
+      el.setAttribute("hidden", "");
+    }
+  };
+
+  const showElement = (el) => {
+    if (!el) return;
+    el.classList.remove("hidden");
+    if (el.hasAttribute("hidden")) {
+      el.removeAttribute("hidden");
+    }
+  };
+
   const applyDispenseRestrictionsFromUrl = () => {
     if (!cardEl) return;
     const params = new URLSearchParams(window.location.search);
@@ -81,20 +97,20 @@
     const blockDispense = isScript && (cantDispenseFlag || hasRestrictionInfo);
 
     if (!blockDispense) {
-      if (actionRow) actionRow.classList.remove("hidden");
-      if (addToCartBtn) addToCartBtn.classList.remove("hidden");
-      if (checkoutBtn) checkoutBtn.classList.remove("hidden");
+      showElement(actionRow);
+      showElement(addToCartBtn);
+      showElement(checkoutBtn);
       if (warningEl) {
         warningEl.textContent = "";
-        warningEl.classList.add("hidden");
+        hideElement(warningEl);
         warningEl.removeAttribute("role");
       }
       return;
     }
 
-    if (actionRow) actionRow.classList.add("hidden");
-    if (addToCartBtn) addToCartBtn.classList.add("hidden");
-    if (checkoutBtn) checkoutBtn.classList.add("hidden");
+    hideElement(actionRow);
+    hideElement(addToCartBtn);
+    hideElement(checkoutBtn);
 
     if (cardEl?.dataset?.productId && window.Cart?.getItem) {
       const productId = cardEl.dataset.productId;
@@ -121,7 +137,7 @@
         );
       }
 
-      warningEl.classList.remove("hidden");
+      showElement(warningEl);
       warningEl.setAttribute("role", "alert");
     }
   };
