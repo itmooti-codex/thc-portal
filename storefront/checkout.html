@@ -144,7 +144,7 @@
                                         <div class="sm:col-span-2">
                                             <label for="autocomplete" class="block text-sm font-medium">Search Address</label>
                                             <div class="input-wrapper">
-                                                <input id="autocomplete" placeholder="Search address..." />
+                                                <input id="autocomplete" data-address-autocomplete="ship" placeholder="Search address..." />
                                             </div>
                                             <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
                                         </div>
@@ -312,11 +312,11 @@
                                     </div>
                                 </div>
 
-                                <div class="rounded-2xl border border-gray-200 p-4 md:p-6 space-y-4">
-                                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                        <div>
-                                            <h3 class="text-base font-semibold text-gray-900">Billing address</h3>
-                                            <p class="text-sm text-gray-500">Used for card verification and receipts.</p>
+                                    <div class="rounded-2xl border border-gray-200 p-4 md:p-6 space-y-4">
+                                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                            <div>
+                                                <h3 class="text-base font-semibold text-gray-900">Billing address</h3>
+                                                <p class="text-sm text-gray-500">Used for card verification and receipts.</p>
                                         </div>
                                         <label id="billing_same_wrapper"
                                             class="inline-flex items-center gap-2 text-sm text-gray-600">
@@ -326,6 +326,13 @@
                                         </label>
                                     </div>
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div class="md:col-span-2">
+                                            <label for="bill_autocomplete" class="block text-sm font-medium">Search address</label>
+                                            <div class="input-wrapper">
+                                                <input id="bill_autocomplete" data-address-autocomplete="bill" placeholder="Search billing address..." />
+                                            </div>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
                                         <div class="md:col-span-2">
                                             <label for="bill_addr1" class="block text-sm font-medium">Address line 1</label>
                                             <div class="input-wrapper">
