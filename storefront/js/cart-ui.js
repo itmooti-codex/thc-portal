@@ -939,10 +939,6 @@ const dlog = (...args) => {
       delayMs: options.delayMs ?? 700,
     };
     try {
-      if (options.awaitCreation && typeof service.ensureScriptDispense === "function") {
-        const result = await service.ensureScriptDispense(id, attemptOptions);
-        if (result) return result;
-      }
       if (typeof service.waitForScriptDispense === "function") {
         return await service.waitForScriptDispense(id, attemptOptions);
       }
@@ -2221,9 +2217,7 @@ const cancelScriptDispense = async (item) => {
           const patch = attachScriptMetadata(product, { id: product.id });
           updateCartItemMetadata(product.id, patch);
           if (shouldManageDispenses() && product.scriptId) {
-            fetchScriptMeta(product.scriptId, {
-              awaitCreation: !product.dispenseId,
-            })
+            fetchScriptMeta(product.scriptId)
               .then((meta) => {
                 if (!meta) return;
                 const metaPatch = attachScriptMetadata(
