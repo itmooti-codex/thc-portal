@@ -218,7 +218,9 @@ const dlog = (...args) => {
       )} GST)`;
       const value = document.createElement("span");
       value.className = "font-medium text-gray-900";
-      const lineTotal = Number.isFinite(item.lineTotal)
+      const lineTotal = Number.isFinite(item.lineTotalBeforeDiscount)
+        ? item.lineTotalBeforeDiscount
+        : Number.isFinite(item.lineTotal)
         ? item.lineTotal
         : Number.isFinite(item.totalIncl)
         ? item.totalIncl
@@ -255,6 +257,8 @@ const dlog = (...args) => {
         index,
       };
       entry.lineTotal = roundCurrency(entry.lineExAfterDiscount + entry.taxAmount);
+      entry.lineTaxBeforeDiscount = entry.taxAmount;
+      entry.lineTotalBeforeDiscount = entry.lineTotal;
       breakdown.push(entry);
     });
     const taxableEntries = breakdown.filter((entry) => entry.taxable);
@@ -284,6 +288,8 @@ const dlog = (...args) => {
         lineExAfterDiscount: entry.lineExAfterDiscount,
         taxAmount: entry.taxAmount,
         lineTotal: entry.lineTotal,
+        lineTaxBeforeDiscount: entry.lineTaxBeforeDiscount,
+        lineTotalBeforeDiscount: entry.lineTotalBeforeDiscount,
         index: entry.index,
       }))
       .sort((a, b) => a.index - b.index);
