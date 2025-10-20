@@ -1616,7 +1616,9 @@
       )} GST)`;
       const value = document.createElement("span");
       value.className = "font-medium text-gray-900";
-      const lineTotal = Number.isFinite(item.lineTotal)
+      const lineTotal = Number.isFinite(item.lineTotalBeforeDiscount)
+        ? item.lineTotalBeforeDiscount
+        : Number.isFinite(item.lineTotal)
         ? item.lineTotal
         : Number.isFinite(item.totalIncl)
         ? item.totalIncl
@@ -2173,18 +2175,34 @@
     });
 
     const itemBreakdown = breakdownSeed
-      .map((entry) => ({
-        id: entry.id,
-        name: entry.name,
-        quantity: entry.quantity,
-        taxable: entry.taxable,
-        lineEx: entry.lineEx,
-        lineDiscount: entry.lineDiscount || 0,
-        lineExAfterDiscount: entry.lineExAfterDiscount ?? entry.lineEx,
-        taxAmount: entry.lineTax || 0,
-        lineTotal: entry.lineTotal ?? entry.lineEx,
-        index: entry.index,
-      }))
+      .map((entry) => {
+        const lineDiscount = entry.lineDiscount || 0;
+        const lineExBase = Number(entry.lineEx) || 0;
+        const lineExAfterDiscount =
+          entry.lineExAfterDiscount ?? lineExBase;
+        const taxAmount = entry.lineTax || 0;
+        const lineTotal = entry.lineTotal ?? lineExBase;
+        const lineTaxBeforeDiscount = entry.taxable
+          ? roundCurrency(lineExBase * taxRate)
+          : 0;
+        const lineTotalBeforeDiscount = roundCurrency(
+          lineExBase + lineTaxBeforeDiscount
+        );
+        return {
+          id: entry.id,
+          name: entry.name,
+          quantity: entry.quantity,
+          taxable: entry.taxable,
+          lineEx: lineExBase,
+          lineDiscount,
+          lineExAfterDiscount,
+          taxAmount,
+          lineTotal,
+          lineTaxBeforeDiscount,
+          lineTotalBeforeDiscount,
+          index: entry.index,
+        };
+      })
       .sort((a, b) => a.index - b.index);
     const subtotalAfterDiscountEx = roundCurrency(
       taxableExAfterDiscount + nonTaxableExAfterDiscount
@@ -2397,9 +2415,16 @@
         const qty = Number(item.qty) || 0;
         const unitPrice = Number(item.price) || 0;
         const breakdown = breakdownMap.get(String(item.id));
-        const lineTotal = Number.isFinite(breakdown?.lineTotal)
+        const breakdownLineTotal = Number.isFinite(
+          breakdown?.lineTotalBeforeDiscount
+        )
+          ? breakdown.lineTotalBeforeDiscount
+          : Number.isFinite(breakdown?.lineTotal)
           ? breakdown.lineTotal
-          : unitPrice * qty;
+          : null;
+        const lineTotal = Number.isFinite(breakdownLineTotal)
+          ? breakdownLineTotal
+          : roundCurrency(unitPrice * qty);
         const taxAmount = Number.isFinite(breakdown?.taxAmount)
           ? breakdown.taxAmount
           : 0;
@@ -3309,9 +3334,16 @@
           const qty = Number(item.qty) || 0;
           const breakdown = breakdownMap.get(String(item.id));
           const unitPrice = Number(item.price) || 0;
-          const lineTotal = Number.isFinite(breakdown?.lineTotal)
+          const breakdownLineTotal = Number.isFinite(
+            breakdown?.lineTotalBeforeDiscount
+          )
+            ? breakdown.lineTotalBeforeDiscount
+            : Number.isFinite(breakdown?.lineTotal)
             ? breakdown.lineTotal
-            : unitPrice * qty;
+            : null;
+          const lineTotal = Number.isFinite(breakdownLineTotal)
+            ? breakdownLineTotal
+            : roundCurrency(unitPrice * qty);
           const taxAmount = Number.isFinite(breakdown?.taxAmount)
             ? breakdown.taxAmount
             : 0;
