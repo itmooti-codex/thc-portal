@@ -1033,6 +1033,7 @@
   const parcelRequiredFields = Array.from(
     document.querySelectorAll("[data-parcel-req]")
   );
+  const billingSameWrapper = byId("billing_same_wrapper");
   const paymentSourceSelector = byId("payment_source_selector");
   const savedCardsListEl = byId("saved_cards_list");
   const newCardSection = byId("new_card_section");
@@ -2359,54 +2360,6 @@
     const readOnly = currentStep === "review";
     summaryEls.list.innerHTML = "";
 
-    if (!cartState.items.length) {
-      summaryEls.list.innerHTML =
-        '<div class="p-4 text-sm text-gray-500">Your cart is empty.</div>';
-      renderSubtotalBreakdown(summaryEls.subtotalBreakdown, []);
-    } else {
-      cartState.items.forEach((item) => {
-        const row = document.createElement("div");
-        row.className = "py-4 flex gap-3 items-start";
-        const qty = Number(item.qty) || 0;
-        const unitPrice = Number(item.price) || 0;
-        const lineTotal = unitPrice * qty;
-        const brandLine = item.brand
-          ? `<div class="text-xs text-gray-500">${item.brand}</div>`
-          : "";
-        const qtyControls = readOnly
-          ? `<div class="mt-2 flex items-center justify-between text-xs text-gray-500">
-              <span>Qty ${qty}</span>
-              <span class="text-sm font-semibold text-gray-900">${formatMoney(lineTotal)}</span>
-            </div>`
-          : `<div class="mt-2 flex items-center gap-2">
-              <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${item.id}" aria-label="Decrease quantity">−</button>
-              <input class="qty-input w-12 text-center rounded-lg border px-2 py-1" value="${qty}" data-id="${item.id}" inputmode="numeric" aria-label="Quantity"/>
-              <button class="qty-incr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${item.id}" aria-label="Increase quantity">+</button>
-            </div>
-            <div class="mt-2 text-sm font-semibold text-gray-900">${formatMoney(lineTotal)}</div>`;
-        const removeButton = readOnly
-          ? ""
-          : `<button class="remove-item w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center mt-1" data-id="${item.id}" aria-label="Remove item">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5">
-                <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
-                <path d="M10 11v6M14 11v6"/>
-              </svg>
-            </button>`;
-        row.innerHTML = `
-          <img src="${item.image}" alt="${item.name}" class="w-16 h-16 rounded-lg object-cover flex-shrink-0"/>
-          <div class="flex-1 min-w-0">
-            <div class="font-semibold text-sm sm:text-base truncate">${item.name}</div>
-            ${brandLine}
-            <div class="text-xs text-gray-500">Unit price ${formatMoney(unitPrice)}</div>
-            ${qtyControls}
-          </div>
-          ${removeButton}
-        `;
-        summaryEls.list.appendChild(row);
-      });
-    }
-
-    // If a shipping radio is currently checked, use it immediately for totals
     let forceType = null;
     try {
       const checked = document.querySelector('input[name="shipping_method"]:checked');
@@ -2419,13 +2372,102 @@
     const totals = calcTotals(cartState, { forceShippingType: forceType });
     checkoutState.financials = totals;
 
+    const breakdownMap = new Map();
+    if (Array.isArray(totals.itemBreakdown)) {
+      totals.itemBreakdown.forEach((entry) => {
+        if (!entry || entry.id === undefined || entry.id === null) return;
+        breakdownMap.set(String(entry.id), entry);
+      });
+    }
+
+    let breakdownForDisplay = totals.itemBreakdown;
+
+    if (!cartState.items.length) {
+      summaryEls.list.innerHTML =
+        '<div class="p-4 text-sm text-gray-500">Your cart is empty.</div>';
+      breakdownForDisplay = [];
+    } else {
+      cartState.items.forEach((item) => {
+        if (!item) return;
+        const qty = Number(item.qty) || 0;
+        const unitPrice = Number(item.price) || 0;
+        const breakdown = breakdownMap.get(String(item.id));
+        const lineTotal = Number.isFinite(breakdown?.lineTotal)
+          ? breakdown.lineTotal
+          : unitPrice * qty;
+        const taxAmount = Number.isFinite(breakdown?.taxAmount)
+          ? breakdown.taxAmount
+          : 0;
+        const gstLabel =
+          taxAmount > 0 ? `Incl ${formatMoney(taxAmount)} GST` : "GST exempt";
+        const imageHtml = item.image
+          ? `<img src="${item.image}" alt="${item.name || "Product"}" class="h-14 w-14 sm:h-16 sm:w-16 rounded-xl object-cover bg-gray-100" />`
+          : `<div class="h-14 w-14 sm:h-16 sm:w-16 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center text-xs font-semibold">${(item.name || "?")
+              .toString()
+              .trim()
+              .charAt(0)
+              .toUpperCase() || "•"}</div>`;
+        const itemName = item.name ? String(item.name).trim() : "Item";
+        const brandLine = item.brand
+          ? `<div class="text-xs text-gray-500 truncate">${item.brand}</div>`
+          : "";
+        let infoBody = `
+          <div class="font-semibold text-sm sm:text-base text-gray-900 truncate">${itemName}</div>
+          ${brandLine}
+          <div class="text-xs text-gray-500">Unit price ${formatMoney(unitPrice)}</div>
+        `;
+        if (readOnly) {
+          infoBody += `
+            <div class="text-xs text-gray-500 mt-2">Qty ${qty} · ${gstLabel}</div>
+          `;
+        } else {
+          infoBody += `
+            <div class="mt-3 flex items-center gap-2">
+              <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${item.id}" aria-label="Decrease quantity">−</button>
+              <input class="qty-input w-12 text-center rounded-lg border px-2 py-1" value="${qty}" data-id="${item.id}" inputmode="numeric" aria-label="Quantity"/>
+              <button class="qty-incr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${item.id}" aria-label="Increase quantity">+</button>
+            </div>
+            <div class="text-xs text-gray-500 mt-2">${gstLabel}</div>
+          `;
+        }
+
+        let actionColumn = `
+          <div class="text-sm font-semibold text-gray-900 text-right">${formatMoney(lineTotal)}</div>
+        `;
+        if (!readOnly) {
+          actionColumn = `
+            <div class="flex flex-col items-end gap-2">
+              <button class="remove-item w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center" data-id="${item.id}" aria-label="Remove item">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5">
+                  <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                  <path d="M10 11v6M14 11v6"/>
+                </svg>
+              </button>
+              <div class="text-sm font-semibold text-gray-900">${formatMoney(lineTotal)}</div>
+            </div>
+          `;
+        }
+
+        const row = document.createElement("div");
+        row.className =
+          "grid grid-cols-[56px_1fr_auto] sm:grid-cols-[64px_1fr_auto] gap-4 items-start p-4";
+        row.innerHTML = `
+          <div class="flex-shrink-0">${imageHtml}</div>
+          <div class="min-w-0">${infoBody}</div>
+          ${actionColumn}
+        `;
+        summaryEls.list.appendChild(row);
+      });
+    }
+
+    renderSubtotalBreakdown(summaryEls.subtotalBreakdown, breakdownForDisplay);
+
     const subtotalDisplay =
       totals.subtotalWithItemTax !== undefined
         ? totals.subtotalWithItemTax
         : totals.subtotal;
     if (summaryEls.subtotal)
       summaryEls.subtotal.textContent = formatMoney(subtotalDisplay);
-    renderSubtotalBreakdown(summaryEls.subtotalBreakdown, totals.itemBreakdown);
 
     let shippingLabel = "Select shipping";
     const shippingHasCharge =
@@ -2903,6 +2945,10 @@
     setRequiredForFields(homeRequiredFields, mode === "home");
     setRequiredForFields(parcelRequiredFields, mode === "parcel");
 
+    if (billingSameWrapper) {
+      billingSameWrapper.classList.toggle("hidden", mode !== "home");
+    }
+
     if (mode !== "home" && homeAddressSection) clearErrors(homeAddressSection);
     if (mode !== "parcel" && parcelLockerSection)
       clearErrors(parcelLockerSection);
@@ -3049,22 +3095,39 @@
   };
 
   const buildReview = () => {
-    const t = (id) => (byId(id)?.value || "").trim();
-    const contact = `${t("cust_first")} ${t("cust_last")} · ${t("cust_email")}`;
-    $("#review_contact").textContent = contact.trim();
-    const shippingValue = shippingOptionSelect?.value || "";
-    let shippingOptionLabel = "";
-    if (shippingValue && shippingOptionSelect) {
-      const opt =
-        shippingOptionSelect.options[
-          shippingOptionSelect.selectedIndex || 0
-        ];
-      shippingOptionLabel = opt?.textContent?.trim() || "";
-    }
+    const getValue = (id) => (byId(id)?.value || "").trim();
+    const setLines = (selector, lines, emptyMessage) => {
+      const el = document.querySelector(selector);
+      if (!el) return;
+      if (lines.length) {
+        el.innerHTML = lines.map((line) => `<div>${line}</div>`).join("");
+      } else {
+        el.innerHTML = `<div class="text-gray-500">${emptyMessage}</div>`;
+      }
+    };
+
+    const contactLines = [];
+    const name = [getValue("cust_first"), getValue("cust_last")]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    if (name) contactLines.push(name);
+    const email = getValue("cust_email");
+    if (email) contactLines.push(email);
+    const phone = getValue("cust_phone");
+    if (phone) contactLines.push(phone);
+    setLines("#review_contact", contactLines, "No contact details provided.");
 
     const shippingLines = [];
+    const shippingValue = shippingOptionSelect?.value || "";
+    let shippingOptionLabel = "";
+    if (shippingOptionSelect && shippingOptionSelect.selectedIndex >= 0) {
+      const opt =
+        shippingOptionSelect.options[shippingOptionSelect.selectedIndex];
+      shippingOptionLabel = opt?.textContent?.trim() || "";
+    }
     const selectedShippingType = getSelectedShippingType();
-    if (selectedShippingType && selectedShippingType.name) {
+    if (selectedShippingType?.name) {
       shippingLines.push(selectedShippingType.name);
     } else if (
       checkoutState.shippingMethod &&
@@ -3079,8 +3142,7 @@
       const parcelStateEl = byId("parcel_state");
       let parcelStateLabel = "";
       if (parcelStateEl && parcelStateEl.value) {
-        const opt =
-          parcelStateEl.options[parcelStateEl.selectedIndex || 0];
+        const opt = parcelStateEl.options[parcelStateEl.selectedIndex || 0];
         parcelStateLabel = opt?.textContent?.trim() || "";
       }
       const lockerLine = [
@@ -3089,48 +3151,70 @@
       ]
         .filter(Boolean)
         .join(", ");
+      if (lockerLine) shippingLines.push(lockerLine);
       const cityStateLine = [parcelValue("parcel_city"), parcelStateLabel]
         .filter(Boolean)
         .join(" ");
       const postal = parcelValue("parcel_postal");
-      if (lockerLine) shippingLines.push(lockerLine);
-      const secondLine = [cityStateLine, postal]
+      const cityPostalLine = [cityStateLine, postal]
         .filter(Boolean)
         .join(" ")
         .trim();
-      if (secondLine) shippingLines.push(secondLine);
-      $("#review_shipping").innerHTML =
-        shippingLines.length > 0
-          ? shippingLines.map((line) => `<div>${line}</div>`).join("")
-          : "—";
-      $("#review_billing").textContent = "Not required for Parcel Locker";
+      if (cityPostalLine) shippingLines.push(cityPostalLine);
     } else if (shippingValue === HOME_SHIPPING_OPTION) {
-      const shippingAddress = `${t("ship_addr1")}${
-        t("ship_addr2") ? " " + t("ship_addr2") : ""
-      }, ${t("ship_city")}, ${t("ship_state")} ${t("ship_postal")}, ${t(
-        "ship_country"
-      )}`.trim();
-      if (shippingAddress) shippingLines.push(shippingAddress);
-      $("#review_shipping").innerHTML =
-        shippingLines.length > 0
-          ? shippingLines.map((line) => `<div>${line}</div>`).join("")
-          : "—";
-      const billingAddress = `${t("bill_addr1")}${
-        t("bill_addr2") ? " " + t("bill_addr2") : ""
-      }, ${t("bill_city")}, ${t("bill_state")} ${t("bill_postal")}, ${t(
-        "bill_country"
-      )}`.trim();
-      $("#review_billing").textContent = billingAddress || "—";
-    } else {
-      $("#review_shipping").textContent = "—";
-      $("#review_billing").textContent = "—";
+      const addressLines = [];
+      const addr1 = getValue("ship_addr1");
+      if (addr1) addressLines.push(addr1);
+      const addr2 = getValue("ship_addr2");
+      if (addr2) addressLines.push(addr2);
+      const cityState = [getValue("ship_city"), getValue("ship_state")]
+        .filter(Boolean)
+        .join(" ");
+      const postal = getValue("ship_postal");
+      const cityPostal = [cityState, postal]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+      if (cityPostal) addressLines.push(cityPostal);
+      const country = getValue("ship_country");
+      if (country) addressLines.push(country);
+      shippingLines.push(...addressLines);
     }
+    setLines("#review_shipping", shippingLines, "Select a shipping option.");
 
-    const meta = checkoutState.couponMeta;
+    const billingLines = [];
+    const billAddr1 = getValue("bill_addr1");
+    if (billAddr1) billingLines.push(billAddr1);
+    const billAddr2 = getValue("bill_addr2");
+    if (billAddr2) billingLines.push(billAddr2);
+    const billCityState = [getValue("bill_city"), getValue("bill_state")]
+      .filter(Boolean)
+      .join(" ");
+    const billPostal = getValue("bill_postal");
+    const billCityPostal = [billCityState, billPostal]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    if (billCityPostal) billingLines.push(billCityPostal);
+    const billCountry = getValue("bill_country");
+    if (billCountry) billingLines.push(billCountry);
+    setLines(
+      "#review_billing",
+      billingLines,
+      "Add a billing address to continue."
+    );
+
+    const financials = checkoutState.financials || calcTotals();
     const paymentLines = [];
     if (isUsingSavedCard()) {
       const card = getSelectedSavedCard();
-      const last4 = card?.last4 || card?.card_last_four || "••••";
+      const last4Source =
+        card?.last4 ||
+        card?.card_last_four ||
+        card?.card_last4 ||
+        card?.card_lastfour ||
+        "";
+      const last4Display = String(last4Source || "").trim().slice(-4) || "••••";
       const expMonth = card?.exp_month || card?.card_expiration_month;
       const expYear = card?.exp_year || card?.card_expiration_year;
       const expLabel =
@@ -3138,47 +3222,173 @@
           ? `${String(expMonth).padStart(2, "0")}/${String(expYear).slice(-2)}`
           : "";
       const typeLabel = getCardTypeLabel(card);
-      const descriptor = typeLabel ? `${typeLabel} card` : "Saved card";
+      const descriptor = typeLabel
+        ? `${typeLabel} ending in ${last4Display}`
+        : `Card ending in ${last4Display}`;
       paymentLines.push(
-        `${descriptor} ending in ${last4}${
-          expLabel ? ` · Expires ${expLabel}` : ""
-        }`
+        expLabel ? `${descriptor} · Expires ${expLabel}` : descriptor
       );
     } else {
-      const ccValue = t("cc_number");
-      const last4 = ccValue.slice(-4) || "••••";
-      paymentLines.push(`Card ending in ${last4}`);
+      const ccValue = getValue("cc_number").replace(/\s+/g, "");
+      const last4 = ccValue.slice(-4);
+      if (last4) {
+        paymentLines.push(`Card ending in ${last4}`);
+      } else {
+        paymentLines.push("New card");
+      }
+      const cardName = getValue("cc_name");
+      if (cardName) paymentLines.push(cardName);
     }
-    if (selectedShippingType && selectedShippingType.name) {
-      const label = selectedShippingType.name;
-      paymentLines.push(`Shipping: ${label}`);
+    if (selectedShippingType?.name) {
+      paymentLines.push(`Shipping method: ${selectedShippingType.name}`);
     } else if (checkoutState.shippingMethod === NONE_SHIPPING_ID) {
-      paymentLines.push("Shipping: No shipping selected");
+      paymentLines.push("Shipping method: None selected");
     }
-    if (meta) paymentLines.push(`Coupon: ${meta.code}`);
-    const financials = checkoutState.financials || calcTotals();
+    const meta = checkoutState.couponMeta;
+    if (meta?.code) paymentLines.push(`Coupon applied: ${meta.code}`);
     if (financials.cardFeeTotal > 0) {
       paymentLines.push(
-        `Card fee: ${formatMoney(financials.cardFeeTotal)} (incl GST ${formatMoney(financials.cardFeeGst)})`
+        `Card fee: ${formatMoney(financials.cardFeeTotal)} (incl GST ${formatMoney(
+          financials.cardFeeGst
+        )})`
       );
-      const reviewFeeNote = formatCardFeeNote(
-        financials.cardFeeExGst,
-        financials.cardFeeGst,
-        financials.cardFeeTaxRate
-      );
-      if (reviewFeeNote) {
-        paymentLines.push(
-          `<span class="text-xs text-gray-500">${reviewFeeNote}</span>`
-        );
+    }
+    setLines("#review_payment", paymentLines, "Add payment details to continue.");
+
+    const cartState =
+      typeof Cart !== "undefined" &&
+      Cart &&
+      typeof Cart.getState === "function"
+        ? Cart.getState()
+        : { items: [] };
+    const reviewItemsContainer = document.querySelector("#review_items");
+    if (reviewItemsContainer) {
+      reviewItemsContainer.innerHTML = "";
+      const items = Array.isArray(cartState.items) ? cartState.items : [];
+      const breakdownMap = new Map();
+      if (financials && Array.isArray(financials.itemBreakdown)) {
+        financials.itemBreakdown.forEach((entry) => {
+          if (!entry || entry.id === undefined || entry.id === null) return;
+          breakdownMap.set(String(entry.id), entry);
+        });
+      }
+      if (!items.length) {
+        reviewItemsContainer.innerHTML =
+          '<div class="p-4 text-sm text-gray-500">Your cart is empty.</div>';
+      } else {
+        items.forEach((item) => {
+          if (!item) return;
+          const qty = Number(item.qty) || 0;
+          const breakdown = breakdownMap.get(String(item.id));
+          const unitPrice = Number(item.price) || 0;
+          const lineTotal = Number.isFinite(breakdown?.lineTotal)
+            ? breakdown.lineTotal
+            : unitPrice * qty;
+          const taxAmount = Number.isFinite(breakdown?.taxAmount)
+            ? breakdown.taxAmount
+            : 0;
+          const gstLabel =
+            taxAmount > 0
+              ? `Incl ${formatMoney(taxAmount)} GST`
+              : "GST exempt";
+          const imageHtml = item.image
+            ? `<img src="${item.image}" alt="${item.name || "Product"}" class="h-14 w-14 sm:h-16 sm:w-16 rounded-xl object-cover bg-gray-100" />`
+            : `<div class="h-14 w-14 sm:h-16 sm:w-16 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center text-xs font-semibold">${(item.name || "?")
+                .toString()
+                .trim()
+                .charAt(0)
+                .toUpperCase() || "•"}</div>`;
+          const infoLines = [];
+          const nameLine = item.name ? String(item.name).trim() : "Item";
+          infoLines.push(
+            `<div class="font-semibold text-sm sm:text-base text-gray-900 truncate">${nameLine}</div>`
+          );
+          if (item.brand) {
+            infoLines.push(
+              `<div class="text-xs text-gray-500 truncate">${item.brand}</div>`
+            );
+          }
+          infoLines.push(
+            `<div class="text-xs text-gray-500">Unit price ${formatMoney(unitPrice)}</div>`
+          );
+          infoLines.push(
+            `<div class="text-xs text-gray-500">Qty ${qty} · ${gstLabel}</div>`
+          );
+          const row = document.createElement("div");
+          row.className =
+            "grid grid-cols-[56px_1fr_auto] sm:grid-cols-[64px_1fr_auto] gap-4 items-start p-4 text-sm text-gray-700";
+          row.innerHTML = `
+            <div class="flex-shrink-0">${imageHtml}</div>
+            <div class="min-w-0 space-y-2">
+              ${infoLines.join("")}
+            </div>
+            <div class="text-right text-sm font-semibold text-gray-900">
+              ${formatMoney(lineTotal)}
+            </div>
+          `;
+          reviewItemsContainer.appendChild(row);
+        });
       }
     }
-    if (financials.taxTotal > 0) {
-      paymentLines.push(`GST total: ${formatMoney(financials.taxTotal)}`);
+
+    const subtotalDisplay =
+      financials.subtotalWithItemTax !== undefined
+        ? financials.subtotalWithItemTax
+        : financials.subtotal;
+    const subtotalEl = document.querySelector("#review_subtotal");
+    if (subtotalEl) subtotalEl.textContent = formatMoney(subtotalDisplay);
+
+    let shippingLabel = "Select shipping";
+    const shippingHasCharge =
+      financials.shippingConfirmed && financials.shipping > 0;
+    if (checkoutState.shippingMethod === NONE_SHIPPING_ID) {
+      shippingLabel = "No shipping";
+    } else if (checkoutState.freeShipping) {
+      shippingLabel = "Free";
+    } else if (shippingHasCharge) {
+      const shippingAmount = Number.isFinite(financials.shippingWithGst)
+        ? financials.shippingWithGst
+        : financials.shipping;
+      shippingLabel = formatMoney(shippingAmount);
+    } else if (financials.shippingConfirmed) {
+      shippingLabel = "Free";
     }
-    $("#review_payment").innerHTML = paymentLines
-      .filter(Boolean)
-      .map((line) => `<div>${line}</div>`)
-      .join("");
+    const shippingTotalEl = document.querySelector("#review_shipping_total");
+    if (shippingTotalEl) shippingTotalEl.textContent = shippingLabel;
+
+    const cardFeeEl = document.querySelector("#review_card_fee");
+    if (cardFeeEl) cardFeeEl.textContent = formatMoney(financials.cardFeeTotal);
+
+    const gstEl = document.querySelector("#review_gst_total");
+    if (gstEl) gstEl.textContent = formatMoney(financials.taxTotal);
+
+    const discountEl = document.querySelector("#review_discount");
+    if (discountEl) {
+      const discountValue =
+        financials.discount > 0
+          ? `-${formatMoney(financials.discount).replace(/^-/, "")}`
+          : "-$0.00";
+      discountEl.textContent = discountValue;
+    }
+
+    const totalEl = document.querySelector("#review_total");
+    if (totalEl) totalEl.textContent = formatMoney(financials.total);
+
+    const feeNote = formatCardFeeNote(
+      financials.cardFeeExGst,
+      financials.cardFeeGst,
+      financials.cardFeeTaxRate
+    );
+    const feeNoteEl = document.querySelector("#review_card_fee_note");
+    if (feeNoteEl) {
+      if (feeNote) {
+        feeNoteEl.textContent = feeNote;
+        feeNoteEl.classList.remove("hidden");
+      } else {
+        feeNoteEl.textContent = "";
+        feeNoteEl.classList.add("hidden");
+      }
+    }
   };
 
   /* ========= coupon handling ========= */
@@ -3641,6 +3851,21 @@
   /* ========= events ========= */
   document.addEventListener("click", (event) => {
     const target = event.target;
+    const editTrigger = target.closest("[data-edit-step]");
+    if (editTrigger) {
+      const stepName = editTrigger.getAttribute("data-edit-step");
+      if (stepName) {
+        const index = checkoutState.steps.indexOf(stepName);
+        if (index >= 0) {
+          checkoutState.stepIndex = index;
+          renderStepper();
+          renderStep();
+          const stepper = document.querySelector(".stepper");
+          stepper?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }
+      return;
+    }
     if (target.closest(".step-prev")) {
       checkoutState.stepIndex = Math.max(0, checkoutState.stepIndex - 1);
       renderStepper();
