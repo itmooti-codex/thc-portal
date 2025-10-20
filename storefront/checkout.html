@@ -204,72 +204,6 @@
                                             <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
                                         </div>
 
-                                        <div class="sm:col-span-2 mt-4 flex items-center justify-between">
-                                            <span class="text-sm text-gray-500">Billing address</span>
-                                            <label class="inline-flex items-center gap-2 text-xs">
-                                                <input type="checkbox" id="bill_same"
-                                                    class="!block rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                                Same as shipping
-                                            </label>
-                                        </div>
-                                        <div class="sm:col-span-2">
-                                            <label for="bill_addr1" class="block text-sm font-medium">Address line 1</label>
-                                            <div class="input-wrapper">
-                                                <input id="bill_addr1" data-home-req data-label="Billing address line 1"
-                                                    autocomplete="billing address-line1" />
-                                            </div>
-                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
-                                        </div>
-                                        <div class="sm:col-span-2">
-                                            <label for="bill_addr2" class="block text-sm font-medium">Address line 2</label>
-                                            <div class="input-wrapper">
-                                                <input id="bill_addr2" autocomplete="billing address-line2" />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label for="bill_city" class="block text-sm font-medium">City</label>
-                                            <div class="input-wrapper">
-                                                <input id="bill_city" data-home-req data-label="Billing city"
-                                                    autocomplete="billing address-level2" />
-                                            </div>
-                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
-                                        </div>
-                                        <div>
-                                            <label for="bill_state" class="block text-sm font-medium">State</label>
-                                            <select id="bill_state" data-home-req data-label="Billing state"
-                                                class="!block mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                autocomplete="billing address-level1">
-                                                <option value="">Select state</option>
-                                                <option>NSW</option>
-                                                <option>VIC</option>
-                                                <option>QLD</option>
-                                                <option>WA</option>
-                                                <option>SA</option>
-                                                <option>TAS</option>
-                                                <option>ACT</option>
-                                                <option>NT</option>
-                                            </select>
-                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
-                                        </div>
-                                        <div>
-                                            <label for="bill_postal" class="block text-sm font-medium">Postal code</label>
-                                            <div class="input-wrapper">
-                                                <input id="bill_postal" data-home-req data-label="Billing postal code"
-                                                    autocomplete="billing postal-code" />
-                                            </div>
-                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
-                                        </div>
-                                        <div>
-                                            <label for="bill_country" class="block text-sm font-medium">Country</label>
-                                            <select id="bill_country" data-home-req data-label="Billing country"
-                                                class="!block mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                                <option selected>Australia</option>
-                                            </select>
-                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
-                                        </div>
-                                    </div>
-                                </div>
-
                                 <div id="parcel_locker_section" class="sm:col-span-2 hidden">
                                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div class="sm:col-span-2">
@@ -375,6 +309,78 @@
                                     </div>
                                 </div>
 
+                                <div class="rounded-2xl border border-gray-200 p-4 md:p-6 space-y-4">
+                                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                        <div>
+                                            <h3 class="text-base font-semibold text-gray-900">Billing address</h3>
+                                            <p class="text-sm text-gray-500">Used for card verification and receipts.</p>
+                                        </div>
+                                        <label id="billing_same_wrapper"
+                                            class="inline-flex items-center gap-2 text-sm text-gray-600">
+                                            <input type="checkbox" id="bill_same"
+                                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                            <span>Same as shipping</span>
+                                        </label>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div class="md:col-span-2">
+                                            <label for="bill_addr1" class="block text-sm font-medium">Address line 1</label>
+                                            <div class="input-wrapper">
+                                                <input id="bill_addr1" data-req data-label="Billing address line 1"
+                                                    autocomplete="billing address-line1" />
+                                            </div>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
+                                        <div class="md:col-span-2">
+                                            <label for="bill_addr2" class="block text-sm font-medium">Address line 2</label>
+                                            <div class="input-wrapper">
+                                                <input id="bill_addr2" autocomplete="billing address-line2" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label for="bill_city" class="block text-sm font-medium">City</label>
+                                            <div class="input-wrapper">
+                                                <input id="bill_city" data-req data-label="Billing city"
+                                                    autocomplete="billing address-level2" />
+                                            </div>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
+                                        <div>
+                                            <label for="bill_state" class="block text-sm font-medium">State</label>
+                                            <select id="bill_state" data-req data-label="Billing state"
+                                                class="!block mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                autocomplete="billing address-level1">
+                                                <option value="">Select state</option>
+                                                <option>NSW</option>
+                                                <option>VIC</option>
+                                                <option>QLD</option>
+                                                <option>WA</option>
+                                                <option>SA</option>
+                                                <option>TAS</option>
+                                                <option>ACT</option>
+                                                <option>NT</option>
+                                            </select>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
+                                        <div>
+                                            <label for="bill_postal" class="block text-sm font-medium">Postal code</label>
+                                            <div class="input-wrapper">
+                                                <input id="bill_postal" data-req data-label="Billing postal code"
+                                                    autocomplete="billing postal-code" />
+                                            </div>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
+                                        <div>
+                                            <label for="bill_country" class="block text-sm font-medium">Country</label>
+                                            <select id="bill_country" data-req data-label="Billing country"
+                                                class="!block mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                <option selected>Australia</option>
+                                            </select>
+                                            <p class="form-error mt-1 text-xs text-red-600 hidden"></p>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="rounded-2xl border border-gray-200 p-4">
                                     <span class="text-sm font-medium text-gray-600">Coupon code</span>
                                     <div class="mt-2 flex flex-col sm:flex-row gap-3">
@@ -395,26 +401,85 @@
                             </form>
 
                             <!-- Step 4: Review -->
-                            <div data-step="review" class="step hidden space-y-5">
+                            <div data-step="review" class="step hidden space-y-6">
                                 <div>
                                     <h2 class="text-xl font-semibold">Review & confirm</h2>
                                     <p class="text-sm text-gray-500">Double-check the details before placing your order.</p>
                                 </div>
-                                <div class="rounded-2xl border border-gray-200 p-4">
-                                    <h3 class="font-semibold mb-2">Contact</h3>
-                                    <div class="text-sm text-gray-700" id="review_contact"></div>
-                                </div>
-                                <div class="rounded-2xl border border-gray-200 p-4">
-                                    <h3 class="font-semibold mb-2">Shipping</h3>
-                                    <div class="text-sm text-gray-700" id="review_shipping"></div>
-                                </div>
-                                <div class="rounded-2xl border border-gray-200 p-4">
-                                    <h3 class="font-semibold mb-2">Billing</h3>
-                                    <div class="text-sm text-gray-700" id="review_billing"></div>
-                                </div>
-                                <div class="rounded-2xl border border-gray-200 p-4">
-                                    <h3 class="font-semibold mb-2">Payment & delivery</h3>
-                                    <div class="text-sm text-gray-700 space-y-1" id="review_payment"></div>
+                                <div class="space-y-4">
+                                    <section
+                                        class="rounded-2xl border border-gray-200 p-4 md:p-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                        <div>
+                                            <h3 class="text-base font-semibold text-gray-900">Contact</h3>
+                                            <div class="mt-2 text-sm text-gray-700 leading-6 space-y-1" id="review_contact">
+                                                <div class="text-gray-500">No contact details provided.</div>
+                                            </div>
+                                        </div>
+                                        <button type="button" data-edit-step="contact"
+                                            class="self-start text-sm font-semibold text-blue-600 hover:text-blue-700">Edit</button>
+                                    </section>
+
+                                    <section
+                                        class="rounded-2xl border border-gray-200 p-4 md:p-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                        <div>
+                                            <h3 class="text-base font-semibold text-gray-900">Shipping</h3>
+                                            <div class="mt-2 text-sm text-gray-700 leading-6 space-y-1" id="review_shipping">
+                                                <div class="text-gray-500">Select a shipping option.</div>
+                                            </div>
+                                        </div>
+                                        <button type="button" data-edit-step="address"
+                                            class="self-start text-sm font-semibold text-blue-600 hover:text-blue-700">Edit</button>
+                                    </section>
+
+                                    <section class="rounded-2xl border border-gray-200 p-4 md:p-6 space-y-4">
+                                        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                                            <div>
+                                                <h3 class="text-base font-semibold text-gray-900">Billing &amp; payment</h3>
+                                                <div class="mt-2 text-sm text-gray-700 leading-6 space-y-1" id="review_billing">
+                                                    <div class="text-gray-500">Add a billing address to continue.</div>
+                                                </div>
+                                            </div>
+                                            <button type="button" data-edit-step="payment"
+                                                class="self-start text-sm font-semibold text-blue-600 hover:text-blue-700">Edit</button>
+                                        </div>
+                                        <div class="text-sm text-gray-700 leading-6 space-y-1" id="review_payment"></div>
+                                    </section>
+
+                                    <section class="rounded-2xl border border-gray-200 p-4 md:p-6">
+                                        <div class="flex items-center justify-between">
+                                            <h3 class="text-base font-semibold text-gray-900">Order summary</h3>
+                                        </div>
+                                        <div class="mt-4 border border-gray-200 rounded-xl divide-y divide-gray-200 overflow-hidden"
+                                            id="review_items"></div>
+                                        <dl class="mt-4 space-y-2 text-sm text-gray-600">
+                                            <div class="flex items-center justify-between">
+                                                <dt>Subtotal (incl GST)</dt>
+                                                <dd id="review_subtotal" class="font-medium text-gray-900">$0.00</dd>
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <dt>Shipping</dt>
+                                                <dd id="review_shipping_total" class="font-medium text-gray-900">Select shipping</dd>
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <dt>Card fee (incl GST)</dt>
+                                                <dd id="review_card_fee" class="font-medium text-gray-900">$0.00</dd>
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <dt>GST total</dt>
+                                                <dd id="review_gst_total" class="font-medium text-gray-900">$0.00</dd>
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <dt>Discount</dt>
+                                                <dd id="review_discount" class="font-medium text-emerald-600">-$0.00</dd>
+                                            </div>
+                                            <div class="flex items-center justify-between text-base font-semibold text-gray-900">
+                                                <dt>Total</dt>
+                                                <dd id="review_total">$0.00</dd>
+                                            </div>
+                                        </dl>
+                                        <p id="review_card_fee_note"
+                                            class="mt-2 text-xs text-gray-500 leading-snug hidden"></p>
+                                    </section>
                                 </div>
                             </div>
                         </div>
@@ -426,21 +491,21 @@
                                 <button
                                     class="step-next px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700">Next</button>
                                 <button
-                                    class="place-order hidden px-5 py-2.5 rounded-xl bg-neutral-900 text-white font-semibold hover:bg-neutral-800">Place
-                                    order</button>
+                                    class="place-order hidden px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">Place
+                                    order securely</button>
                             </div>
                         </div>
                     </section>
 
                     <!-- Summary -->
                     <aside class="space-y-6">
-                        <section class="rounded-3xl bg-white shadow-sm border border-gray-100 p-6">
+                        <section class="rounded-3xl bg-white shadow-sm border border-gray-100 p-6 space-y-4">
                             <div class="flex items-center justify-between">
                                 <h2 class="text-lg font-semibold">Order summary</h2>
                             </div>
-                            <p data-cart-empty-notice class="mt-2 text-sm text-red-600 hidden">Add at least one item to continue checkout.</p>
-                            <div class="checkout-summary mt-4 divide-y border-t border-gray-200"></div>
-                            <dl class="mt-4 space-y-2 text-sm text-gray-600">
+                            <p data-cart-empty-notice class="text-sm text-red-600 hidden">Add at least one item to continue checkout.</p>
+                            <div class="checkout-summary border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-200"></div>
+                            <dl class="space-y-2 text-sm text-gray-600">
                                 <div class="flex flex-col gap-1">
                                     <div class="flex items-center justify-between">
                                         <dt>Subtotal (incl GST)</dt>
@@ -457,7 +522,7 @@
                                     <dd class="summary-processing font-medium text-gray-900">$0.00</dd>
                                 </div>
                                 <div class="flex items-center justify-between">
-                                    <dt>GST Only Total</dt>
+                                    <dt>GST total</dt>
                                     <dd class="summary-gst font-medium text-gray-900">$0.00</dd>
                                 </div>
                                 <div class="flex items-center justify-between">
