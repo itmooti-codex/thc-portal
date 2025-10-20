@@ -1501,7 +1501,12 @@
         const formData = JSON.parse(saved);
         Object.entries(formData).forEach(([id, value]) => {
           const el = byId(id);
-          if (el) el.value = value;
+          if (el) {
+            el.value = value;
+            if (isCountrySelect(el)) {
+              forceAustraliaSelection(el);
+            }
+          }
         });
       }
     } catch (err) {
@@ -2767,9 +2772,32 @@
     return str;
   };
 
+  const AUSTRALIA_LABEL = "Australia";
+
+  const isCountrySelect = (el) =>
+    el && el.tagName === "SELECT" && /country$/i.test(el.id || "");
+
+  const forceAustraliaSelection = (el) => {
+    if (!el) return;
+    const options = Array.from(el.options || []);
+    const match =
+      options.find((option) =>
+        /^australia$/i.test(option.text || option.value)
+      ) || options[0];
+    if (match) {
+      el.value = match.value || AUSTRALIA_LABEL;
+    } else {
+      el.value = AUSTRALIA_LABEL;
+    }
+  };
+
   const setFieldValue = (id, value, opts = {}) => {
     const el = byId(id);
     if (!el) return;
+    if (isCountrySelect(el)) {
+      forceAustraliaSelection(el);
+      return;
+    }
     const str = formatValue(value, opts);
     if (el.value !== str) {
       el.value = str;
@@ -4271,7 +4299,7 @@
 
       ["ship_country", "bill_country"].forEach((id) => {
         const el = byId(id);
-        if (el && !el.value) el.value = "Australia";
+        if (el) forceAustraliaSelection(el);
       });
 
       // Set up form change listeners for persistence
