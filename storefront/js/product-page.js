@@ -24,6 +24,24 @@
   const $use = $ || fallback$;
 
   const clampQty = (value) => (typeof clamp === "function" ? clamp(value, 1, 99) : Math.max(1, Math.min(99, parseInt(value || "1", 10) || 1)));
+  const placeholderTokenRegex = /^\s*\[[^\]]*\]\s*$/;
+
+  const normalizeRestrictionValue = (value) => {
+    if (value == null) return "";
+    const normalized = String(value).replace(/\s+/g, " ").trim();
+    if (!normalized) return "";
+    if (placeholderTokenRegex.test(normalized)) return "";
+    return normalized;
+  };
+
+  const parseBooleanish = (value) => {
+    if (value == null) return null;
+    const normalized = String(value).trim().toLowerCase();
+    if (!normalized) return null;
+    if (["true", "1", "yes", "y", "on"].includes(normalized)) return true;
+    if (["false", "0", "no", "n", "off"].includes(normalized)) return false;
+    return null;
+  };
 
   const parseBooleanish = (value) => {
     if (value == null) return null;
@@ -48,16 +66,18 @@
     const params = new URLSearchParams(window.location.search);
     const scriptParam = params.get("script");
     const cantDispenseParam = params.get("cantDispense");
-    const reasonParam = params.get("cantDispenseReason") || "";
-    const nextDispenseParam = params.get("nextDispenseDate") || "";
+    const reasonParam = normalizeRestrictionValue(
+      params.get("cantDispenseReason")
+    );
+    const nextDispenseParam = normalizeRestrictionValue(
+      params.get("nextDispenseDate")
+    );
 
     const isScriptFlag = parseBooleanish(scriptParam) === true;
     const hasScriptParam = scriptParam != null && String(scriptParam).trim() !== "";
     const isScript = isScriptFlag || hasScriptParam;
     const cantDispenseFlag = parseBooleanish(cantDispenseParam) === true;
-    const normalizedReason = reasonParam.replace(/\s+/g, " ").trim();
-    const normalizedNextDispense = nextDispenseParam.trim();
-    const hasRestrictionInfo = Boolean(normalizedReason || normalizedNextDispense);
+    const hasRestrictionInfo = Boolean(reasonParam || nextDispenseParam);
     const blockDispense = isScript && (cantDispenseFlag || hasRestrictionInfo);
 
     if (!blockDispense) {
@@ -88,14 +108,26 @@
 
     if (warningEl) {
       const fallbackReason = "This script is not ready to dispense.";
-      const primaryMessage = normalizedReason || fallbackReason;
-      warningEl.replaceChildren(document.createTextNode(primaryMessage));
-      if (normalizedNextDispense) {
+      warningEl.replaceChildren();
+
+      const fallbackLine = document.createElement("span");
+      fallbackLine.textContent = fallbackReason;
+      warningEl.appendChild(fallbackLine);
+
+      if (reasonParam && reasonParam.toLowerCase() !== fallbackReason.toLowerCase()) {
+        warningEl.appendChild(document.createElement("br"));
+        const reasonLine = document.createElement("span");
+        reasonLine.textContent = `Reason - ${reasonParam}`;
+        warningEl.appendChild(reasonLine);
+      }
+
+      if (nextDispenseParam) {
         warningEl.appendChild(document.createElement("br"));
         warningEl.appendChild(
-          document.createTextNode(`Available From - ${normalizedNextDispense}`)
+          document.createTextNode(`Available From - ${nextDispenseParam}`)
         );
       }
+
       warningEl.classList.remove("hidden");
       warningEl.setAttribute("role", "alert");
     }

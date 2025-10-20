@@ -32,6 +32,14 @@
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='100%25' height='100%25' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='24' fill='%239ca3af'%3ENo Image%3C/text%3E%3C/svg%3E";
   const placeholderTokenRegex = /^\s*\[[^\]]*\]\s*$/;
 
+  const sanitizeRestrictionValue = (value) => {
+    if (value == null) return "";
+    const normalized = String(value).replace(/\s+/g, " ").trim();
+    if (!normalized) return "";
+    if (placeholderTokenRegex.test(normalized)) return "";
+    return normalized;
+  };
+
   const filterProducts = (query) => {
     const q = (query || "").trim().toLowerCase();
     let matches = 0;
@@ -117,8 +125,12 @@
     if (!scriptsGrid) return;
     scriptsGrid.querySelectorAll(".product-card").forEach((card) => {
       const canDispense = parseCanDispense(card.dataset?.canDispense);
-      const reason = card.dataset?.cantDispenseReason?.trim();
-      const nextDispenseDate = card.dataset?.nextDispenseDate?.trim();
+      const reason =
+        sanitizeRestrictionValue(card.dataset?.cantDispenseReason) ||
+        sanitizeRestrictionValue(card.dataset?.reasonCantDispense);
+      const nextDispenseDate = sanitizeRestrictionValue(
+        card.dataset?.nextDispenseDate
+      );
 
       const viewBtn = card.querySelector(".view-product-btn");
       const addBtn = card.querySelector(".add-to-cart-btn");
@@ -342,12 +354,12 @@
         const canDispense = parseCanDispense(canDispenseAttr);
         if (!canDispense) {
           url.searchParams.set("cantDispense", "1");
-          const reason = card.dataset?.cantDispenseReason
-            ? card.dataset.cantDispenseReason.trim()
-            : "";
-          const nextDispenseDate = card.dataset?.nextDispenseDate
-            ? card.dataset.nextDispenseDate.trim()
-            : "";
+          const reason =
+            sanitizeRestrictionValue(card.dataset?.cantDispenseReason) ||
+            sanitizeRestrictionValue(card.dataset?.reasonCantDispense);
+          const nextDispenseDate = sanitizeRestrictionValue(
+            card.dataset?.nextDispenseDate
+          );
           if (reason) url.searchParams.set("cantDispenseReason", reason);
           if (nextDispenseDate)
             url.searchParams.set("nextDispenseDate", nextDispenseDate);
