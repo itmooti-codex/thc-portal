@@ -273,6 +273,24 @@
       event.preventDefault();
       const url = new URL("product.html", window.location.origin);
       url.searchParams.set("id", String(product.id));
+      const scriptId = card.dataset?.scriptId || card.dataset?.scriptID;
+      if (scriptId) {
+        url.searchParams.set("script", "1");
+        const canDispenseAttr = card.dataset?.canDispense;
+        const canDispense = parseCanDispense(canDispenseAttr);
+        if (!canDispense) {
+          url.searchParams.set("cantDispense", "1");
+          const reason = card.dataset?.cantDispenseReason
+            ? card.dataset.cantDispenseReason.trim()
+            : "";
+          const nextDispenseDate = card.dataset?.nextDispenseDate
+            ? card.dataset.nextDispenseDate.trim()
+            : "";
+          if (reason) url.searchParams.set("cantDispenseReason", reason);
+          if (nextDispenseDate)
+            url.searchParams.set("nextDispenseDate", nextDispenseDate);
+        }
+      }
       window.location.href = url.toString();
     }
   });
