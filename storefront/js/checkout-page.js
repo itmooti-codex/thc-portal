@@ -1388,15 +1388,8 @@
             statusId === paidStatusId &&
             scriptId &&
             typeof service.markScriptDispensed === "function";
-          const canUpdateDispense =
-            enriched.dispenseId &&
-            typeof service.updateDispenseStatus === "function";
           if (shouldMarkScript) {
             await service.markScriptDispensed(scriptId);
-          } else if (canUpdateDispense) {
-            await service.updateDispenseStatus(enriched.dispenseId, statusId);
-          } else {
-            continue;
           }
           if (typeof Cart.updateItemMetadata === "function") {
             await Cart.updateItemMetadata(enriched.id || item.id, {

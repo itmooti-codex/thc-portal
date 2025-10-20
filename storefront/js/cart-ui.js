@@ -986,31 +986,6 @@ const dlog = (...args) => {
     return null;
   };
 
-  const ensureScriptMetadata = async (target, { triggerCreation = false } = {}) => {
-    if (!shouldManageDispenses()) return null;
-    if (!target || typeof target !== "object") return null;
-    const scriptId = target.scriptId || target.script_id;
-    if (!scriptId) return null;
-    const meta = await fetchScriptMeta(scriptId, {
-      awaitCreation: triggerCreation,
-    });
-    if (!meta) return null;
-    const patch = attachScriptMetadata(
-      {
-        scriptId,
-        dispenseId: meta.dispenseId,
-        dispenseStatusId: meta.dispenseStatusId,
-        dispenseStatusLabel: meta.dispenseStatusLabel,
-      },
-      {}
-    );
-    if (target.id) {
-      patch.id = target.id;
-      await updateCartItemMetadata(target.id, patch);
-    }
-    return patch;
-  };
-
   const syncScriptMetadataFromDom = async () => {
     if (!window.Cart) return;
     const cards = $$use(".product-card[data-script-id]");
@@ -1082,67 +1057,20 @@ const dlog = (...args) => {
     }
   };
 
-  const ensureDispenseStatusForItem = async (item, { triggerCreation = false } = {}) => {
-    if (!item || !item.id) return item;
-    if (!item.isScript && !item.scriptId) return item;
-    const current = Object.assign({}, item);
-    if (!current.dispenseId || !current.dispenseStatusId || !current.dispenseStatus) {
-      const patch = await ensureScriptMetadata(current, { triggerCreation });
-      if (patch) {
-        Object.assign(current, patch);
+  const clearScriptCartMetadata = async (item) => {
+    if (!item) return;
+    try {
+      if (item.id) {
+        await updateCartItemMetadata(item.id, {
+          dispenseStatusId: null,
+          dispenseStatus: null,
+          dispenseId: null,
+        });
       }
+    } catch (err) {
+      dlog("Failed to clear script metadata", err);
     }
-    return current;
   };
-
-  const updateDispenseStatusForItem = async (item, statusKeyOrId) => {
-    if (!shouldManageDispenses()) return;
-    const service = getDispenseService();
-    if (!service) return;
-    const updatedItem = await ensureDispenseStatusForItem(item, {
-      triggerCreation: false,
-    });
-    const dispenseId = updatedItem?.dispenseId;
-    if (!dispenseId) {
-      throw new Error("Unable to resolve dispense for script");
-    }
-    const statusId =
-      resolveDispenseStatusId(statusKeyOrId) ||
-      resolveDispenseStatusId(
-        service.statusIds?.[statusKeyOrId]
-          ? service.statusIds[statusKeyOrId]
-          : statusKeyOrId
-      ) ||
-      resolveDispenseStatusId(statusKeyOrId);
-    if (!statusId) {
-      throw new Error("Unsupported dispense status");
-    }
-    await service.updateDispenseStatus(dispenseId, statusId);
-    await updateCartItemMetadata(item.id, {
-      dispenseStatusId: statusId,
-      dispenseStatus: getDispenseStatusLabel(statusId),
-    });
-    updateProductCardDataset(
-      [item.id, item.productId],
-      {
-        dispenseStatusId: statusId,
-        dispenseStatus: getDispenseStatusLabel(statusId),
-        dispenseId,
-        scriptId: item.scriptId,
-        suppressAutoSeed: String(statusId) === DEFAULT_DISPENSE_STATUS_IDS.CANCELLED,
-      },
-      { syncButtons: true }
-    );
-  };
-
-const cancelScriptDispense = async (item) => {
-  if (!shouldManageDispenses()) return;
-  const statusId =
-    getDispenseService()?.statusIds?.CANCELLED ||
-    resolveDispenseStatusId("Cancelled") ||
-    DEFAULT_DISPENSE_STATUS_IDS.CANCELLED;
-  await updateDispenseStatusForItem(item, statusId);
-};
 
   const syncItemDispenseForCartItem = async (
     cartItem,
@@ -2314,26 +2242,24 @@ const cancelScriptDispense = async (item) => {
       if (!hasCart) return;
       const id = remove.dataset.id;
       const item = Cart.getItem(id);
-      if (item && isScriptCartItem(item)) {
-        updateProductCardDataset(
-          [id, item.productId],
-          {
-            dispenseStatus: "Cancelled",
-            dispenseStatusId: null,
-            dispenseId: null,
-            scriptId: item.scriptId,
-            suppressAutoSeed: true,
-          },
-          { syncButtons: true }
-        );
-        if (shouldManageDispenses()) {
-          cancelScriptDispense(item).catch((err) => {
-            console.error("Cancel dispense failed", err);
+        if (item && isScriptCartItem(item)) {
+          updateProductCardDataset(
+            [id, item.productId],
+            {
+              dispenseStatus: "Cancelled",
+              dispenseStatusId: null,
+              dispenseId: null,
+              scriptId: item.scriptId,
+              suppressAutoSeed: true,
+            },
+            { syncButtons: true }
+          );
+          clearScriptCartMetadata(item).catch((err) => {
+            console.error("Failed to clear script metadata", err);
           });
+        } else if (item && shouldHandleItemDispenses()) {
+          await cancelItemDispense(item);
         }
-      } else if (item && shouldHandleItemDispenses()) {
-        await cancelItemDispense(item);
-      }
       await Cart.removeItem(id);
       return;
     }
@@ -2357,8 +2283,8 @@ const cancelScriptDispense = async (item) => {
             { syncButtons: true }
           );
           if (manage) {
-            cancelScriptDispense(item).catch((err) => {
-              console.error("Cancel dispense failed", err);
+            clearScriptCartMetadata(item).catch((err) => {
+              console.error("Failed to clear script metadata", err);
             });
           }
         } else if (shouldHandleItemDispenses()) {
