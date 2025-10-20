@@ -259,6 +259,68 @@
     maybeHideLoader();
   });
 
+  const resolveProductDetailUrl = (view, productId) => {
+    const rawHref =
+      (typeof view?.getAttribute === "function" && view.getAttribute("href")) ||
+      (typeof view?.dataset?.href === "string" ? view.dataset.href : "");
+
+    const buildUrl = (base) => {
+      try {
+        return new URL(base, window.location.href);
+      } catch {
+        try {
+          return new URL(base, window.location.origin);
+        } catch {
+          return null;
+        }
+      }
+    };
+
+    let url = null;
+    if (rawHref) {
+      url = buildUrl(rawHref);
+    }
+
+    if (!url) {
+      url = buildUrl("product.html");
+    }
+
+    if (!url) return null;
+
+    const productIdStr = productId != null ? String(productId) : "";
+    const pathSegments = url.pathname
+      .split("/")
+      .filter(Boolean)
+      .map((segment) => {
+        try {
+          return decodeURIComponent(segment);
+        } catch {
+          return segment;
+        }
+      });
+    const pathAlreadyHasId =
+      productIdStr && pathSegments.includes(productIdStr);
+
+    if (productIdStr && !pathAlreadyHasId) {
+      const isHtmlPath = /product\.html?$/i.test(url.pathname);
+      if (isHtmlPath) {
+        if (!url.searchParams.has("id")) {
+          url.searchParams.set("id", productIdStr);
+        }
+      } else if (/product-detail\/?$/i.test(url.pathname)) {
+        url.pathname = `${url.pathname.replace(/\/?$/, "/")}${encodeURIComponent(
+          productIdStr
+        )}`;
+      } else if (url.pathname.endsWith("/")) {
+        url.pathname = `${url.pathname}${encodeURIComponent(productIdStr)}`;
+      } else if (!url.searchParams.has("id")) {
+        url.searchParams.set("id", productIdStr);
+      }
+    }
+
+    return url;
+  };
+
   document.addEventListener("click", (event) => {
     const view = event.target.closest(".view-product-btn, .view-product-link");
     if (!view) return;
@@ -270,9 +332,9 @@
     }
 
     if (product && product.id) {
+      const url = resolveProductDetailUrl(view, product.id);
+      if (!url) return;
       event.preventDefault();
-      const url = new URL("product.html", window.location.origin);
-      url.searchParams.set("id", String(product.id));
       const scriptId = card.dataset?.scriptId || card.dataset?.scriptID;
       if (scriptId) {
         url.searchParams.set("script", "1");
@@ -291,6 +353,15 @@
             url.searchParams.set("nextDispenseDate", nextDispenseDate);
         }
       }
+
+      if (typeof view?.setAttribute === "function") {
+        try {
+          view.setAttribute("href", url.toString());
+        } catch {
+          /* ignore */
+        }
+      }
+
       window.location.href = url.toString();
     }
   });
