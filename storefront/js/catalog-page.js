@@ -248,15 +248,56 @@
       searchEl?.focus();
     });
 
+  const isRealProductCard = (card) => {
+    if (!card) return false;
+    const id = card.dataset?.productId?.trim() || "";
+    if (id && !/^[\[\]]/.test(id)) return true;
+    const datasetName = card.dataset?.productName?.trim() || "";
+    if (datasetName && !/\[[^\]]*\]/.test(datasetName)) return true;
+    const nameText =
+      card.querySelector(".product-name")?.textContent?.trim() || "";
+    if (nameText && !/\[[^\]]*\]/.test(nameText)) return true;
+    return false;
+  };
+
   const hasRealProducts = () =>
-    Array.from(document.querySelectorAll(".product-card")).some((card) => {
-      const id = card.dataset?.productId || "";
-      const name = card.querySelector(".product-name")?.textContent?.trim();
-      return (
-        (id && !/^[\[\]]/.test(id)) ||
-        (name && !/\[[^\]]*\]/.test(name || ""))
-      );
-    });
+    Array.from(document.querySelectorAll(".product-card")).some(
+      isRealProductCard
+    );
+
+  const hasRealScripts = () => {
+    const scriptsGrid = document.getElementById("catalog-scripts-grid");
+    if (!scriptsGrid) return false;
+    return Array.from(scriptsGrid.querySelectorAll(".product-card")).some(
+      isRealProductCard
+    );
+  };
+
+  const syncScriptsTabVisibility = () => {
+    const scriptTab = document.getElementById("catalog-tab-scripts");
+    if (!scriptTab) return;
+    const itemsTab = document.getElementById("catalog-tab-items");
+    const hasScripts = hasRealScripts();
+    const wasActive = scriptTab.getAttribute("aria-selected") === "true";
+
+    if (hasScripts) {
+      scriptTab.removeAttribute("hidden");
+      scriptTab.classList.remove("hidden");
+      scriptTab.removeAttribute("aria-hidden");
+      scriptTab.removeAttribute("tabindex");
+      return;
+    }
+
+    scriptTab.setAttribute("aria-selected", "false");
+    scriptTab.setAttribute("aria-hidden", "true");
+    scriptTab.setAttribute("tabindex", "-1");
+    scriptTab.classList.add("hidden");
+    scriptTab.setAttribute("hidden", "true");
+
+    if (wasActive && itemsTab) {
+      itemsTab.click();
+    }
+  };
 
   const maybeHideLoader = () => {
     if (!isCatalogPage) return;
@@ -347,18 +388,6 @@
     });
   };
 
-  const isRealProductCard = (card) => {
-    if (!card) return false;
-    const id = card.dataset?.productId?.trim() || "";
-    if (id && !placeholderTokenRegex.test(id)) return true;
-    const datasetName = card.dataset?.productName?.trim() || "";
-    if (datasetName && !placeholderTokenRegex.test(datasetName)) return true;
-    const nameText =
-      card.querySelector(".product-name")?.textContent?.trim() || "";
-    if (nameText && !placeholderTokenRegex.test(nameText)) return true;
-    return false;
-  };
-
   const ensureProductImages = () => {
     document.querySelectorAll(".product-card img").forEach((img) => {
       const card = img.closest(".product-card");
@@ -390,6 +419,7 @@
       window.StorefrontCartUI?.syncAddButtons?.();
       syncScriptDispenseState();
       ensureProductImages();
+      syncScriptsTabVisibility();
       if (searchEl) filterProducts(searchEl.value);
       maybeHideLoader();
     });
@@ -397,6 +427,7 @@
 
   const observer = new MutationObserver(scheduleSync);
   const grid = document.querySelector("[data-dynamic-list]");
+  const scriptsGrid = document.getElementById("catalog-scripts-grid");
   if (grid)
     observer.observe(grid, {
       childList: true,
@@ -404,7 +435,14 @@
       attributes: true,
       characterData: true,
     });
-  else
+  if (scriptsGrid && scriptsGrid !== grid)
+    observer.observe(scriptsGrid, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      characterData: true,
+    });
+  if (!grid && !scriptsGrid)
     observer.observe(document.body, {
       childList: true,
       subtree: true,
@@ -415,6 +453,7 @@
     filterProducts(searchEl?.value || "");
     maybeHideLoader();
     ensureProductImages();
+    syncScriptsTabVisibility();
     if (isCatalogPage) setTimeout(() => hideLoader(), 6000);
   };
 
