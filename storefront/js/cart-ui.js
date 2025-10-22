@@ -189,6 +189,60 @@ const dlog = (...args) => {
     return `This transaction includes a credit card processing fee of 1.8% of the order amount (products and shipping). Credit card fee = ${formatMoney(exGst)} + ${gstLabel} ${formatMoney(gstAmount)} = ${formatMoney(total)}.`;
   };
 
+  const escapeHtml = (value) => {
+    if (value === null || value === undefined) return "";
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  };
+
+  const getAvatarInitial = (name) => {
+    if (name === null || name === undefined) return "•";
+    const str = String(name).trim();
+    return str ? str.charAt(0).toUpperCase() : "•";
+  };
+
+  const renderAvatarHtml = (
+    image,
+    name,
+    {
+      sizeClasses = "w-16 h-16",
+      shapeClasses = "rounded-xl",
+      imageClasses = "",
+      fallbackClasses = "",
+      fallbackTextClass = "text-lg",
+    } = {}
+  ) => {
+    const baseClasses = [sizeClasses, shapeClasses].filter(Boolean).join(" ").trim();
+    const alt = escapeHtml(name || "Product");
+    if (isMeaningfulImage(image)) {
+      const src = escapeHtml(String(image).trim());
+      const imgClass = [
+        baseClasses,
+        "object-cover bg-gray-100",
+        imageClasses,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+      return `<img src="${src}" alt="${alt}" class="${imgClass}" />`;
+    }
+    const fallbackClass = [
+      baseClasses,
+      "bg-gradient-to-br from-indigo-50 to-indigo-100 text-indigo-600 flex items-center justify-center font-semibold uppercase",
+      fallbackTextClass,
+      fallbackClasses,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    const initial = escapeHtml(getAvatarInitial(name));
+    return `<div class="${fallbackClass}" aria-hidden="true">${initial}</div>`;
+  };
+
   const renderSubtotalBreakdown = (container, breakdown) => {
     if (!container) return;
     container.innerHTML = "";
@@ -1709,7 +1763,7 @@ const dlog = (...args) => {
     } else {
       state.items.forEach((item) => {
         const row = document.createElement("div");
-        row.className = "p-4 flex gap-3 items-center";
+        row.className = "p-4 flex gap-3 items-start";
         const scriptLine = isScriptCartItem(item);
         const qtyValue = scriptLine
           ? 1
@@ -1741,10 +1795,13 @@ const dlog = (...args) => {
         const qtyInputAttrs = scriptLine
           ? ' readonly aria-readonly="true"'
           : "";
+        const avatarHtml = renderAvatarHtml(item.image, item.name, {
+          sizeClasses: "w-16 h-16",
+          shapeClasses: "rounded-xl",
+          fallbackTextClass: "text-lg",
+        });
         row.innerHTML = `
-        <img src="${item.image}" alt="${
-          item.name
-        }" class="w-16 h-16 rounded-lg object-cover"/>
+        <div class="flex-shrink-0">${avatarHtml}</div>
         <div class="flex-1 min-w-0">
           <div class="font-semibold truncate">${item.name}</div>
           ${
@@ -2057,6 +2114,7 @@ const dlog = (...args) => {
     extractProduct,
     safeId,
     renderCart,
+    renderAvatarHtml,
     syncAddButtons,
     ensureDrawer,
     config,

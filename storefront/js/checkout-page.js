@@ -156,6 +156,80 @@
       THANK_YOU_FALLBACK
     );
 
+  const placeholderTokenRegex = /^\s*\[[^\]]*\]\s*$/;
+
+  const isMeaningfulImage = (value) => {
+    if (value === null || value === undefined) return false;
+    const str = String(value).trim();
+    if (!str) return false;
+    if (placeholderTokenRegex.test(str)) return false;
+    const lower = str.toLowerCase();
+    if (lower === "null" || lower === "undefined") return false;
+    return true;
+  };
+
+  const escapeHtml = (value) => {
+    if (value === null || value === undefined) return "";
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  };
+
+  const getAvatarInitial = (name) => {
+    if (name === null || name === undefined) return "•";
+    const str = String(name).trim();
+    return str ? str.charAt(0).toUpperCase() : "•";
+  };
+
+  const fallbackRenderAvatar = (
+    image,
+    name,
+    {
+      sizeClasses = "h-14 w-14 sm:h-16 sm:w-16",
+      shapeClasses = "rounded-xl",
+      imageClasses = "",
+      fallbackClasses = "",
+      fallbackTextClass = "text-base sm:text-lg",
+    } = {}
+  ) => {
+    const baseClasses = [sizeClasses, shapeClasses].filter(Boolean).join(" ").trim();
+    if (isMeaningfulImage(image)) {
+      const src = escapeHtml(String(image).trim());
+      const alt = escapeHtml(name || "Product");
+      const classes = [
+        baseClasses,
+        "object-cover bg-gray-100",
+        imageClasses,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+      return `<img src="${src}" alt="${alt}" class="${classes}" />`;
+    }
+    const fallbackClass = [
+      baseClasses,
+      "bg-gradient-to-br from-indigo-50 to-indigo-100 text-indigo-600 flex items-center justify-center font-semibold uppercase",
+      fallbackTextClass,
+      fallbackClasses,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    const initial = escapeHtml(getAvatarInitial(name));
+    return `<div class="${fallbackClass}" aria-hidden="true">${initial}</div>`;
+  };
+
+  const renderAvatarHtml = (image, name, options) => {
+    const external = window.StorefrontCartUI?.renderAvatarHtml;
+    if (typeof external === "function") {
+      return external(image, name, options);
+    }
+    return fallbackRenderAvatar(image, name, options);
+  };
+
   const withOrderRef = (url, orderRef) => {
     if (!orderRef) return url;
     try {
@@ -2478,13 +2552,11 @@
           : 0;
         const gstLabel =
           taxAmount > 0 ? `Incl ${formatMoney(taxAmount)} GST` : "GST exempt";
-        const imageHtml = item.image
-          ? `<img src="${item.image}" alt="${item.name || "Product"}" class="h-14 w-14 sm:h-16 sm:w-16 rounded-xl object-cover bg-gray-100" />`
-          : `<div class="h-14 w-14 sm:h-16 sm:w-16 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center text-xs font-semibold">${(item.name || "?")
-              .toString()
-              .trim()
-              .charAt(0)
-              .toUpperCase() || "•"}</div>`;
+        const imageHtml = renderAvatarHtml(item.image, item.name, {
+          sizeClasses: "h-14 w-14 sm:h-16 sm:w-16",
+          shapeClasses: "rounded-xl",
+          fallbackTextClass: "text-base sm:text-lg",
+        });
         const itemName = item.name ? String(item.name).trim() : "Item";
         const brandLine = item.brand
           ? `<div class="text-xs text-gray-500 truncate">${item.brand}</div>`
@@ -3404,13 +3476,11 @@
             taxAmount > 0
               ? `Incl ${formatMoney(taxAmount)} GST`
               : "GST exempt";
-          const imageHtml = item.image
-            ? `<img src="${item.image}" alt="${item.name || "Product"}" class="h-14 w-14 sm:h-16 sm:w-16 rounded-xl object-cover bg-gray-100" />`
-            : `<div class="h-14 w-14 sm:h-16 sm:w-16 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center text-xs font-semibold">${(item.name || "?")
-                .toString()
-                .trim()
-                .charAt(0)
-                .toUpperCase() || "•"}</div>`;
+          const imageHtml = renderAvatarHtml(item.image, item.name, {
+            sizeClasses: "h-14 w-14 sm:h-16 sm:w-16",
+            shapeClasses: "rounded-xl",
+            fallbackTextClass: "text-base sm:text-lg",
+          });
           const infoLines = [];
           const nameLine = item.name ? String(item.name).trim() : "Item";
           infoLines.push(
