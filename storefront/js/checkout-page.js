@@ -1119,6 +1119,46 @@
 
   /* ========= checkout state ========= */
   const STORAGE_KEY = "checkout:v1";
+  const CHECKOUT_STORAGE_PATTERNS = [
+    /^checkout:/i,
+    /^checkout/i,
+    /^thc_portal_/i,
+  ];
+
+  const shouldClearCheckoutKey = (key) => {
+    if (!key) return false;
+    if (key === STORAGE_KEY || key === `${STORAGE_KEY}:form`) return true;
+    return CHECKOUT_STORAGE_PATTERNS.some((pattern) => pattern.test(key));
+  };
+
+  const wipeCheckoutStorageNamespace = (storage) => {
+    if (!storage) return;
+    const keys = [];
+    for (let i = 0; i < storage.length; i++) keys.push(storage.key(i));
+    keys.forEach((key) => {
+      if (!shouldClearCheckoutKey(key)) return;
+      try {
+        storage.removeItem(key);
+      } catch (err) {
+        console.warn("Failed to clear checkout storage key", key, err);
+      }
+    });
+  };
+
+  const clearCheckoutArtifacts = async () => {
+    try {
+      await Cart.clear();
+    } catch (err) {
+      console.warn("Cart clear failed", err);
+    }
+
+    try {
+      wipeCheckoutStorageNamespace(window.localStorage);
+      wipeCheckoutStorageNamespace(window.sessionStorage);
+    } catch (err) {
+      console.warn("Checkout storage wipe failed", err);
+    }
+  };
 
   const checkoutState = {
     steps: ["contact", "address", "payment", "review"],
@@ -4146,29 +4186,7 @@
               console.error("Failed to create guest dispenses", err);
             }
           }
-          await Cart.clear();
-          // Aggressive storage wipe across namespaces
-          try {
-            const wipe = (storage) => {
-              if (!storage) return;
-              const keys = [];
-              for (let i = 0; i < storage.length; i++) keys.push(storage.key(i));
-              keys.forEach((key) => {
-                if (
-                  key &&
-                  (/^checkout:/i.test(key) ||
-                    /^checkout/i.test(key) ||
-                    /^thc_portal_/i.test(key) ||
-                    key === STORAGE_KEY ||
-                    key === `${STORAGE_KEY}:form`)
-                ) {
-                  try { storage.removeItem(key); } catch {}
-                }
-              });
-            };
-            wipe(localStorage);
-            wipe(sessionStorage);
-          } catch {}
+          await clearCheckoutArtifacts();
           showToast("Payment successful! Redirecting…", {
             type: "success",
             duration: 2600,
