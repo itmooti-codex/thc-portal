@@ -9,7 +9,7 @@
   }
 
   const {
-    $, byId, clamp,
+    $, byId, clamp, money,
     showPageLoader: showPageLoaderFn,
     hidePageLoader: hidePageLoaderFn,
   } = window.StorefrontUtils || {};
@@ -44,6 +44,8 @@
   };
 
   const cardEl = $use(".product-card");
+  const imageEl = document.getElementById("product_image");
+  const imageFallbackEl = document.getElementById("product_image_fallback");
   const qtyInput = byId && byId("product_qty");
   const decBtn = $use(".product-qty-decr");
   const incBtn = $use(".product-qty-incr");
@@ -52,6 +54,121 @@
   const addToCartBtn = $use(".add-to-cart-btn");
   const warningEl = $use(".product-cant-dispense");
   const qtyWrapper = qtyInput ? qtyInput.closest(".input-wrapper") : null;
+
+  const isPlaceholderValue = (value) => {
+    if (value === null || value === undefined) return true;
+    const str = String(value).trim();
+    if (!str) return true;
+    if (placeholderTokenRegex.test(str)) return true;
+    if (["null", "undefined"].includes(str.toLowerCase())) return true;
+    return false;
+  };
+
+  const isMeaningfulImage = (value) => {
+    if (value === null || value === undefined) return false;
+    const str = String(value).trim();
+    if (!str) return false;
+    if (placeholderTokenRegex.test(str)) return false;
+    if (["null", "undefined"].includes(str.toLowerCase())) return false;
+    return true;
+  };
+
+  const formatMoney = (value) => {
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) return "";
+    if (typeof money === "function") {
+      try {
+        return money(amount);
+      } catch {}
+    }
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: "AUD",
+      }).format(amount);
+    } catch {
+      return `$${amount.toFixed(2)}`;
+    }
+  };
+
+  const parseMoney = (value) => {
+    if (value === null || value === undefined || value === "") return null;
+    if (typeof value === "number") return Number.isFinite(value) ? value : null;
+    const str = String(value).trim();
+    if (!str) return null;
+    const cleaned = str.replace(/[^0-9.,-]/g, "").replace(/,/g, ".");
+    const parsed = parseFloat(cleaned);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const getQueryParam = (key) => {
+    try {
+      return new URLSearchParams(window.location.search).get(key);
+    } catch {
+      return null;
+    }
+  };
+
+  const normaliseText = (value) => {
+    if (value === null || value === undefined) return "";
+    return String(value).trim();
+  };
+
+  const getProductInitial = () => {
+    const candidates = [
+      cardEl?.dataset?.productName,
+      document.getElementById("product_name")?.textContent,
+      cardEl?.dataset?.productBrand,
+    ];
+    for (const candidate of candidates) {
+      const str = normaliseText(candidate);
+      if (str) return str.charAt(0).toUpperCase();
+    }
+    return "•";
+  };
+
+  const showImageFallback = () => {
+    if (imageFallbackEl) {
+      imageFallbackEl.textContent = getProductInitial();
+      imageFallbackEl.classList.remove("hidden");
+    }
+    if (imageEl) {
+      imageEl.classList.add("hidden");
+      imageEl.setAttribute("aria-hidden", "true");
+    }
+  };
+
+  const hideImageFallback = () => {
+    if (imageFallbackEl) {
+      imageFallbackEl.classList.add("hidden");
+    }
+    if (imageEl) {
+      imageEl.classList.remove("hidden");
+      imageEl.removeAttribute("aria-hidden");
+    }
+  };
+
+  const applyImageFallback = () => {
+    if (!imageEl) return;
+    const src = imageEl.getAttribute("src")?.trim() || "";
+    if (!src || placeholderTokenRegex.test(src) || !isMeaningfulImage(src)) {
+      showImageFallback();
+    } else {
+      hideImageFallback();
+    }
+    if (imageFallbackEl) {
+      imageFallbackEl.textContent = getProductInitial();
+    }
+  };
+
+  if (imageEl) {
+    imageEl.addEventListener("error", () => {
+      showImageFallback();
+    });
+    imageEl.addEventListener("load", () => {
+      applyImageFallback();
+    });
+  }
 
   const setAriaDisabled = (el, disabled) => {
     if (!el) return;
@@ -174,6 +291,94 @@
     }
   };
 
+  const applyProductSnapshot = () => {
+    if (!cardEl || !window.Cart?.loadProductSnapshot) return null;
+    let snapshot = null;
+    try {
+      snapshot = Cart.loadProductSnapshot?.() || null;
+    } catch (err) {
+      console.warn("Failed to load product snapshot", err);
+    }
+    if (!snapshot) return null;
+
+    const urlProductId = normaliseText(getQueryParam("id"));
+    const matchesUrl = (candidate) => {
+      if (!urlProductId) return false;
+      if (!candidate && candidate !== 0) return false;
+      return normaliseText(candidate) === urlProductId;
+    };
+
+    const shouldApplyId =
+      matchesUrl(snapshot.id) ||
+      matchesUrl(snapshot.productId) ||
+      isPlaceholderValue(cardEl.dataset.productId);
+
+    if (shouldApplyId) {
+      if (snapshot.id) {
+        cardEl.dataset.productId = normaliseText(snapshot.id);
+      }
+      if (snapshot.productId) {
+        cardEl.dataset.productPaymentId = normaliseText(snapshot.productId);
+      }
+    }
+
+    const assignTextContent = (selector, value) => {
+      if (!value) return;
+      const el = selector ? $use(selector, cardEl) : null;
+      if (el && (isPlaceholderValue(el.textContent) || !normaliseText(el.textContent))) {
+        el.textContent = value;
+      }
+    };
+
+    if (snapshot.name && isPlaceholderValue(cardEl.dataset.productName)) {
+      cardEl.dataset.productName = snapshot.name;
+    }
+    assignTextContent(".product-name", snapshot.name);
+
+    if (snapshot.brand && isPlaceholderValue(cardEl.dataset.productBrand)) {
+      cardEl.dataset.productBrand = snapshot.brand;
+    }
+    assignTextContent(".product-brand", snapshot.brand);
+
+    if (snapshot.description && isPlaceholderValue(cardEl.dataset.productDesc)) {
+      cardEl.dataset.productDesc = snapshot.description;
+    }
+    assignTextContent(".product-desc", snapshot.description);
+
+    const priceFromSnapshot =
+      parseMoney(snapshot.price) ??
+      parseMoney(snapshot.productPrice) ??
+      parseMoney(snapshot.product_price);
+    if (priceFromSnapshot !== null) {
+      cardEl.dataset.productPrice = String(priceFromSnapshot);
+      const priceEl = $use(".product-price", cardEl);
+      if (priceEl) {
+        priceEl.textContent = formatMoney(priceFromSnapshot);
+      }
+    }
+
+    if (snapshot.image && isMeaningfulImage(snapshot.image)) {
+      cardEl.dataset.productImage = snapshot.image;
+      if (imageEl) {
+        const currentSrc = imageEl.getAttribute("src")?.trim() || "";
+        if (!currentSrc || placeholderTokenRegex.test(currentSrc)) {
+          imageEl.setAttribute("src", snapshot.image);
+        }
+      }
+    }
+
+    if (imageEl) {
+      const nameText = normaliseText(
+        cardEl.dataset.productName || document.getElementById("product_name")?.textContent
+      );
+      if (nameText) {
+        imageEl.setAttribute("alt", nameText);
+      }
+    }
+
+    return snapshot;
+  };
+
   const getCheckoutUrl = () => {
     const candidate =
       window.StorefrontCartUI?.getCheckoutUrl?.() ||
@@ -259,10 +464,13 @@
   };
 
   const init = () => {
+    applyProductSnapshot();
     attachQuantityHandlers();
     handleProceedToCheckout();
     clampAndSyncInput(qtyInput?.value || "1", { syncCart: false });
     applyDispenseRestrictionsFromUrl();
+    applyImageFallback();
+    window.StorefrontCartUI?.syncAddButtons?.();
   };
 
   try {

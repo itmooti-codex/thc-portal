@@ -32,6 +32,10 @@
         box-shadow: 0 0 0 2px rgb(59 130 246 / 0.5);
         border-color: rgb(59 130 246);
       }
+
+      .product-image-fallback {
+        letter-spacing: 0.02em;
+      }
     </style>
   </head>
 
@@ -97,19 +101,20 @@
           >
             <div class="space-y-4">
               <div
-                class="aspect-square rounded-3xl overflow-hidden bg-gray-100 flex items-center justify-center w-full m-auto"
+                class="aspect-square rounded-3xl overflow-hidden bg-gray-100 flex items-center justify-center w-full m-auto relative"
               >
                 <img
                   id="product_image"
                   src="[Page//Item Image ##link]"
-                  alt="Product image"
+                  alt="[Page//Item Name]"
                   class="w-full h-full object-cover"
                 />
                 <div
                   id="product_image_fallback"
-                  class="hidden text-gray-400 text-sm"
+                  class="product-image-fallback absolute inset-0 hidden items-center justify-center text-4xl font-semibold uppercase text-indigo-600 bg-gradient-to-br from-indigo-50 to-indigo-100"
+                  aria-hidden="true"
                 >
-                  Image loading…
+                  •
                 </div>
               </div>
             </div>
