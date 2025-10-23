@@ -376,6 +376,43 @@
       }
     }
 
+    const scriptIdFromSnapshot = String(snapshot.scriptId || "").trim();
+    if (scriptIdFromSnapshot) {
+      cardEl.dataset.scriptId = scriptIdFromSnapshot;
+    } else {
+      delete cardEl.dataset.scriptId;
+    }
+
+    const dispenseIdFromSnapshot = String(snapshot.dispenseId || "").trim();
+    if (dispenseIdFromSnapshot) {
+      cardEl.dataset.dispenseId = dispenseIdFromSnapshot;
+    } else {
+      delete cardEl.dataset.dispenseId;
+    }
+
+    const dispenseStatusFromSnapshot = String(snapshot.dispenseStatus || "").trim();
+    if (dispenseStatusFromSnapshot) {
+      cardEl.dataset.dispenseStatus = dispenseStatusFromSnapshot;
+    } else {
+      delete cardEl.dataset.dispenseStatus;
+    }
+
+    const dispenseStatusIdFromSnapshot = String(snapshot.dispenseStatusId || "").trim();
+    if (dispenseStatusIdFromSnapshot) {
+      cardEl.dataset.dispenseStatusId = dispenseStatusIdFromSnapshot;
+    } else {
+      delete cardEl.dataset.dispenseStatusId;
+    }
+
+    const itemIdFromSnapshot =
+      snapshot.dispenseItemId || snapshot.itemId || snapshot.productId || snapshot.id;
+    const trimmedItemId = String(itemIdFromSnapshot || "").trim();
+    if (trimmedItemId) {
+      cardEl.dataset.itemId = trimmedItemId;
+    } else {
+      delete cardEl.dataset.itemId;
+    }
+
     return snapshot;
   };
 
