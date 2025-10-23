@@ -118,6 +118,131 @@ const dlog = (...args) => {
   };
 
   const suppressedScriptIds = new Set();
+
+  const ADDED_MEMORY_KEY = "thc:storefront:added-items";
+  const storageAvailable = (() => {
+    try {
+      const testKey = "__sf_cartui_storage_test__";
+      window.localStorage.setItem(testKey, testKey);
+      window.localStorage.removeItem(testKey);
+      return true;
+    } catch (err) {
+      dlog("localStorage unavailable", err);
+      return false;
+    }
+  })();
+
+  const normaliseId = (value) => {
+    if (value === null || value === undefined) return "";
+    const str = String(value).trim();
+    return str;
+  };
+
+  const addToSet = (set, value) => {
+    if (!set) return;
+    const id = normaliseId(value);
+    if (!id) return;
+    set.add(id);
+  };
+
+  const createEmptyAdditionMemory = () => ({
+    productIds: new Set(),
+    scriptIds: new Set(),
+  });
+
+  const hydrateAdditionMemory = (input) => {
+    const memory = createEmptyAdditionMemory();
+    if (!input) return memory;
+    const { productIds, scriptIds } = input;
+    if (Array.isArray(productIds)) {
+      productIds.forEach((id) => addToSet(memory.productIds, id));
+    } else if (productIds && typeof productIds.forEach === "function") {
+      productIds.forEach((id) => addToSet(memory.productIds, id));
+    }
+    if (Array.isArray(scriptIds)) {
+      scriptIds.forEach((id) => addToSet(memory.scriptIds, id));
+    } else if (scriptIds && typeof scriptIds.forEach === "function") {
+      scriptIds.forEach((id) => addToSet(memory.scriptIds, id));
+    }
+    return memory;
+  };
+
+  const readStoredAdditions = () => {
+    if (!storageAvailable) return createEmptyAdditionMemory();
+    try {
+      const raw = window.localStorage.getItem(ADDED_MEMORY_KEY);
+      if (!raw) return createEmptyAdditionMemory();
+      const parsed = JSON.parse(raw);
+      return hydrateAdditionMemory(parsed);
+    } catch (err) {
+      dlog("readStoredAdditions failed", err);
+      return createEmptyAdditionMemory();
+    }
+  };
+
+  const persistAdditions = (memory) => {
+    if (!storageAvailable) return;
+    try {
+      const payload = {
+        productIds: Array.from(memory.productIds),
+        scriptIds: Array.from(memory.scriptIds),
+      };
+      window.localStorage.setItem(ADDED_MEMORY_KEY, JSON.stringify(payload));
+    } catch (err) {
+      dlog("persistAdditions failed", err);
+    }
+  };
+
+  let persistentAdditions = readStoredAdditions();
+
+  const buildAdditionMemoryFromItems = (items) => {
+    const memory = createEmptyAdditionMemory();
+    if (!Array.isArray(items)) return memory;
+    items.forEach((item) => {
+      if (!item) return;
+      const candidates = [
+        item.id,
+        item.productId,
+        item.product_id,
+        item.itemId,
+        item.item_id,
+        item.dispenseItemId,
+        item.dispense_item_id,
+      ];
+      candidates.forEach((value) => addToSet(memory.productIds, value));
+      addToSet(memory.scriptIds, item.scriptId || item.script_id);
+    });
+    return memory;
+  };
+
+  const rememberCartItems = (items) => {
+    persistentAdditions = buildAdditionMemoryFromItems(items);
+    persistAdditions(persistentAdditions);
+    return persistentAdditions;
+  };
+
+  const rememberCartState = (state) => {
+    const items = state && Array.isArray(state.items) ? state.items : [];
+    return rememberCartItems(items);
+  };
+
+  const getPersistentAdditionsSnapshot = () => ({
+    productIds: Array.from(persistentAdditions.productIds),
+    scriptIds: Array.from(persistentAdditions.scriptIds),
+  });
+
+  const refreshPersistentAdditionsFromCart = () => {
+    if (!window.Cart || typeof window.Cart.getState !== "function") {
+      return getPersistentAdditionsSnapshot();
+    }
+    try {
+      const state = window.Cart.getState();
+      rememberCartState(state);
+    } catch (err) {
+      dlog("refreshPersistentAdditionsFromCart failed", err);
+    }
+    return getPersistentAdditionsSnapshot();
+  };
   const seededItemDispenseIds = new Set();
   const pendingItemDispenseSeeds = [];
 
@@ -1923,8 +2048,26 @@ const dlog = (...args) => {
     hydrateCartItemsFromDom().catch((err) => {
       dlog("hydrateCartItemsFromDom error", err);
     });
-    const items = Cart.getState().items;
+    let items = [];
+    try {
+      const state = Cart.getState();
+      items = Array.isArray(state?.items) ? state.items : [];
+    } catch (err) {
+      dlog("syncAddButtons: failed to read cart state", err);
+    }
+    rememberCartItems(items);
     const inCart = new Set();
+    const persisted = getPersistentAdditionsSnapshot();
+    persisted.productIds.forEach((id) => {
+      if (id !== null && id !== undefined) {
+        inCart.add(String(id));
+      }
+    });
+    persisted.scriptIds.forEach((id) => {
+      if (id !== null && id !== undefined) {
+        inCart.add(String(id));
+      }
+    });
     const toSignature = (name = "", brand = "", priceText = "") => {
       const signature = `${String(name).trim()}|${String(
         brand
@@ -2116,6 +2259,12 @@ const dlog = (...args) => {
     config,
     getCheckoutUrl,
     isOnCheckout,
+    getPersistentAdditions() {
+      return getPersistentAdditionsSnapshot();
+    },
+    refreshPersistentAdditions() {
+      return refreshPersistentAdditionsFromCart();
+    },
     forceSync() {
       dlog("forceSync called");
       syncAddButtons();
@@ -2226,9 +2375,10 @@ const dlog = (...args) => {
               })
               .catch((err) => {
                 console.error("Script dispense create failed", err);
-              });
+            });
           }
         }
+        refreshPersistentAdditionsFromCart();
         if (qtyInput) qtyInput.value = "1";
         openCart();
       } catch (err) {
@@ -2315,6 +2465,7 @@ const dlog = (...args) => {
           await cancelItemDispense(item);
         }
       await Cart.removeItem(id);
+      refreshPersistentAdditionsFromCart();
       return;
     }
 
@@ -2348,6 +2499,7 @@ const dlog = (...args) => {
         }
       });
       await Cart.clear();
+      refreshPersistentAdditionsFromCart();
       return;
     }
 
@@ -2425,6 +2577,7 @@ const dlog = (...args) => {
       }
     }
     const state = Cart.getState();
+    rememberCartState(state);
     renderCart(state);
     updateCount(state);
     syncAddButtons();
@@ -2472,6 +2625,7 @@ const dlog = (...args) => {
       renderCart(next);
       updateCount(next);
       syncAddButtons();
+      rememberCartState(next);
       processItemDispenseSeeds().catch((err) =>
         dlog("subscription seed error", err)
       );

@@ -40,6 +40,26 @@
     return normalized;
   };
 
+  const normaliseText = (value) => {
+    if (value === null || value === undefined) return "";
+    return String(value).trim();
+  };
+
+  const getProductInitial = (card) => {
+    if (!card) return "•";
+    const candidates = [
+      card.dataset?.productName,
+      card.querySelector(".product-name")?.textContent,
+      card.dataset?.productBrand,
+      card.querySelector(".product-brand")?.textContent,
+    ];
+    for (const candidate of candidates) {
+      const normalized = normaliseText(candidate);
+      if (normalized) return normalized.charAt(0).toUpperCase();
+    }
+    return "•";
+  };
+
   const BOOLEAN_TRUE_TOKENS = ["true", "1", "yes", "y", "on"];
   const BOOLEAN_FALSE_TOKENS = ["false", "0", "no", "n", "off", "blocked", "denied"];
 
@@ -392,21 +412,64 @@
     document.querySelectorAll(".product-card img").forEach((img) => {
       const card = img.closest(".product-card");
       if (!isRealProductCard(card)) return;
-      const bindFallback = () => {
-        if (img.getAttribute("src") !== PLACEHOLDER_IMAGE) {
-          img.setAttribute("src", PLACEHOLDER_IMAGE);
+      const wrapper = img.closest(".view-product-link") || img.parentElement;
+      if (!wrapper) return;
+      wrapper.classList.add(
+        "relative",
+        "overflow-hidden",
+        "rounded-2xl",
+        "bg-gray-100"
+      );
+      let fallback = wrapper.querySelector(".product-image-fallback");
+      if (!fallback) {
+        fallback = document.createElement("div");
+        fallback.className =
+          "product-image-fallback absolute inset-0 hidden flex items-center justify-center text-2xl font-semibold uppercase text-indigo-600 bg-gradient-to-br from-indigo-50 to-indigo-100";
+        fallback.setAttribute("aria-hidden", "true");
+        wrapper.appendChild(fallback);
+      }
+
+      const updateFallback = () => {
+        fallback.textContent = getProductInitial(card);
+      };
+
+      const showFallback = () => {
+        updateFallback();
+        fallback.classList.remove("hidden");
+        img.classList.add("opacity-0");
+        img.setAttribute("aria-hidden", "true");
+      };
+
+      const hideFallback = () => {
+        fallback.classList.add("hidden");
+        img.classList.remove("opacity-0");
+        img.removeAttribute("aria-hidden");
+      };
+
+      const evaluateImage = () => {
+        updateFallback();
+        const srcAttr = img.getAttribute("src")?.trim() || "";
+        if (!srcAttr || placeholderTokenRegex.test(srcAttr)) {
+          if (img.getAttribute("src") !== PLACEHOLDER_IMAGE) {
+            img.setAttribute("src", PLACEHOLDER_IMAGE);
+          }
+          showFallback();
+        } else {
+          hideFallback();
         }
       };
+
       if (!img.dataset?.placeholderBound) {
         img.dataset.placeholderBound = "true";
         img.addEventListener("error", () => {
-          bindFallback();
+          showFallback();
+        });
+        img.addEventListener("load", () => {
+          evaluateImage();
         });
       }
-      const srcAttr = img.getAttribute("src")?.trim() || "";
-      if (!srcAttr || placeholderTokenRegex.test(srcAttr)) {
-        bindFallback();
-      }
+
+      evaluateImage();
     });
   };
 

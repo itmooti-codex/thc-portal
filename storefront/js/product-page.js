@@ -530,7 +530,32 @@
           return false;
         });
       }
-    } else if (parseBooleanish(getQueryParam("added")) === true) {
+    }
+    if (!added) {
+      try {
+        const persisted = window.StorefrontCartUI?.getPersistentAdditions?.();
+        if (persisted) {
+          const memoryIds = new Set();
+          const collected = []
+            .concat(persisted.productIds || [])
+            .concat(persisted.scriptIds || []);
+          collected.forEach((value) => {
+            const normalized = normaliseText(value);
+            if (normalized) memoryIds.add(normalized);
+          });
+          if (
+            (productId && memoryIds.has(productId)) ||
+            (paymentId && memoryIds.has(paymentId)) ||
+            (scriptId && memoryIds.has(scriptId))
+          ) {
+            added = true;
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to read persisted cart additions", err);
+      }
+    }
+    if (!added && parseBooleanish(getQueryParam("added")) === true) {
       added = true;
     }
     setAddButtonVisualState(added);
