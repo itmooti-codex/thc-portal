@@ -54,6 +54,7 @@
   const addToCartBtn = $use(".add-to-cart-btn");
   const warningEl = $use(".product-cant-dispense");
   const qtyWrapper = qtyInput ? qtyInput.closest(".input-wrapper") : null;
+  const qtyControls = actionRow?.querySelector(".flex.items-center.gap-2");
 
   const isPlaceholderValue = (value) => {
     if (value === null || value === undefined) return true;
@@ -222,6 +223,7 @@
     if (!cardEl) return;
     const params = new URLSearchParams(window.location.search);
     const scriptParam = params.get("script");
+    const scriptIdParam = normalizeRestrictionValue(params.get("scriptId"));
     const cantDispenseParam = params.get("cantDispense");
     const reasonParam = normalizeRestrictionValue(
       params.get("cantDispenseReason")
@@ -229,6 +231,14 @@
     const nextDispenseParam = normalizeRestrictionValue(
       params.get("nextDispenseDate")
     );
+
+    if (
+      cardEl &&
+      scriptIdParam &&
+      (isPlaceholderValue(cardEl.dataset.scriptId) || !cardEl.dataset.scriptId)
+    ) {
+      cardEl.dataset.scriptId = scriptIdParam;
+    }
 
     const normalizedScriptParam =
       scriptParam == null ? "" : String(scriptParam).trim();
@@ -243,6 +253,14 @@
     setQuantityControlsEnabled(!isScript);
     if (isScript) {
       clampAndSyncInput("1");
+    }
+
+    if (qtyControls) {
+      if (isScript) {
+        hideElement(qtyControls);
+      } else {
+        showElement(qtyControls);
+      }
     }
 
     if (!blockDispense) {
@@ -416,6 +434,17 @@
     return snapshot;
   };
 
+  const ensureProductIdFromUrl = () => {
+    if (!cardEl) return;
+    const urlProductId = normaliseText(getQueryParam("id"));
+    if (
+      urlProductId &&
+      (isPlaceholderValue(cardEl.dataset.productId) || !cardEl.dataset.productId)
+    ) {
+      cardEl.dataset.productId = urlProductId;
+    }
+  };
+
   const getCheckoutUrl = () => {
     const candidate =
       window.StorefrontCartUI?.getCheckoutUrl?.() ||
@@ -430,6 +459,7 @@
   };
 
   let cartInstance = null;
+  let cartSubscriptionCleanup = null;
 
   const ensureCart = async () => {
     if (!window.Cart) return null;
@@ -438,6 +468,72 @@
       cartInstance = Cart;
     }
     return cartInstance;
+  };
+
+  const setAddButtonVisualState = (added) => {
+    if (!addToCartBtn) return;
+    addToCartBtn.disabled = added;
+    addToCartBtn.textContent = added ? "Added ✓" : "Add to cart";
+    addToCartBtn.classList.toggle("bg-gray-300", added);
+    addToCartBtn.classList.toggle("text-gray-700", added);
+    addToCartBtn.classList.toggle("cursor-not-allowed", added);
+    addToCartBtn.classList.toggle("bg-neutral-900", !added);
+    addToCartBtn.classList.toggle("text-white", !added);
+    if (added) {
+      addToCartBtn.classList.remove("hover:bg-neutral-700", "hover:bg-neutral-800");
+    } else {
+      addToCartBtn.classList.add("hover:bg-neutral-700");
+      addToCartBtn.classList.remove("hover:bg-neutral-800");
+    }
+  };
+
+  const syncDetailAddButton = async () => {
+    if (!addToCartBtn) return;
+    const cart = await ensureCart();
+    const productId = normaliseText(cardEl?.dataset?.productId);
+    const paymentId = normaliseText(cardEl?.dataset?.productPaymentId);
+    const scriptId = normaliseText(cardEl?.dataset?.scriptId);
+    let added = false;
+    if (cart) {
+      const candidates = [productId, paymentId].filter(Boolean);
+      if (!added && candidates.length && typeof cart.getItem === "function") {
+        for (const id of candidates) {
+          try {
+            const existing = cart.getItem(id);
+            if (existing) {
+              added = true;
+              break;
+            }
+          } catch (err) {
+            console.warn("Failed to resolve cart item", err);
+          }
+        }
+      }
+      if (!added) {
+        let items = [];
+        try {
+          const state = typeof cart.getState === "function" ? cart.getState() : null;
+          if (state && Array.isArray(state.items)) items = state.items;
+        } catch (err) {
+          console.warn("Failed to read cart state", err);
+        }
+        added = items.some((item) => {
+          if (!item) return false;
+          const itemId = normaliseText(item.id);
+          const itemProductId = normaliseText(item.productId);
+          const itemScriptId = normaliseText(item.scriptId || item.script_id);
+          if (productId && (itemId === productId || itemProductId === productId))
+            return true;
+          if (paymentId && (itemId === paymentId || itemProductId === paymentId))
+            return true;
+          if (scriptId && scriptId === itemScriptId) return true;
+          return false;
+        });
+      }
+    } else if (parseBooleanish(getQueryParam("added")) === true) {
+      added = true;
+    }
+    setAddButtonVisualState(added);
   };
 
   const syncCartQuantity = async (qty) => {
@@ -500,19 +596,35 @@
     });
   };
 
-  const init = () => {
+  const init = async () => {
     applyProductSnapshot();
+    ensureProductIdFromUrl();
+    await ensureCart();
     attachQuantityHandlers();
     handleProceedToCheckout();
     clampAndSyncInput(qtyInput?.value || "1", { syncCart: false });
     applyDispenseRestrictionsFromUrl();
     applyImageFallback();
+    if (!cartSubscriptionCleanup && window.Cart?.subscribe) {
+      try {
+        cartSubscriptionCleanup = Cart.subscribe(() => {
+          syncDetailAddButton().catch((err) => {
+            console.error("Failed to sync product add button", err);
+          });
+        });
+      } catch (err) {
+        console.warn("Failed to subscribe to cart updates", err);
+      }
+    }
     window.StorefrontCartUI?.syncAddButtons?.();
+    await syncDetailAddButton();
   };
 
-  try {
-    init();
-  } finally {
-    hideLoader();
-  }
+  init()
+    .catch((err) => {
+      console.error("Product page init failed", err);
+    })
+    .finally(() => {
+      hideLoader();
+    });
 })();

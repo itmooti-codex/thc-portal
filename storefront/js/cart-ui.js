@@ -1786,15 +1786,21 @@ const dlog = (...args) => {
             }
           });
         }
-        const disableBtnAttrs = scriptLine
-          ? ' disabled aria-disabled="true" tabindex="-1"'
-          : "";
-        const disableBtnClasses = scriptLine
-          ? " opacity-50 cursor-not-allowed"
-          : "";
-        const qtyInputAttrs = scriptLine
-          ? ' readonly aria-readonly="true"'
-          : "";
+        const quantityControlsHtml = scriptLine
+          ? `<div class="mt-2 text-xs text-gray-500">Qty ${qtyValue}</div>`
+          : `
+            <div class="mt-2 inline-flex items-center gap-2">
+              <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${
+                item.id
+              }" aria-label="Decrease quantity">−</button>
+              <input class="qty-input w-12 text-center rounded-lg border px-2 py-1" value="${
+                qtyValue
+              }" data-id="${item.id}" inputmode="numeric" aria-label="Quantity"/>
+              <button class="qty-incr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${
+                item.id
+              }" aria-label="Increase quantity">+</button>
+            </div>
+          `;
         const avatarHtml = renderAvatarHtml(item.image, item.name, {
           sizeClasses: "w-16 h-16",
           shapeClasses: "rounded-xl",
@@ -1810,17 +1816,7 @@ const dlog = (...args) => {
               : ""
           }
           <div class="text-sm font-medium">${formatMoney(item.price)}</div>
-          <div class="mt-2 inline-flex items-center gap-2">
-            <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100${disableBtnClasses}" data-id="${
-              item.id
-            }" aria-label="Decrease quantity"${disableBtnAttrs}>−</button>
-            <input class="qty-input w-12 text-center rounded-lg border px-2 py-1" value="${
-              qtyValue
-            }" data-id="${item.id}" inputmode="numeric" aria-label="Quantity"${qtyInputAttrs}/>
-            <button class="qty-incr w-8 h-8 rounded-lg border hover:bg-gray-100${disableBtnClasses}" data-id="${
-              item.id
-            }" aria-label="Increase quantity"${disableBtnAttrs}>+</button>
-          </div>
+          ${quantityControlsHtml}
         </div>
         <button class="remove-item w-9 h-9 rounded-lg hover:bg-gray-100" data-id="${
           item.id

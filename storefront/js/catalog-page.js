@@ -552,9 +552,11 @@
       const url = resolveProductDetailUrl(view, product.id);
       if (!url) return;
       event.preventDefault();
-      const scriptId = card.dataset?.scriptId || card.dataset?.scriptID;
+      const scriptIdRaw = card.dataset?.scriptId || card.dataset?.scriptID;
+      const scriptId = scriptIdRaw ? String(scriptIdRaw).trim() : "";
       if (scriptId) {
         url.searchParams.set("script", "1");
+        url.searchParams.set("scriptId", scriptId);
         const { canDispense, reason, nextDispenseDate } =
           resolveScriptRestriction(card);
         if (!canDispense) {
@@ -562,6 +564,31 @@
           if (reason) url.searchParams.set("cantDispenseReason", reason);
           if (nextDispenseDate)
             url.searchParams.set("nextDispenseDate", nextDispenseDate);
+        }
+        let scriptInCart = false;
+        if (window.Cart?.getItem) {
+          try {
+            scriptInCart = !!Cart.getItem(product.id);
+          } catch (err) {
+            console.warn("Failed to resolve script cart match", err);
+          }
+        }
+        if (!scriptInCart && window.Cart?.getState) {
+          try {
+            const state = Cart.getState();
+            if (state && Array.isArray(state.items)) {
+              scriptInCart = state.items.some((item) => {
+                if (!item) return false;
+                const candidate = String(item.scriptId || item.script_id || "").trim();
+                return candidate && candidate === scriptId;
+              });
+            }
+          } catch (err) {
+            console.warn("Failed to inspect cart state for script", err);
+          }
+        }
+        if (scriptInCart) {
+          url.searchParams.set("added", "1");
         }
       }
 
