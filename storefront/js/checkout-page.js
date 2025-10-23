@@ -1108,6 +1108,8 @@
     document.querySelectorAll("[data-parcel-req]")
   );
   const billingSameWrapper = byId("billing_same_wrapper");
+  const billingAddressSection = byId("billing_address_section");
+  const billSameCheckbox = byId("bill_same");
   const paymentSourceSelector = byId("payment_source_selector");
   const savedCardsListEl = byId("saved_cards_list");
   const newCardSection = byId("new_card_section");
@@ -1118,6 +1120,20 @@
   const cardFields = cardFieldIds
     .map((id) => byId(id))
     .filter((el) => el);
+  const billingRequiredFieldIds = [
+    "bill_addr1",
+    "bill_city",
+    "bill_state",
+    "bill_postal",
+    "bill_country",
+  ];
+  const billingRequiredFields = billingRequiredFieldIds
+    .map((id) => byId(id))
+    .filter((el) => el);
+  const billingOptionalFields = ["bill_addr2", "bill_autocomplete"]
+    .map((id) => byId(id))
+    .filter((el) => el);
+  const allBillingFields = [...billingRequiredFields, ...billingOptionalFields];
 
   const CARD_TYPE_LABELS = {
     "1": "Visa",
@@ -2561,12 +2577,13 @@
         const brandLine = item.brand
           ? `<div class="text-xs text-gray-500 truncate">${item.brand}</div>`
           : "";
+        const scriptLine = isScriptCartItem(item);
         let infoBody = `
           <div class="font-semibold text-sm sm:text-base text-gray-900 truncate">${itemName}</div>
           ${brandLine}
           <div class="text-xs text-gray-500">Unit price ${formatMoney(unitPrice)}</div>
         `;
-        if (readOnly) {
+        if (readOnly || scriptLine) {
           infoBody += `
             <div class="text-xs text-gray-500 mt-2">Qty ${qty} · ${gstLabel}</div>
           `;
@@ -2783,6 +2800,67 @@
     });
   };
 
+  const toggleBillingSection = (show) => {
+    if (billingAddressSection)
+      billingAddressSection.classList.toggle("hidden", show === false);
+    setRequiredForFields(billingRequiredFields, show !== false);
+    const manageFieldState = (field) => {
+      if (!field) return;
+      if (show === false) {
+        if (!field.dataset.savedCardPrevDisabled) {
+          field.dataset.savedCardPrevDisabled = field.disabled ? "true" : "false";
+        }
+        if (!field.disabled) {
+          field.disabled = true;
+          field.classList?.add("bg-gray-100");
+        }
+      } else {
+        if (field.dataset.savedCardPrevDisabled === "false") {
+          field.disabled = false;
+          field.classList?.remove("bg-gray-100");
+        }
+        delete field.dataset.savedCardPrevDisabled;
+      }
+    };
+    allBillingFields.forEach(manageFieldState);
+    if (billSameCheckbox) {
+      if (show === false) {
+        if (!billSameCheckbox.dataset.savedCardPrevDisabled) {
+          billSameCheckbox.dataset.savedCardPrevDisabled = billSameCheckbox.disabled
+            ? "true"
+            : "false";
+        }
+        billSameCheckbox.disabled = true;
+      } else {
+        if (billSameCheckbox.dataset.savedCardPrevDisabled === "false") {
+          billSameCheckbox.disabled = false;
+        }
+        delete billSameCheckbox.dataset.savedCardPrevDisabled;
+      }
+      const wrapper = billSameCheckbox.closest("label");
+      if (wrapper) {
+        if (show === false) {
+          if (!wrapper.dataset.savedCardPrevOpacity) {
+            wrapper.dataset.savedCardPrevOpacity = wrapper.classList.contains(
+              "opacity-50"
+            )
+              ? "true"
+              : "false";
+          }
+          wrapper.classList.add("opacity-50");
+        } else {
+          if (wrapper.dataset.savedCardPrevOpacity === "false") {
+            wrapper.classList.remove("opacity-50");
+          }
+          delete wrapper.dataset.savedCardPrevOpacity;
+        }
+      }
+    }
+    if (show === false && billingAddressSection) {
+      clearErrors(billingAddressSection);
+    }
+  };
+
   const applyPaymentSourceSelection = ({ save = true } = {}) => {
     if (isUsingSavedCard() && !getSelectedSavedCard()) {
       checkoutState.selectedPaymentSource = "new";
@@ -2791,6 +2869,7 @@
     const usingSavedCard = isUsingSavedCard();
     toggleNewCardSection(!usingSavedCard);
     setCardFieldsRequired(!usingSavedCard);
+    toggleBillingSection(!usingSavedCard);
 
     if (paymentSourceSelector) {
       const radios = paymentSourceSelector.querySelectorAll(
