@@ -2117,9 +2117,19 @@ const dlog = (...args) => {
         on = inCart.has(sig);
       }
       if (card) {
-        const scriptKey = card.dataset?.scriptId
-          ? String(card.dataset.scriptId)
-          : null;
+        const scriptKeyRaw =
+          btn.dataset?.scriptId ||
+          card.dataset?.scriptId ||
+          card.dataset?.scriptID ||
+          card.dataset?.scriptid ||
+          null;
+        const scriptKey =
+          scriptKeyRaw !== null && scriptKeyRaw !== undefined
+            ? String(scriptKeyRaw).trim()
+            : "";
+        if (!on && scriptKey) {
+          on = inCart.has(scriptKey);
+        }
         if (
           suppressedScriptIds.has(idStr) ||
           (scriptKey && suppressedScriptIds.has(scriptKey))
