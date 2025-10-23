@@ -40,6 +40,26 @@
     return normalized;
   };
 
+  const normaliseText = (value) => {
+    if (value === null || value === undefined) return "";
+    return String(value).trim();
+  };
+
+  const getProductInitial = (card) => {
+    if (!card) return "•";
+    const candidates = [
+      card.dataset?.productName,
+      card.querySelector(".product-name")?.textContent,
+      card.dataset?.productBrand,
+      card.querySelector(".product-brand")?.textContent,
+    ];
+    for (const candidate of candidates) {
+      const normalized = normaliseText(candidate);
+      if (normalized) return normalized.charAt(0).toUpperCase();
+    }
+    return "•";
+  };
+
   const BOOLEAN_TRUE_TOKENS = ["true", "1", "yes", "y", "on"];
   const BOOLEAN_FALSE_TOKENS = ["false", "0", "no", "n", "off", "blocked", "denied"];
 
@@ -392,21 +412,64 @@
     document.querySelectorAll(".product-card img").forEach((img) => {
       const card = img.closest(".product-card");
       if (!isRealProductCard(card)) return;
-      const bindFallback = () => {
-        if (img.getAttribute("src") !== PLACEHOLDER_IMAGE) {
-          img.setAttribute("src", PLACEHOLDER_IMAGE);
+      const wrapper = img.closest(".view-product-link") || img.parentElement;
+      if (!wrapper) return;
+      wrapper.classList.add(
+        "relative",
+        "overflow-hidden",
+        "rounded-2xl",
+        "bg-gray-100"
+      );
+      let fallback = wrapper.querySelector(".product-image-fallback");
+      if (!fallback) {
+        fallback = document.createElement("div");
+        fallback.className =
+          "product-image-fallback absolute inset-0 hidden flex items-center justify-center text-2xl font-semibold uppercase text-indigo-600 bg-gradient-to-br from-indigo-50 to-indigo-100";
+        fallback.setAttribute("aria-hidden", "true");
+        wrapper.appendChild(fallback);
+      }
+
+      const updateFallback = () => {
+        fallback.textContent = getProductInitial(card);
+      };
+
+      const showFallback = () => {
+        updateFallback();
+        fallback.classList.remove("hidden");
+        img.classList.add("opacity-0");
+        img.setAttribute("aria-hidden", "true");
+      };
+
+      const hideFallback = () => {
+        fallback.classList.add("hidden");
+        img.classList.remove("opacity-0");
+        img.removeAttribute("aria-hidden");
+      };
+
+      const evaluateImage = () => {
+        updateFallback();
+        const srcAttr = img.getAttribute("src")?.trim() || "";
+        if (!srcAttr || placeholderTokenRegex.test(srcAttr)) {
+          if (img.getAttribute("src") !== PLACEHOLDER_IMAGE) {
+            img.setAttribute("src", PLACEHOLDER_IMAGE);
+          }
+          showFallback();
+        } else {
+          hideFallback();
         }
       };
+
       if (!img.dataset?.placeholderBound) {
         img.dataset.placeholderBound = "true";
         img.addEventListener("error", () => {
-          bindFallback();
+          showFallback();
+        });
+        img.addEventListener("load", () => {
+          evaluateImage();
         });
       }
-      const srcAttr = img.getAttribute("src")?.trim() || "";
-      if (!srcAttr || placeholderTokenRegex.test(srcAttr)) {
-        bindFallback();
-      }
+
+      evaluateImage();
     });
   };
 
@@ -552,9 +615,11 @@
       const url = resolveProductDetailUrl(view, product.id);
       if (!url) return;
       event.preventDefault();
-      const scriptId = card.dataset?.scriptId || card.dataset?.scriptID;
+      const scriptIdRaw = card.dataset?.scriptId || card.dataset?.scriptID;
+      const scriptId = scriptIdRaw ? String(scriptIdRaw).trim() : "";
       if (scriptId) {
         url.searchParams.set("script", "1");
+        url.searchParams.set("scriptId", scriptId);
         const { canDispense, reason, nextDispenseDate } =
           resolveScriptRestriction(card);
         if (!canDispense) {
@@ -562,6 +627,31 @@
           if (reason) url.searchParams.set("cantDispenseReason", reason);
           if (nextDispenseDate)
             url.searchParams.set("nextDispenseDate", nextDispenseDate);
+        }
+        let scriptInCart = false;
+        if (window.Cart?.getItem) {
+          try {
+            scriptInCart = !!Cart.getItem(product.id);
+          } catch (err) {
+            console.warn("Failed to resolve script cart match", err);
+          }
+        }
+        if (!scriptInCart && window.Cart?.getState) {
+          try {
+            const state = Cart.getState();
+            if (state && Array.isArray(state.items)) {
+              scriptInCart = state.items.some((item) => {
+                if (!item) return false;
+                const candidate = String(item.scriptId || item.script_id || "").trim();
+                return candidate && candidate === scriptId;
+              });
+            }
+          } catch (err) {
+            console.warn("Failed to inspect cart state for script", err);
+          }
+        }
+        if (scriptInCart) {
+          url.searchParams.set("added", "1");
         }
       }
 
