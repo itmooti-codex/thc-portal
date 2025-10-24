@@ -570,6 +570,19 @@
     return "";
   };
 
+  const coerceSavedCardIdForPayload = (cardId) => {
+    if (cardId === null || cardId === undefined) return "";
+    const trimmed = String(cardId).trim();
+    if (!trimmed) return "";
+    if (/^\d+$/.test(trimmed) && !/^0\d+/.test(trimmed)) {
+      const asNumber = Number(trimmed);
+      if (Number.isSafeInteger(asNumber)) {
+        return asNumber;
+      }
+    }
+    return trimmed;
+  };
+
   const summariseSavedCardForDebug = (card) => {
     if (!card || typeof card !== "object") return null;
     const id = normalizeSavedCardId(card);
@@ -3889,7 +3902,7 @@
           "Saved card is missing an identifier. Please choose another payment method."
         );
       }
-      selectedSavedCardId = Number(cardId) || cardId;
+      selectedSavedCardId = coerceSavedCardIdForPayload(cardId);
       payer = {
         cc_id: selectedSavedCardId,
         payment_method: "saved_card",
