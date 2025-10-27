@@ -741,6 +741,176 @@
     return [];
   };
 
+  const GATEWAY_RESULT_CODE_MESSAGES = {
+    2: "We couldn't process this card with our payment terminal. Please try a different card or contact support.",
+    3: "Card declined. Please check the details or use another card.",
+    4: "The card was declined by the issuer. Please try a different payment method.",
+  };
+
+  const GATEWAY_FRIENDLY_KEYWORDS = [
+    /insufficient/i,
+    /do not honor/i,
+    /do not honour/i,
+    /declined/i,
+    /denied/i,
+    /invalid/i,
+    /incorrect/i,
+    /expired/i,
+    /security code/i,
+    /cvv/i,
+    /cvc/i,
+    /zip/i,
+    /postal/i,
+    /balance/i,
+    /limit/i,
+  ];
+
+  const GATEWAY_TECHNICAL_PATTERNS = [
+    /terminal/i,
+    /processor/i,
+    /gateway/i,
+    /merchant/i,
+    /function/i,
+    /integration/i,
+    /configuration/i,
+    /syntax/i,
+    /ontraport/i,
+    /json/i,
+    /{.*}/,
+    /https?:\/\//i,
+  ];
+
+  const parseJsonSafe = (value) => {
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return null;
+    }
+  };
+
+  const normaliseMessage = (value) => {
+    if (value === null || value === undefined) return "";
+    if (typeof value === "string") return value.trim();
+    if (typeof value === "number" || typeof value === "boolean") {
+      return String(value);
+    }
+    if (value && typeof value.message === "string") {
+      return value.message.trim();
+    }
+    return "";
+  };
+
+  const isLikelyFriendlyGatewayMessage = (message) => {
+    if (!message || typeof message !== "string") return false;
+    const trimmed = message.trim();
+    if (!trimmed) return false;
+    if (trimmed.length < 4) return false;
+    if (trimmed.startsWith("{") || trimmed.endsWith("}")) return false;
+    if (/^[A-Z0-9\s]+$/.test(trimmed) && trimmed.length > 24) return false;
+    if (/^\d+$/.test(trimmed)) return false;
+    if (GATEWAY_TECHNICAL_PATTERNS.some((pattern) => pattern.test(trimmed))) {
+      return false;
+    }
+    return true;
+  };
+
+  const mapGatewayResultCode = (resultCode) => {
+    if (resultCode === null || resultCode === undefined) return "";
+    const key = Number(resultCode);
+    if (!Number.isFinite(key)) return "";
+    return GATEWAY_RESULT_CODE_MESSAGES[key] || "";
+  };
+
+  const extractChargeResultCandidates = (err) => {
+    const candidates = [];
+    const pushCandidate = (candidate) => {
+      if (!candidate) return;
+      if (typeof candidate === "string") {
+        const parsed = parseJsonSafe(candidate);
+        if (parsed && typeof parsed === "object") {
+          pushCandidate(parsed);
+        } else if (candidate.trim()) {
+          candidates.push({ message: candidate.trim() });
+        }
+        return;
+      }
+      if (candidate.chargeResult && typeof candidate.chargeResult === "object") {
+        const cr = candidate.chargeResult;
+        candidates.push({
+          message:
+            normaliseMessage(cr) ||
+            normaliseMessage(cr.details) ||
+            normaliseMessage(cr.reason) ||
+            "",
+          resultCode:
+            cr.result_code ??
+            cr.resultCode ??
+            cr.code ??
+            cr.status ??
+            null,
+        });
+      }
+      const messageCandidate =
+        candidate.message ||
+        candidate.error ||
+        candidate.details ||
+        candidate.reason;
+      if (messageCandidate) {
+        candidates.push({
+          message: normaliseMessage(messageCandidate),
+          resultCode:
+            candidate.result_code ??
+            candidate.resultCode ??
+            candidate.code ??
+            candidate.status ??
+            null,
+        });
+      }
+      if (candidate.details && candidate.details !== candidate) {
+        pushCandidate(candidate.details);
+      }
+      if (candidate.data && candidate.data !== candidate) {
+        pushCandidate(candidate.data);
+      }
+      if (
+        typeof candidate.raw === "string" &&
+        candidate.raw.trim()
+      ) {
+        pushCandidate(candidate.raw);
+      }
+    };
+    pushCandidate(err?.details);
+    pushCandidate(err?.details?.details);
+    pushCandidate(err?.details?.data);
+    pushCandidate(err?.message);
+    pushCandidate(err);
+    return candidates;
+  };
+
+  const resolveGatewayFriendlyMessage = (err) => {
+    const candidates = extractChargeResultCandidates(err);
+    for (const candidate of candidates) {
+      if (!candidate || !candidate.message) continue;
+      const override = mapGatewayResultCode(candidate.resultCode);
+      if (override) return override;
+      const direct = candidate.message.trim();
+      if (!direct) continue;
+      if (
+        GATEWAY_FRIENDLY_KEYWORDS.some((pattern) => pattern.test(direct)) &&
+        !GATEWAY_TECHNICAL_PATTERNS.some((pattern) => pattern.test(direct))
+      ) {
+        return direct;
+      }
+      if (isLikelyFriendlyGatewayMessage(direct)) {
+        return direct;
+      }
+    }
+    return "";
+  };
+
   const getFriendlyCheckoutErrorMessage = (err) => {
     if (!err) return "";
     if (typeof err === "string") return err;
@@ -749,6 +919,10 @@
     const missing = extractMissingFields(details);
     if (missing.length) {
       return `Missing required fields: ${missing.join(", ")}`;
+    }
+    const gatewayMessage = resolveGatewayFriendlyMessage(err);
+    if (gatewayMessage) {
+      return gatewayMessage;
     }
     const detailMessage = details
       ? pickFirstString(
