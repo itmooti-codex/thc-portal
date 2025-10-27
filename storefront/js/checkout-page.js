@@ -1465,6 +1465,10 @@
         if (!checkoutState.selectedPaymentSource) {
           checkoutState.selectedPaymentSource = "new";
         }
+        if (checkoutState.shippingMethod === "none") {
+          checkoutState.shippingMethod = "";
+          checkoutState.shippingSelectionConfirmed = false;
+        }
         if (checkoutState.couponMeta) {
           const meta = checkoutState.couponMeta;
           const normalizedType = normaliseCouponType(
@@ -2169,10 +2173,16 @@
       type.ID;
     const price =
       type.price ?? type.amount ?? type.total ?? type.fee ?? type.cost ?? 0;
+    const basePrice = Number(price) || 0;
+    const displayPrice =
+      String(id) === "1"
+        ? roundCurrency(basePrice * (1 + getEffectiveTaxRate()))
+        : basePrice;
     return {
       ...type,
       id: id !== undefined && id !== null ? String(id) : "",
-      price: Number(price) || 0,
+      price: basePrice,
+      displayPrice,
       name: type.name || type.title || "Shipping",
       description: type.description || type.subtitle || "",
     };
@@ -2187,48 +2197,24 @@
     return match || null;
   };
 
-  const ensureNoneOption = (types) => {
-    const list = Array.isArray(types) ? [...types] : [];
-    const hasOption = list.some((type) => String(type.id) === NONE_SHIPPING_ID);
-    if (list.length <= 1 && !hasOption) {
-      list.push({
-        id: NONE_SHIPPING_ID,
-        name: "No shipping",
-        description: "Do not add shipping to this order",
-        price: 0,
-        _isNone: true,
-      });
-    }
-    if (!list.length) {
-      list.push({
-        id: NONE_SHIPPING_ID,
-        name: "No shipping",
-        description: "Do not add shipping to this order",
-        price: 0,
-        _isNone: true,
-      });
-    }
-    return list;
-  };
-
   const applyShippingRules = (types) => {
     const cartState = Cart.getState();
     const subtotal = getCartSubtotal(cartState);
     const baseList = (Array.isArray(types) ? types : [])
       .map((type) => normaliseShippingType(type))
-      .filter(Boolean);
+      .filter((type) => type && type.id);
 
     if (subtotal > FREE_SHIPPING_THRESHOLD) {
       const existing = baseList.find((type) => type.id === FREE_SHIPPING_ID);
       const freeOption = existing
-        ? { ...existing, price: 0 }
-        : {
+        ? { ...existing, price: 0, displayPrice: 0 }
+        : normaliseShippingType({
             id: FREE_SHIPPING_ID,
             name: "Free shipping",
             description: "Complimentary shipping on orders over $200",
             price: 0,
-          };
-      return ensureNoneOption([freeOption]);
+          });
+      return freeOption ? [freeOption] : [];
     }
 
     const hasSpecial = cartState.items.some((item) => {
@@ -2243,22 +2229,21 @@
     if (hasSpecial) {
       if (!hasOtherItems) {
         const special = baseList.find((type) => type.id === "2");
-        if (special) return ensureNoneOption([special]);
-        return ensureNoneOption([
-          {
-            id: "2",
-            name: "Special shipping",
-            description: "Required for this item",
-            price: 0,
-          },
-        ]);
+        if (special) return [special];
+        const fallback = normaliseShippingType({
+          id: "2",
+          name: "Special shipping",
+          description: "Required for this item",
+          price: 0,
+        });
+        return fallback ? [fallback] : [];
       }
       const standardOnly = baseList.filter((type) => type.id === "1");
-      if (standardOnly.length) return ensureNoneOption(standardOnly);
-      return ensureNoneOption(baseList.filter((type) => type.id !== "2"));
+      if (standardOnly.length) return standardOnly;
+      return baseList.filter((type) => type.id !== "2");
     }
 
-    return ensureNoneOption(baseList);
+    return baseList;
   };
 
   const calcTotals = (cartState = Cart.getState(), { ignoreOffer = false, forceShippingType = null } = {}) => {
@@ -2269,10 +2254,14 @@
 
     let baseShipping = 0;
     const selected = forceShippingType || getSelectedShippingType();
-    if (selected && String(selected.id) !== NONE_SHIPPING_ID) {
+    const selectedId = selected ? String(selected.id) : "";
+    if (selected && selectedId !== NONE_SHIPPING_ID && selectedId) {
       baseShipping = Number(selected.price) || 0;
-    } else if (!selected && checkoutState.shippingMethod) {
-      baseShipping = shippingRates[checkoutState.shippingMethod] || 0;
+    } else if (!selected) {
+      const methodId = checkoutState.shippingMethod;
+      if (methodId && methodId !== NONE_SHIPPING_ID) {
+        baseShipping = shippingRates[methodId] || 0;
+      }
     }
 
     let rawShipping = roundCurrency(
@@ -2281,11 +2270,13 @@
     const hasSingleOption =
       Array.isArray(checkoutState.shippingTypes) &&
       checkoutState.shippingTypes.filter(Boolean).length <= 1;
+    const hasSelectedMethod =
+      checkoutState.shippingMethod &&
+      checkoutState.shippingMethod !== NONE_SHIPPING_ID;
     let shippingConfirmed =
       forceShippingType != null ||
       checkoutState.shippingSelectionConfirmed ||
-      checkoutState.shippingMethod === NONE_SHIPPING_ID ||
-      (checkoutState.shippingMethod && hasSingleOption);
+      (hasSelectedMethod && hasSingleOption);
     let shipping = shippingConfirmed ? rawShipping : 0;
 
     // Split subtotal into taxable and non-taxable ex-GST
@@ -2826,8 +2817,11 @@
     let shippingLabel = "Select shipping";
     const shippingHasCharge =
       totals.shippingConfirmed && totals.shipping > 0;
-    if (checkoutState.shippingMethod === NONE_SHIPPING_ID) {
-      shippingLabel = "No shipping";
+    const noShippingOptions =
+      Array.isArray(checkoutState.shippingTypes) &&
+      checkoutState.shippingTypes.length === 0;
+    if (noShippingOptions && totals.shippingConfirmed) {
+      shippingLabel = "No shipping required";
     } else if (checkoutState.freeShipping) {
       shippingLabel = "Free";
     } else if (shippingHasCharge) {
@@ -3574,10 +3568,16 @@
     if (selectedShippingType?.name) {
       shippingLines.push(selectedShippingType.name);
     } else if (
-      checkoutState.shippingMethod &&
-      checkoutState.shippingMethod === NONE_SHIPPING_ID
+      !checkoutState.shippingMethod &&
+      Array.isArray(checkoutState.shippingTypes) &&
+      checkoutState.shippingTypes.length
     ) {
-      shippingLines.push("No shipping selected");
+      shippingLines.push("Shipping method not selected");
+    } else if (
+      Array.isArray(checkoutState.shippingTypes) &&
+      checkoutState.shippingTypes.length === 0
+    ) {
+      shippingLines.push("Shipping not required");
     }
     if (shippingOptionLabel) shippingLines.push(shippingOptionLabel);
 
@@ -3685,8 +3685,17 @@
     }
     if (selectedShippingType?.name) {
       paymentLines.push(`Shipping method: ${selectedShippingType.name}`);
-    } else if (checkoutState.shippingMethod === NONE_SHIPPING_ID) {
-      paymentLines.push("Shipping method: None selected");
+    } else if (
+      !checkoutState.shippingMethod &&
+      Array.isArray(checkoutState.shippingTypes) &&
+      checkoutState.shippingTypes.length
+    ) {
+      paymentLines.push("Shipping method: Not selected");
+    } else if (
+      Array.isArray(checkoutState.shippingTypes) &&
+      checkoutState.shippingTypes.length === 0
+    ) {
+      paymentLines.push("Shipping method: Not required");
     }
     const meta = checkoutState.couponMeta;
     if (meta?.code) paymentLines.push(`Coupon applied: ${meta.code}`);
@@ -3790,8 +3799,11 @@
     let shippingLabel = "Select shipping";
     const shippingHasCharge =
       financials.shippingConfirmed && financials.shipping > 0;
-    if (checkoutState.shippingMethod === NONE_SHIPPING_ID) {
-      shippingLabel = "No shipping";
+    const noShippingOptions =
+      Array.isArray(checkoutState.shippingTypes) &&
+      checkoutState.shippingTypes.length === 0;
+    if (noShippingOptions && financials.shippingConfirmed) {
+      shippingLabel = "No shipping required";
     } else if (checkoutState.freeShipping) {
       shippingLabel = "Free";
     } else if (shippingHasCharge) {
@@ -4227,6 +4239,7 @@
         }
         checkoutState.shippingTypes = [];
         checkoutState.shippingMethod = "";
+        checkoutState.shippingSelectionConfirmed = true;
         return;
       }
 
@@ -4238,32 +4251,34 @@
       const shippingContainer = document.getElementById("shipping_methods");
       if (shippingContainer) {
         shippingContainer.innerHTML = "";
-        const preferred = (() => {
-          const current = checkoutState.shippingMethod
-            ? String(checkoutState.shippingMethod)
+        const currentMethodRaw = checkoutState.shippingMethod
+          ? String(checkoutState.shippingMethod)
+          : "";
+        const currentMethod =
+          currentMethodRaw === NONE_SHIPPING_ID ? "" : currentMethodRaw;
+        const hasCurrentSelection =
+          currentMethod &&
+          resolvedTypes.some((type) => String(type.id) === currentMethod);
+        const autoSelectId =
+          !hasCurrentSelection && resolvedTypes.length === 1
+            ? String(resolvedTypes[0].id)
             : "";
-          if (
-            current &&
-            resolvedTypes.some((type) => String(type.id) === current)
-          ) {
-            return current;
-          }
-          // Default to NONE by design until user picks
-          return NONE_SHIPPING_ID;
-        })();
+        const selectionId = hasCurrentSelection ? currentMethod : autoSelectId;
 
-        resolvedTypes.forEach((type, index) => {
+        resolvedTypes.forEach((type) => {
           if (!type) return;
           const label = document.createElement("label");
           label.className =
             "flex items-center justify-between gap-3 rounded-xl border border-gray-200 px-4 py-3 hover:border-blue-500";
           const value = String(type.id);
-          const priceValue = Number(type.price) || 0;
+          const priceValue = Number.isFinite(type.displayPrice)
+            ? type.displayPrice
+            : Number(type.price) || 0;
           const priceLabel = priceValue > 0 ? formatMoney(priceValue) : "Free";
           label.innerHTML = `
             <div class="flex items-center gap-3">
               <input type="radio" name="shipping_method" value="${value}" ${
-                value === preferred ? "checked" : ""
+                value === selectionId ? "checked" : ""
               }
                 class="text-blue-600 focus:ring-blue-500" />
               <div>
@@ -4281,13 +4296,16 @@
         const previousMethod = checkoutState.shippingMethod
           ? String(checkoutState.shippingMethod)
           : "";
-        const nextMethod = preferred;
+        const nextMethod = selectionId || "";
         checkoutState.shippingMethod = nextMethod;
-        if (previousMethod && previousMethod !== nextMethod) {
-          checkoutState.shippingSelectionConfirmed = false;
-        }
-        if (nextMethod === NONE_SHIPPING_ID) {
+        if (resolvedTypes.length === 0) {
           checkoutState.shippingSelectionConfirmed = true;
+        } else if (resolvedTypes.length === 1 && nextMethod) {
+          checkoutState.shippingSelectionConfirmed = true;
+        } else if (previousMethod !== nextMethod) {
+          checkoutState.shippingSelectionConfirmed = false;
+        } else if (!nextMethod && resolvedTypes.length > 0) {
+          checkoutState.shippingSelectionConfirmed = false;
         }
         await updateOffer();
         renderSummary();
@@ -4626,7 +4644,9 @@
       return;
     }
     if (target.name === "shipping_method") {
-      checkoutState.shippingMethod = target.value || "";
+      const selectedValue = target.value || "";
+      checkoutState.shippingMethod =
+        selectedValue === NONE_SHIPPING_ID ? "" : selectedValue;
       checkoutState.shippingSelectionConfirmed = true;
       const couponType = checkoutState.couponMeta
         ? normaliseCouponType(
@@ -4635,10 +4655,7 @@
               checkoutState.couponMeta.discount_type
           )
         : "";
-      if (
-        checkoutState.shippingMethod !== NONE_SHIPPING_ID &&
-        couponType !== "shipping"
-      ) {
+      if (checkoutState.shippingMethod && couponType !== "shipping") {
         checkoutState.freeShipping = false;
       }
       saveCheckoutState();
