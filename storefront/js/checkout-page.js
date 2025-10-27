@@ -761,7 +761,7 @@
             : ""
         )
       : "";
-    const errorMessage = pickFirstString(err.friendlyMessage, err.message);
+    const errorMessage = pickFirstString(err.friendlyMessage);
     return pickFirstString(detailMessage, errorMessage, "");
   };
 
@@ -4373,9 +4373,7 @@
           });
           const friendlyMessage = getFriendlyCheckoutErrorMessage(err);
           const message =
-            friendlyMessage ||
-            err?.message ||
-            "Order processing failed. Please try again.";
+            friendlyMessage || "Something went wrong. Please try again.";
           showToast(message, {
             type: "error",
             duration: friendlyMessage ? 8000 : 5000,
