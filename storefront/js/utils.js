@@ -73,6 +73,77 @@
   };
 
   let toastHost = null;
+
+  const extractToastMessage = (payload) => {
+    if (!payload || typeof payload !== "object") return "";
+    const candidateKeys = [
+      "message",
+      "error",
+      "details",
+      "detail",
+      "description",
+      "friendlyMessage",
+      "statusText",
+    ];
+    for (const key of candidateKeys) {
+      const value = payload[key];
+      if (typeof value === "string" && value.trim()) {
+        return value.trim();
+      }
+    }
+    if (Array.isArray(payload.errors)) {
+      const joined = payload.errors
+        .map((item) => {
+          if (typeof item === "string" && item.trim()) return item.trim();
+          if (item && typeof item === "object") {
+            const msg =
+              (typeof item.message === "string" && item.message.trim()) ||
+              (typeof item.details === "string" && item.details.trim()) ||
+              "";
+            return msg;
+          }
+          return "";
+        })
+        .filter(Boolean)
+        .join(", ");
+      if (joined) return joined;
+    }
+    return "";
+  };
+
+  const normaliseToastMessage = (message) => {
+    if (message === null || message === undefined) return "";
+    if (typeof message === "string") return message.trim();
+    if (message instanceof Error) {
+      return message.message ? message.message.trim() : "";
+    }
+    if (typeof message === "number" || typeof message === "boolean") {
+      return String(message);
+    }
+    if (typeof message === "object") {
+      const extracted =
+        extractToastMessage(message) ||
+        extractToastMessage(message.data) ||
+        extractToastMessage(message.response);
+      if (extracted && extracted.trim()) return extracted.trim();
+      if (
+        typeof message.toString === "function" &&
+        message.toString !== Object.prototype.toString
+      ) {
+        const asString = message.toString();
+        if (
+          typeof asString === "string" &&
+          asString.trim() &&
+          asString.trim() !== "[object Object]"
+        ) {
+          return asString.trim();
+        }
+      }
+      return "";
+    }
+    return String(message);
+  };
+
   const ensureToastHost = () => {
     if (toastHost) return toastHost;
     toastHost = document.createElement("div");
@@ -83,7 +154,8 @@
   };
 
   const showToast = (message, options = {}) => {
-    if (!message) return null;
+    const resolvedMessage = normaliseToastMessage(message);
+    if (!resolvedMessage) return null;
     const host = ensureToastHost();
     const {
       type = "info",
@@ -99,7 +171,7 @@
     };
     const toast = document.createElement("div");
     toast.className = `${baseClasses} ${typeClasses[type] || typeClasses.info} opacity-0 translate-y-2`;
-    toast.textContent = message;
+    toast.textContent = resolvedMessage;
     host.appendChild(toast);
     requestAnimationFrame(() => {
       toast.classList.remove("opacity-0", "translate-y-2");
