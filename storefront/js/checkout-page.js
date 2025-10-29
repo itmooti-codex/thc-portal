@@ -4435,20 +4435,33 @@
           contactData[key] = str;
         };
 
-        if (shippingValue === HOME_SHIPPING_OPTION) {
-          assign("address", byId("ship_addr1")?.value);
-          assign("address2", byId("ship_addr2")?.value);
-          assign("city", byId("ship_city")?.value);
-          assign("state", byId("ship_state")?.value);
-          assign("zip", byId("ship_postal")?.value);
-          assign("country", byId("ship_country")?.value || "Australia");
-        } else if (shippingValue === PARCEL_SHIPPING_OPTION) {
-          assign("f3094", byId("parcel_number")?.value);
-          assign("f3095", byId("parcel_street")?.value);
-          assign("f3096", byId("parcel_city")?.value);
-          assign("f3097", byId("parcel_state")?.value);
-          assign("f3098", byId("parcel_postal")?.value);
-        }
+        const readTrimmedInput = (id) => {
+          const el = byId(id);
+          if (!el || el.value == null) return "";
+          return String(el.value).trim();
+        };
+
+        // Preserve existing address details regardless of the selected delivery mode.
+        const homeAddress = getAddressFromForm("ship", {
+          fallbackCountry: shippingValue === HOME_SHIPPING_OPTION ? "Australia" : "",
+        });
+        assign("address", homeAddress.address);
+        assign("address2", homeAddress.address2);
+        assign("city", homeAddress.city);
+        assign("state", homeAddress.state);
+        assign("zip", homeAddress.zip);
+        assign("country", homeAddress.country);
+
+        const parcelFields = [
+          ["f3094", "parcel_number"],
+          ["f3095", "parcel_street"],
+          ["f3096", "parcel_city"],
+          ["f3097", "parcel_state"],
+          ["f3098", "parcel_postal"],
+        ];
+        parcelFields.forEach(([key, id]) => {
+          assign(key, readTrimmedInput(id));
+        });
 
         const serialized = serialiseContactPayload(contactData);
         const proceed = () => {
