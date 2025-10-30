@@ -13,6 +13,30 @@
     isCatalogPage && typeof utils.hidePageLoader === "function"
       ? () => utils.hidePageLoader()
       : () => {};
+  const shouldAutoSelectScriptsTab = (() => {
+    if (!isCatalogPage) return false;
+    const search = window.location.search || "";
+    const isScriptsQueryValue = (value) =>
+      typeof value === "string" && value.trim().toLowerCase() === "scripts";
+    try {
+      const params = new URLSearchParams(search);
+      if (isScriptsQueryValue(params.get("show"))) return true;
+    } catch (err) {
+      console.warn("Unable to parse search parameters", err);
+    }
+    if (!search) return false;
+    return search
+      .replace(/^\?/, "")
+      .split("&")
+      .some((chunk) => {
+        if (!chunk) return false;
+        const [rawKey, rawValue = ""] = chunk.split("=");
+        return (
+          (rawKey || "").trim().toLowerCase() === "show" &&
+          isScriptsQueryValue(rawValue)
+        );
+      });
+  })();
 
   showLoader("Loading products…");
 
@@ -319,10 +343,61 @@
     }
   };
 
+  let autoSelectScriptsTabDone = false;
+
   const maybeHideLoader = () => {
     if (!isCatalogPage) return;
-    if (hasRealProducts()) hideLoader();
+    const scriptsReady =
+      !shouldAutoSelectScriptsTab || autoSelectScriptsTabDone;
+    if (hasRealProducts() && scriptsReady) hideLoader();
   };
+
+  const markAutoSelectScriptsTabDone = () => {
+    if (autoSelectScriptsTabDone) return;
+    autoSelectScriptsTabDone = true;
+    maybeHideLoader();
+  };
+
+  const tryAutoSelectScriptsTab = () => {
+    if (!shouldAutoSelectScriptsTab || autoSelectScriptsTabDone) return;
+    const scriptTab = document.getElementById("catalog-tab-scripts");
+    if (!scriptTab) return;
+    if (scriptTab.getAttribute("aria-selected") === "true") {
+      markAutoSelectScriptsTabDone();
+      return;
+    }
+    if (
+      scriptTab.hasAttribute("hidden") ||
+      scriptTab.classList.contains("hidden") ||
+      scriptTab.getAttribute("aria-hidden") === "true"
+    ) {
+      return;
+    }
+    if (!hasRealScripts()) return;
+    if (typeof scriptTab.click === "function") {
+      try {
+        scriptTab.click();
+      } catch (err) {
+        console.warn("Failed to activate scripts tab", err);
+        markAutoSelectScriptsTabDone();
+        return;
+      }
+    }
+    if (scriptTab.getAttribute("aria-selected") === "true") {
+      markAutoSelectScriptsTabDone();
+    }
+  };
+
+  if (shouldAutoSelectScriptsTab) {
+    window.setTimeout(() => {
+      if (!autoSelectScriptsTabDone) {
+        tryAutoSelectScriptsTab();
+        if (!autoSelectScriptsTabDone) {
+          markAutoSelectScriptsTabDone();
+        }
+      }
+    }, 12000);
+  }
 
   const ensureReasonElement = (actions) => {
     if (!actions) return null;
@@ -483,6 +558,7 @@
       syncScriptDispenseState();
       ensureProductImages();
       syncScriptsTabVisibility();
+      tryAutoSelectScriptsTab();
       if (searchEl) filterProducts(searchEl.value);
       maybeHideLoader();
     });
@@ -517,7 +593,8 @@
     maybeHideLoader();
     ensureProductImages();
     syncScriptsTabVisibility();
-    if (isCatalogPage) setTimeout(() => hideLoader(), 6000);
+    tryAutoSelectScriptsTab();
+    if (isCatalogPage) setTimeout(() => hideLoader(), 15000);
   };
 
   if (document.readyState === "loading")

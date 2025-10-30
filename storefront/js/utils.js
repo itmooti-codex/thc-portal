@@ -27,7 +27,7 @@
       pageLoaderEl = document.createElement("div");
       pageLoaderEl.dataset.pageLoader = "true";
       pageLoaderEl.className =
-        "fixed inset-0 z-[9999] flex items-center justify-center bg-white/90 transition-opacity duration-200 opacity-0 pointer-events-none";
+        "fixed inset-0 z-[9999] flex items-center justify-center bg-white transition-opacity duration-200 opacity-0 pointer-events-none";
       pageLoaderEl.innerHTML = `
         <div class="flex flex-col items-center gap-3 text-gray-700">
           <svg class="h-10 w-10 animate-spin text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
