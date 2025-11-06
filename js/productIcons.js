@@ -85,6 +85,28 @@
       .trim();
   }
 
+  function isPlaceholderLineage(value) {
+    const normalized = normalizeLineage(value);
+    return !normalized || /^\[[^\]]*\]$/.test(normalized);
+  }
+
+  function resolveLineageValue(card, labelEl) {
+    const labelValue = labelEl ? labelEl.textContent : "";
+    if (!isPlaceholderLineage(labelValue)) {
+      return normalizeLineage(labelValue);
+    }
+
+    const si = card.querySelector(".search-index");
+    if (si) {
+      const attrValue = si.getAttribute("data-client-preference-lineage");
+      if (!isPlaceholderLineage(attrValue)) {
+        return normalizeLineage(attrValue);
+      }
+    }
+
+    return "";
+  }
+
   function deriveLineageMeta(rawValue) {
     const label = normalizeLineage(rawValue);
     if (!label) {
@@ -137,16 +159,8 @@
 
       const labelEl = badge.querySelector(".lineage-label");
       const iconEl = badge.querySelector(".lineage-icon");
-      let lineage = "";
-      const si = card.querySelector(".search-index");
-      if (si) {
-        lineage = si.getAttribute("data-client-preference-lineage") || "";
-      }
-      if (!lineage && labelEl) {
-        lineage = labelEl.textContent || "";
-      }
-      lineage = normalizeLineage(lineage);
-      if (!lineage || /^\[.*\]$/.test(lineage)) {
+      const lineage = resolveLineageValue(card, labelEl);
+      if (!lineage) {
         if (!badge.classList.contains("hidden")) badge.classList.add("hidden");
         if (iconEl && iconEl.textContent) iconEl.textContent = "";
         if (iconEl && !iconEl.classList.contains("hidden"))

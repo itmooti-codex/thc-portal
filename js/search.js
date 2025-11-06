@@ -384,11 +384,15 @@
     const containers = new Set();
     const badges = root.querySelectorAll ? root.querySelectorAll('.checkCount') : [];
     badges.forEach((badge) => {
+      const container = badge.parentElement;
+      if (container) containers.add(container);
       const raw = (badge.textContent || '').trim();
       const normalized = raw.replace(/\s+/g, ' ');
       const lowered = normalized.toLowerCase();
+      const isPlaceholder = /\[[^\]]*\]/.test(normalized);
       let remove = false;
       if (!normalized) remove = true;
+      else if (isPlaceholder) remove = false;
       else if (/^(?:null|undefined|n\/?a|--?|—)$/.test(lowered)) remove = true;
       else {
         const numbers = normalized.match(/-?\d+(?:\.\d+)?/g) || [];
@@ -403,14 +407,18 @@
         }
       }
       if (remove) {
-        containers.add(badge.parentElement);
         badge.remove();
       }
     });
     containers.forEach((container) => {
       if (!container) return;
-      if (container.querySelector('.checkCount')) return;
-      container.classList.add('hidden');
+      const hasCheckCount = container.querySelector('.checkCount');
+      const hasLineageBadge = container.querySelector('[data-lineage-badge]');
+      if (!hasCheckCount && !hasLineageBadge) {
+        container.classList.add('hidden');
+      } else {
+        container.classList.remove('hidden');
+      }
     });
   }
 
