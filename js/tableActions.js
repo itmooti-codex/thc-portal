@@ -384,6 +384,99 @@
             return Number(value);
         }
 
+        function formatDisplayDate(value) {
+            if (value === null || value === undefined || value === '') return '';
+            if (typeof value === 'number') {
+                var numeric = Number(value);
+                if (!Number.isFinite(numeric)) return '';
+                if (numeric > 1e12) numeric = Math.floor(numeric / 1000);
+                var dateFromSeconds = new Date(numeric * 1000);
+                if (isNaN(dateFromSeconds.getTime())) return '';
+                var day = String(dateFromSeconds.getUTCDate()).padStart(2, '0');
+                var month = String(dateFromSeconds.getUTCMonth() + 1).padStart(2, '0');
+                var year = dateFromSeconds.getUTCFullYear();
+                return day + '-' + month + '-' + year;
+            }
+            if (typeof value === 'string') {
+                var str = value.trim();
+                if (!str) return '';
+                if (/^\d{2}[-\/]\d{2}[-\/]\d{4}$/.test(str)) {
+                    var parts = str.split(/[-\/]/);
+                    if (parts.length === 3) {
+                        var dayStr = String(parts[0]).padStart(2, '0');
+                        var monthStr = String(parts[1]).padStart(2, '0');
+                        return dayStr + '-' + monthStr + '-' + parts[2];
+                    }
+                }
+                if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+                    var isoParts = str.split('-');
+                    if (isoParts.length === 3) {
+                        return isoParts[2] + '-' + isoParts[1] + '-' + isoParts[0];
+                    }
+                }
+                if (/^\d+$/.test(str)) {
+                    var intVal = parseInt(str, 10);
+                    if (!isNaN(intVal)) {
+                        if (str.length > 10) intVal = Math.floor(intVal / 1000);
+                        var fromInt = new Date(intVal * 1000);
+                        if (!isNaN(fromInt.getTime())) {
+                            var d = String(fromInt.getUTCDate()).padStart(2, '0');
+                            var m = String(fromInt.getUTCMonth() + 1).padStart(2, '0');
+                            var y = fromInt.getUTCFullYear();
+                            return d + '-' + m + '-' + y;
+                        }
+                    }
+                }
+                var parsed = new Date(str);
+                if (!isNaN(parsed.getTime())) {
+                    var dd = String(parsed.getUTCDate()).padStart(2, '0');
+                    var mm = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+                    var yyyy = parsed.getUTCFullYear();
+                    return dd + '-' + mm + '-' + yyyy;
+                }
+            }
+            return '';
+        }
+
+        function escapeAttrSelector(value) {
+            var str = String(value == null ? '' : value);
+            if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+                try {
+                    return CSS.escape(str);
+                } catch (_) {/* ignore */}
+            }
+            return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        }
+
+        function applyValidUntilToGridCell(gridId, displayValue) {
+            if (gridId == null || displayValue == null || displayValue === '') return;
+            var attempts = 0;
+            function attempt() {
+                attempts++;
+                var selectorId = escapeAttrSelector(gridId);
+                var rowEl = null;
+                try {
+                    rowEl = document.querySelector('[data-id="' + selectorId + '"]');
+                } catch (_) {
+                    rowEl = null;
+                }
+                if (rowEl) {
+                    var fields = ['valid_until', 'Valid_Until', 'validUntil', 'Script_Valid_Until', 'script_valid_until'];
+                    for (var i = 0; i < fields.length; i++) {
+                        var cell = rowEl.querySelector('[data-field="' + fields[i] + '"]');
+                        if (cell) {
+                            cell.textContent = displayValue;
+                        }
+                    }
+                    return;
+                }
+                if (attempts < 10) {
+                    setTimeout(attempt, 200 * attempts);
+                }
+            }
+            setTimeout(attempt, 0);
+        }
+
         function toEpochSeconds(val) {
             if (!val) return null;
             if (typeof val === 'number') return Math.floor(val);
@@ -420,6 +513,8 @@
 
         // Build payload from selected rows (copy same values where present)
         var payload = [];
+        var expectedValidDisplays = [];
+        var expectedValidEpochs = [];
         var missingDrug = [];
         var usedDefaultsCount = 0;
         ids.forEach(function (gridId) {
@@ -479,6 +574,9 @@
                 validSource = sixMonthsFromToday();
             }
             var validUntil = toEpochSeconds(validSource);
+            var validDisplay = formatDisplayDate(validPick.value);
+            if (!validDisplay) validDisplay = formatDisplayDate(validSource);
+            if (!validDisplay) validDisplay = formatDisplayDate(validUntil);
 
             var notesSource = hasMeaningfulValue(notesPick) ? notesPick.value : defaults.notesToPharmacy;
             var notes = notesSource != null ? String(notesSource) : '';
@@ -493,6 +591,9 @@
                 rawDrug = Number(rawDrug);
             }
             var drugId = rawDrug;
+
+            expectedValidDisplays.push(validDisplay);
+            expectedValidEpochs.push(validUntil);
 
             // Count defaults used for informational alert
             if (!hasMeaningfulValue(conditionPick) && valuePresent(defaults.condition)) usedDefaultsCount++;
@@ -530,7 +631,7 @@
             return;
         }
 
-        var query = `mutation createScripts($payload: [ScriptCreateInput] = null) {\n  createScripts(payload: $payload) {\n    id\n    script_status\n    condition\n    route_of_administration\n    repeats\n    remaining\n    interval_days\n    e_script_link\n    drug_id\n  }\n}`;
+        var query = `mutation createScripts($payload: [ScriptCreateInput] = null) {\n  createScripts(payload: $payload) {\n    id\n    script_status\n    condition\n    route_of_administration\n    repeats\n    remaining\n    interval_days\n    e_script_link\n    Script_Valid_Until: valid_until @dateFormat(value: \"DD-MM-YYYY\")\n    valid_until\n    drug_id\n  }\n}`;
 
         try {
             var res = await fetch(endpoint, {
@@ -544,12 +645,75 @@
                 alert('Failed to duplicate scripts: ' + (json.errors[0]?.message || 'Unknown error'));
                 return;
             }
+
+            if (json.data && Array.isArray(json.data.createScripts)) {
+                try {
+                    json.data.createScripts.forEach(function (createdRow, idx) {
+                        if (!createdRow || createdRow.id == null) return;
+                        var gridId = String(createdRow.id);
+                        var existing = (window.vsRowMap && window.vsRowMap[gridId]) || {};
+
+                        var responseValidRaw = Object.prototype.hasOwnProperty.call(createdRow, 'valid_until')
+                            ? createdRow.valid_until
+                            : null;
+                        var payloadValidEpoch = idx < expectedValidEpochs.length ? expectedValidEpochs[idx] : null;
+                        var payloadValidDisplay = idx < expectedValidDisplays.length ? expectedValidDisplays[idx] : '';
+
+                        var rawNumeric = null;
+                        if (responseValidRaw != null && responseValidRaw !== '') {
+                            if (typeof responseValidRaw === 'number') {
+                                rawNumeric = responseValidRaw;
+                            } else if (typeof responseValidRaw === 'string' && /^\d+$/.test(responseValidRaw.trim())) {
+                                rawNumeric = Number(responseValidRaw.trim());
+                            }
+                        }
+                        if (rawNumeric == null && payloadValidEpoch != null) {
+                            rawNumeric = payloadValidEpoch;
+                        }
+
+                        var formattedValid = createdRow.Script_Valid_Until || formatDisplayDate(responseValidRaw);
+                        if (!formattedValid && payloadValidDisplay) {
+                            formattedValid = payloadValidDisplay;
+                        }
+                        if (!formattedValid && rawNumeric != null) {
+                            formattedValid = formatDisplayDate(rawNumeric);
+                        }
+
+                        if (rawNumeric != null) {
+                            createdRow.valid_until_epoch = rawNumeric;
+                        }
+                        if (formattedValid) {
+                            createdRow.Script_Valid_Until = formattedValid;
+                            createdRow.Valid_Until = formattedValid;
+                            createdRow.valid_until_display = formattedValid;
+                            createdRow.valid_until = formattedValid;
+                            applyValidUntilToGridCell(gridId, formattedValid);
+                        }
+
+                        var merged = Object.assign({}, existing, createdRow);
+
+                        if (!window.vsRowMap) window.vsRowMap = Object.create(null);
+                        window.vsRowMap[gridId] = merged;
+                    });
+                } catch (mapErr) {
+                    console.warn('Unable to merge duplicated script data into row map', mapErr);
+                }
+            }
+
             var created = json.data && json.data.createScripts ? json.data.createScripts.length : 0;
             var msgs = [];
             msgs.push(created + ' script' + (created === 1 ? '' : 's') + ' duplicated as Draft');
             if (missingDrug.length) msgs.push('Skipped ' + missingDrug.length + ' due to missing drug_id');
             if (usedDefaultsCount > 0) msgs.push('Applied defaults for some missing fields');
             alert(msgs.join('. '));
+
+            if (typeof window.vsRefreshScriptsTable === 'function') {
+                try {
+                    window.vsRefreshScriptsTable();
+                } catch (refreshErr) {
+                    console.warn('Failed to refresh scripts table after duplication', refreshErr);
+                }
+            }
         } catch (e) {
             console.error(e);
             alert('Network or server error while duplicating scripts.');
