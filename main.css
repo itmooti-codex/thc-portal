@@ -414,21 +414,29 @@
     font-size: 13px !important;
     line-height: 20px !important;
     border-radius: 9999px !important;
-    border: 1px solid #c7d2fe !important;
-    background: #f8fafc !important;
-    color: #1d4ed8 !important;
+    border: 1px solid #d1d5db !important;
+    background: #f3f4f6 !important;
+    color: #1f2937 !important;
     cursor: pointer !important;
     transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
 }
 
 .scripts-toggle-btn:hover {
-    background: #e0e7ff !important;
+    background: #e5e7eb !important;
 }
 
 .scripts-toggle-btn.is-active {
-    background: #2563eb !important;
     color: #ffffff !important;
-    border-color: #1d4ed8 !important;
+}
+
+.scripts-toggle-btn[data-scripts-view="all"].is-active {
+    background: #22c55e !important;
+    border-color: #16a34a !important;
+}
+
+.scripts-toggle-btn[data-scripts-view="archived"].is-active {
+    background: #9ca3af !important;
+    border-color: #6b7280 !important;
 }
 
  .items-grid {

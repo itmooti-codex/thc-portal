@@ -22,6 +22,33 @@
         return Boolean(raw);
     }
 
+    function normalizeStatusValue(status) {
+        return String(status || '')
+            .toLowerCase()
+            .replace(/[_\s]+/g, ' ')
+            .trim();
+    }
+
+    const ARCHIVE_ALLOWED_STATUS_SET = new Set(['open', 'stock issue', 'stockissue']);
+    const ARCHIVE_BLOCK_REASON_LABELS = {
+        draft: 'Draft',
+        fulfilled: 'Fulfilled',
+        archived: 'Archived',
+        cancelled: 'Cancelled',
+        'to be processed': 'To Be Processed',
+        tobeprocessed: 'To Be Processed'
+    };
+
+    function archiveBlockReasonForStatus(status) {
+        const normalized = normalizeStatusValue(status);
+        if (!normalized) return 'Unknown status';
+        if (ARCHIVE_ALLOWED_STATUS_SET.has(normalized)) return null;
+        if (ARCHIVE_BLOCK_REASON_LABELS[normalized]) {
+            return ARCHIVE_BLOCK_REASON_LABELS[normalized];
+        }
+        return status ? String(status) : 'Unknown status';
+    }
+
     async function cancelOne(id) {
         var scriptId = extractScriptId(id);
         var cfg = getApiConfig();
@@ -140,7 +167,23 @@
 
         var seen = Object.create(null);
         var targets = [];
-        var alreadyArchived = 0;
+        var skipCounts = Object.create(null);
+
+        function incrementSkip(reason) {
+            if (!reason) return;
+            skipCounts[reason] = (skipCounts[reason] || 0) + 1;
+        }
+
+        function formatSkipSummary() {
+            var keys = Object.keys(skipCounts);
+            if (!keys.length) return '';
+            return keys
+                .map(function (reason) {
+                    var count = skipCounts[reason];
+                    return count + ' ' + reason + ' script' + (count === 1 ? '' : 's');
+                })
+                .join('; ');
+        }
 
         ids.forEach(function (gridId) {
             var row = (window.vsRowMap && window.vsRowMap[gridId]) || null;
@@ -149,7 +192,13 @@
             if (!scriptId) return;
             if (seen[scriptId]) return;
             if (row && isArchivedValue(row.doctor_archive_action ?? row.Doctor_Archive_Action ?? row.doctorArchiveAction ?? row.DoctorArchiveAction)) {
-                alreadyArchived++;
+                incrementSkip('Archived');
+                return;
+            }
+            var status = row ? (row.script_status ?? row.Script_Status ?? row.status ?? row.Status) : null;
+            var statusReason = archiveBlockReasonForStatus(status);
+            if (statusReason) {
+                incrementSkip(statusReason);
                 return;
             }
             seen[scriptId] = true;
@@ -157,8 +206,9 @@
         });
 
         if (targets.length === 0) {
-            if (alreadyArchived > 0) {
-                alert('Selected script(s) are already archived.');
+            var summary = formatSkipSummary();
+            if (summary) {
+                alert('Selected script(s) cannot be archived: ' + summary + '.');
             }
             return;
         }
@@ -187,12 +237,20 @@
         });
 
         if (okCount > 0) {
-            alert('Archived ' + okCount + ' script' + (okCount === 1 ? '' : 's') + '.');
+            var successParts = ['Archived ' + okCount + ' script' + (okCount === 1 ? '' : 's') + '.'];
+            var skipSummary = formatSkipSummary();
+            if (skipSummary) {
+                successParts.push('Skipped ' + skipSummary + '.');
+            }
+            alert(successParts.join(' '));
         }
         if (fail) {
             alert('Some updates failed: ' + (fail && fail.error ? fail.error : 'Unknown error'));
-        } else if (okCount === 0 && alreadyArchived > 0) {
-            alert('Selected script(s) are already archived.');
+        } else if (okCount === 0) {
+            var failSummary = formatSkipSummary();
+            if (failSummary) {
+                alert('Selected script(s) cannot be archived: ' + failSummary + '.');
+            }
         }
 
         if (typeof window.vsRefreshScriptsTable === 'function') {

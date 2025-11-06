@@ -17,14 +17,6 @@
         wrap.classList.toggle("hidden", !match);
         wrap.setAttribute("aria-hidden", match ? "false" : "true");
       });
-      const bulkBar = document.getElementById("tableActions");
-      if (bulkBar) {
-        if (view === "archived") {
-          bulkBar.classList.add("hidden");
-        } else if (!window.vsSelectedRowIds || window.vsSelectedRowIds.length === 0) {
-          bulkBar.classList.add("hidden");
-        }
-      }
     }
 
     panel.addEventListener("click", (event) => {

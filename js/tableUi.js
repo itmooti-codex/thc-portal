@@ -6,12 +6,6 @@ window.vsInit = function (dynamicList) {
   window.vsRowMap = window.vsRowMap || Object.create(null);
   window.vsDynamicList = dynamicList;
   window.vsTableCtx = ctx;
-  const rootWrap =
-    dynamicList && dynamicList.domElement
-      ? dynamicList.domElement.closest(".thc-datalist-wrap")
-      : null;
-  const isArchivedTable =
-    !!(rootWrap && rootWrap.classList.contains("archived-data"));
 
   function refreshScriptsTable() {
     if (ctx && typeof ctx.refresh === "function") {
@@ -38,6 +32,38 @@ window.vsInit = function (dynamicList) {
     return row.script_status ?? row.Script_Status ?? row.status ?? row.Status;
   }
 
+  function normalizeStatusValue(status) {
+    return String(status || "")
+      .toLowerCase()
+      .replace(/[_\s]+/g, " ")
+      .trim();
+  }
+
+  const ARCHIVE_ALLOWED_STATUS_SET = new Set([
+    "open",
+    "stock issue",
+    "stockissue",
+  ]);
+
+  const ARCHIVE_BLOCK_REASON_LABELS = {
+    draft: "Draft",
+    fulfilled: "Fulfilled",
+    archived: "Archived",
+    cancelled: "Cancelled",
+    "to be processed": "To Be Processed",
+    tobeprocessed: "To Be Processed",
+  };
+
+  function archiveBlockReasonForStatus(status) {
+    const normalized = normalizeStatusValue(status);
+    if (!normalized) return "Unknown status";
+    if (ARCHIVE_ALLOWED_STATUS_SET.has(normalized)) return null;
+    if (ARCHIVE_BLOCK_REASON_LABELS[normalized]) {
+      return ARCHIVE_BLOCK_REASON_LABELS[normalized];
+    }
+    return status ? String(status) : "Unknown status";
+  }
+
   function isArchived(row) {
     if (!row) return false;
     const raw =
@@ -54,11 +80,12 @@ window.vsInit = function (dynamicList) {
   }
 
   function ensureBulkActionsBar() {
-    if (isArchivedTable) return;
     var wrap =
       document.querySelector(".thc-datalist-wrap.all-data") ||
       document.querySelector(".thc-datalist-wrap");
     if (!wrap) return;
+    var container = wrap.parentNode;
+    if (!container) return;
     var bar = document.getElementById("tableActions");
     if (!bar) {
       bar = document.createElement("div");
@@ -66,7 +93,7 @@ window.vsInit = function (dynamicList) {
       bar.className = "table-actions hidden";
       bar.innerHTML =
         '\n                <button id="tableDeleteSelected" type="button" class="dl-btn-delete">Delete Selected Script(s)</button>\n                <button id="tableArchiveSelected" type="button" class="dl-btn-archive">Archive Script(s)</button>\n                <button id="tableCreateScriptTop" type="button" class="dl-btn-create">Duplicate Script(s)</button>\n            ';
-      wrap.insertBefore(bar, wrap.firstChild);
+      container.insertBefore(bar, wrap);
       // Hook up bulk delete
       var delBtn = document.getElementById("tableDeleteSelected");
       delBtn &&
@@ -108,6 +135,7 @@ window.vsInit = function (dynamicList) {
       const archiveBtn = document.getElementById("tableArchiveSelected");
       if (archiveBtn) {
         archiveBtn.addEventListener("click", async function () {
+          const originalText = archiveBtn.textContent;
           try {
             const ids = Array.isArray(window.vsSelectedRowIds)
               ? window.vsSelectedRowIds.slice()
@@ -117,8 +145,30 @@ window.vsInit = function (dynamicList) {
               console.warn("vsArchiveScripts not defined");
               return;
             }
+            const blockedReasons = [];
+            ids.forEach((id) => {
+              const row =
+                (window.vsRowMap && window.vsRowMap[id]) || null;
+              if (!row) return;
+              if (isArchived(row)) {
+                blockedReasons.push("Archived");
+                return;
+              }
+              const reason = archiveBlockReasonForStatus(getStatus(row));
+              if (reason) blockedReasons.push(reason);
+            });
+            if (blockedReasons.length) {
+              const uniqueReasons = Array.from(
+                new Set(blockedReasons)
+              );
+              alert(
+                "Selected script(s) with status " +
+                  uniqueReasons.join(", ") +
+                  " cannot be archived."
+              );
+              return;
+            }
             archiveBtn.disabled = true;
-            const originalText = archiveBtn.textContent;
             archiveBtn.textContent = "Archiving…";
             await window.vsArchiveScripts(ids, {
               confirmMessage:
@@ -126,7 +176,7 @@ window.vsInit = function (dynamicList) {
             });
           } finally {
             archiveBtn.disabled = false;
-            archiveBtn.textContent = "Archive Script(s)";
+            archiveBtn.textContent = originalText;
           }
         });
       }
@@ -307,7 +357,7 @@ window.vsInit = function (dynamicList) {
 
       if (cols[0]) cols[0] = { ...cols[0], minWidth: 160 };
       const hasActions = cols.some((c) => c.field === "__actions");
-      if (!hasActions && !isArchivedTable) {
+      if (!hasActions) {
         const R = window.vitalStatsReact || window.React;
         cols.push({
           field: "__actions",
@@ -322,8 +372,11 @@ window.vsInit = function (dynamicList) {
               window.vsRowMap[params.id] = params.row;
             } catch (_) {}
             const status = getStatus(params?.row);
-            const isDraft = String(status) === "Draft";
+            const normalizedStatus = normalizeStatusValue(status);
+            const isDraft = normalizedStatus === "draft";
+            const isFulfilled = normalizedStatus === "fulfilled";
             const archived = isArchived(params?.row);
+            const archiveStatusReason = archiveBlockReasonForStatus(status);
             const detail = { id: params.id, row: params.row, ctx };
             const buttons = [];
 
@@ -401,7 +454,11 @@ window.vsInit = function (dynamicList) {
               );
             }
 
-            if (!archived && typeof window.vsArchiveScripts === "function") {
+            if (
+              !archived &&
+              !archiveStatusReason &&
+              typeof window.vsArchiveScripts === "function"
+            ) {
               const onArchive = async (e) => {
                 e.stopPropagation();
                 const ok = confirm(
@@ -550,8 +607,8 @@ window.vsInit = function (dynamicList) {
       const nextProps = {
         ...props,
         disableColumnMenu: true,
-        checkboxSelection: !isArchivedTable,
-        rowSelection: !isArchivedTable,
+        checkboxSelection: true,
+        rowSelection: true,
         columnResizeMode:
           props && typeof props.columnResizeMode !== "undefined"
             ? props.columnResizeMode
@@ -559,7 +616,6 @@ window.vsInit = function (dynamicList) {
         getRowId: (row) =>
           row?.ID ?? row?.id ?? row?.Id ?? row?.uid ?? row?._id,
         onRowSelectionModelChange: (selectionModel) => {
-          if (isArchivedTable) return;
           try {
             window.vsSelectedRowIds = Array.isArray(selectionModel)
               ? selectionModel
