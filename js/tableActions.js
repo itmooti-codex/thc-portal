@@ -309,6 +309,81 @@
         var apiKey = defaults.apiKey;
         if (!endpoint || !apiKey) { alert('API endpoint or key not configured.'); return; }
 
+        function normalizeKeyName(key) {
+            return String(key || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+        }
+
+        function findRowKey(row, target) {
+            if (!row) return null;
+            var targetNorm = normalizeKeyName(target);
+            for (var key in row) {
+                if (!Object.prototype.hasOwnProperty.call(row, key)) continue;
+                if (normalizeKeyName(key) === targetNorm) return key;
+            }
+            return null;
+        }
+
+        function pickRowValue(row, candidates) {
+            if (!row) return { key: null, value: undefined };
+            for (var i = 0; i < candidates.length; i++) {
+                var actualKey = findRowKey(row, candidates[i]);
+                if (actualKey && row[actualKey] != null) {
+                    return { key: actualKey, value: row[actualKey] };
+                }
+            }
+            return { key: null, value: undefined };
+        }
+
+        function withScriptVariants(candidates) {
+            var seen = Object.create(null);
+            var result = [];
+            function push(val) {
+                var normalized = normalizeKeyName(val);
+                if (!normalized) return;
+                if (seen[normalized]) return;
+                seen[normalized] = true;
+                result.push(val);
+            }
+            candidates.forEach(function (raw) {
+                if (!raw) return;
+                var base = String(raw).trim();
+                if (!base) return;
+                push(base);
+                if (!/^script[\s_]?/i.test(base)) {
+                    push('script_' + base);
+                    push('script' + base);
+                    if (/^[a-z]/i.test(base)) {
+                        push('script' + base.charAt(0).toUpperCase() + base.slice(1));
+                    }
+                }
+            });
+            return result;
+        }
+
+        function hasMeaningfulValue(pick) {
+            if (!pick || pick.key == null) return false;
+            var value = pick.value;
+            if (value === null || value === undefined) return false;
+            if (typeof value === 'string') return value !== '';
+            return true;
+        }
+
+        function valuePresent(value) {
+            if (value === null || value === undefined) return false;
+            if (typeof value === 'string') return value !== '';
+            return true;
+        }
+
+        function coerceNumber(value) {
+            if (value === '' || value == null) return 0;
+            if (typeof value === 'string') {
+                var trimmed = value.trim();
+                if (trimmed === '') return 0;
+                return Number(trimmed);
+            }
+            return Number(value);
+        }
+
         function toEpochSeconds(val) {
             if (!val) return null;
             if (typeof val === 'number') return Math.floor(val);
@@ -329,6 +404,20 @@
             return yyyy + '-' + mm + '-' + dd;
         }
 
+        var keySets = {
+            dosage: withScriptVariants(['dosage_instructions', 'dosageinstructions', 'dosage']),
+            condition: withScriptVariants(['condition']),
+            route: withScriptVariants(['route_of_administration', 'route', 'administration_route']),
+            repeats: withScriptVariants(['repeats', 'repeat_count', 'repeat']),
+            remaining: withScriptVariants(['remaining', 'repeats_remaining', 'remaining_repeats']),
+            intervalDays: withScriptVariants(['interval_days', 'interval', 'interval_day', 'days_between_repeats']),
+            dispenseQty: withScriptVariants(['dispense_quantity', 'dispensed_quantity', 'quantity_dispensed', 'dispense_qty']),
+            eScriptLink: withScriptVariants(['e_script_link', 'escriptlink', 'escript', 'escript_url']),
+            validUntil: withScriptVariants(['valid_until', 'validuntil', 'expiry_date', 'expires_on', 'expiration_date']),
+            notes: withScriptVariants(['doctor_notes_to_pharmacy', 'notes_to_pharmacy', 'pharmacy_notes', 'doctor_notes']),
+            drugId: withScriptVariants(['drug_id', 'drugid', 'drug_item_id', 'item_drug_id', 'product_id'])
+        };
+
         // Build payload from selected rows (copy same values where present)
         var payload = [];
         var missingDrug = [];
@@ -337,35 +426,82 @@
             var row = (window.vsRowMap && window.vsRowMap[gridId]) || {};
 
             // Copy fields from row with fallbacks to defaults
-            var dosage = row.dosage_instructions || row.Dosage_Instructions || defaults.dosage || '';
-            var condition = row.condition || row.Condition || defaults.condition || '';
-            var route = row.route_of_administration || row.Route_of_administration || defaults.route || '';
-            var repeats = (row.repeats != null ? row.repeats : (row.Repeats != null ? row.Repeats : defaults.repeats));
-            repeats = Number(repeats != null ? repeats : 0);
-            var remaining = (row.remaining != null ? row.remaining : (row.Remaining != null ? row.Remaining : defaults.remaining));
-            remaining = Number(remaining != null ? remaining : 0);
-            var intervalDays = (row.interval_days != null ? row.interval_days : (row.Interval_Days != null ? row.Interval_Days : defaults.intervalDays));
-            intervalDays = Number(intervalDays != null ? intervalDays : 0);
-            var dispenseQty = (row.dispense_quantity != null ? row.dispense_quantity : (row.Dispense_Quantity != null ? row.Dispense_Quantity : defaults.dispenseQty));
-            dispenseQty = Number(dispenseQty != null ? dispenseQty : 0);
-            var eScriptLink = row.e_script_link || row.E_Script_Link || defaults.eScriptLink || null;
-            var validUntilStr = row.valid_until || row.Valid_Until || sixMonthsFromToday();
-            var validUntil = toEpochSeconds(validUntilStr);
-            var notes = row.doctor_notes_to_pharmacy || row.Doctor_Notes_To_Pharmacy || defaults.notesToPharmacy || '';
+            var dosagePick = pickRowValue(row, keySets.dosage);
+            var conditionPick = pickRowValue(row, keySets.condition);
+            var routePick = pickRowValue(row, keySets.route);
+            var repeatsPick = pickRowValue(row, keySets.repeats);
+            var remainingPick = pickRowValue(row, keySets.remaining);
+            var intervalPick = pickRowValue(row, keySets.intervalDays);
+            var dispensePick = pickRowValue(row, keySets.dispenseQty);
+            var eScriptPick = pickRowValue(row, keySets.eScriptLink);
+            var validPick = pickRowValue(row, keySets.validUntil);
+            var notesPick = pickRowValue(row, keySets.notes);
+            var drugPick = pickRowValue(row, keySets.drugId);
+
+            var dosageSource = hasMeaningfulValue(dosagePick) ? dosagePick.value : defaults.dosage;
+            var dosage = dosageSource != null ? String(dosageSource) : '';
+
+            var conditionSource = hasMeaningfulValue(conditionPick) ? conditionPick.value : defaults.condition;
+            var condition = conditionSource != null ? String(conditionSource) : '';
+
+            var route;
+            if (hasMeaningfulValue(routePick)) {
+                route = String(routePick.value);
+            } else if (valuePresent(defaults.route)) {
+                route = String(defaults.route);
+            } else {
+                route = '';
+            }
+
+            var repeatsVal = hasMeaningfulValue(repeatsPick) ? repeatsPick.value : defaults.repeats;
+            var repeats = coerceNumber(repeatsVal);
+
+            var remainingVal = hasMeaningfulValue(remainingPick) ? remainingPick.value : defaults.remaining;
+            var remaining = coerceNumber(remainingVal);
+
+            var intervalVal = hasMeaningfulValue(intervalPick) ? intervalPick.value : defaults.intervalDays;
+            var intervalDays = coerceNumber(intervalVal);
+
+            var dispenseVal = hasMeaningfulValue(dispensePick) ? dispensePick.value : defaults.dispenseQty;
+            var dispenseQty = coerceNumber(dispenseVal);
+
+            var eScriptLink = null;
+            if (hasMeaningfulValue(eScriptPick)) {
+                eScriptLink = String(eScriptPick.value);
+            } else if (valuePresent(defaults.eScriptLink)) {
+                eScriptLink = String(defaults.eScriptLink);
+            }
+
+            var validSource;
+            if (hasMeaningfulValue(validPick)) {
+                validSource = validPick.value;
+            } else {
+                validSource = sixMonthsFromToday();
+            }
+            var validUntil = toEpochSeconds(validSource);
+
+            var notesSource = hasMeaningfulValue(notesPick) ? notesPick.value : defaults.notesToPharmacy;
+            var notes = notesSource != null ? String(notesSource) : '';
 
             // Required: drug_id
-            var rawDrug = row.drug_id || row.Drug_ID || defaults.drugId;
+            var rawDrug = hasMeaningfulValue(drugPick) ? drugPick.value : defaults.drugId;
+            if (typeof rawDrug === 'string') {
+                rawDrug = rawDrug.trim();
+            }
             if (rawDrug == null || rawDrug === '') { missingDrug.push(gridId); return; }
-            var drugId = (typeof rawDrug === 'string' && /^\d+$/.test(rawDrug)) ? Number(rawDrug) : rawDrug;
+            if (typeof rawDrug === 'string' && /^\d+$/.test(rawDrug)) {
+                rawDrug = Number(rawDrug);
+            }
+            var drugId = rawDrug;
 
             // Count defaults used for informational alert
-            if (!row.condition && !row.Condition && defaults.condition != null) usedDefaultsCount++;
-            if (!row.route_of_administration && !row.Route_of_administration && defaults.route != null) usedDefaultsCount++;
-            if ((row.repeats == null && row.Repeats == null) && defaults.repeats != null) usedDefaultsCount++;
-            if ((row.remaining == null && row.Remaining == null) && defaults.remaining != null) usedDefaultsCount++;
-            if ((row.interval_days == null && row.Interval_Days == null) && defaults.intervalDays != null) usedDefaultsCount++;
-            if ((row.dispense_quantity == null && row.Dispense_Quantity == null) && defaults.dispenseQty != null) usedDefaultsCount++;
-            if (!row.e_script_link && !row.E_Script_Link && defaults.eScriptLink != null) usedDefaultsCount++;
+            if (!hasMeaningfulValue(conditionPick) && valuePresent(defaults.condition)) usedDefaultsCount++;
+            if (!hasMeaningfulValue(routePick) && valuePresent(defaults.route)) usedDefaultsCount++;
+            if (!hasMeaningfulValue(repeatsPick) && valuePresent(defaults.repeats)) usedDefaultsCount++;
+            if (!hasMeaningfulValue(remainingPick) && valuePresent(defaults.remaining)) usedDefaultsCount++;
+            if (!hasMeaningfulValue(intervalPick) && valuePresent(defaults.intervalDays)) usedDefaultsCount++;
+            if (!hasMeaningfulValue(dispensePick) && valuePresent(defaults.dispenseQty)) usedDefaultsCount++;
+            if (!hasMeaningfulValue(eScriptPick) && valuePresent(defaults.eScriptLink)) usedDefaultsCount++;
 
             payload.push({
                 // Explicit fields to duplicate
