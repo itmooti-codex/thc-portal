@@ -14,6 +14,14 @@
         return str.trim();
     }
 
+    function isArchivedValue(raw) {
+        if (raw == null) return false;
+        if (typeof raw === 'string') {
+            return raw.toLowerCase() === 'true';
+        }
+        return Boolean(raw);
+    }
+
     async function cancelOne(id) {
         var scriptId = extractScriptId(id);
         var cfg = getApiConfig();
@@ -63,6 +71,44 @@
         }
     }
 
+    async function archiveOne(id) {
+        var scriptId = extractScriptId(id);
+        var cfg = getApiConfig();
+        if (!cfg.endpoint || !cfg.apiKey) {
+            alert('API endpoint or key not configured.');
+            return { ok: false, id: scriptId, error: 'Missing config' };
+        }
+        if (scriptId == null || scriptId === '') {
+            return { ok: false, id: scriptId, error: 'Missing script ID' };
+        }
+        var query = "mutation archiveScripts(\n  $id: ThcScriptID\n  $payload: ScriptUpdateInput = null\n) {\n  updateScripts(\n    query: [{ where: { id: $id } }]\n    payload: $payload\n  ) {\n    doctor_archive_action\n  }\n}";
+        var variables = { id: scriptId, payload: { doctor_archive_action: true } };
+        try {
+            var res = await fetch(cfg.endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Api-Key': cfg.apiKey
+                },
+                body: JSON.stringify({ query: query, variables: variables })
+            });
+            var json = await res.json();
+            if (json.errors) {
+                console.error('GraphQL error:', json.errors);
+                return { ok: false, id: scriptId, error: json.errors[0]?.message || 'GraphQL error' };
+            }
+            var updated = json.data && json.data.updateScripts;
+            if (!updated || (Array.isArray(updated) && updated.length === 0)) {
+                console.warn('archiveScripts returned null for id', scriptId);
+                return { ok: false, id: scriptId, error: 'No matching script for ID' };
+            }
+            return { ok: true, id: scriptId };
+        } catch (e) {
+            console.error('Network error:', e);
+            return { ok: false, id: scriptId, error: String(e) };
+        }
+    }
+
     // Bulk cancel helper exposed for tableUi.js
     window.vsCancelScripts = async function (ids) {
         if (!Array.isArray(ids) || ids.length === 0) return;
@@ -80,6 +126,81 @@
         }
         if (fail) {
             alert('Some updates failed: ' + (fail.error || 'Unknown error'));
+        }
+    };
+
+    window.vsArchiveScripts = async function (ids, options) {
+        options = options || {};
+        if (!Array.isArray(ids) || ids.length === 0) return;
+        var confirmMessage = options.confirmMessage || 'Are you sure you want to archive the selected script(s)?';
+        if (!options.skipConfirm) {
+            var ok = confirm(confirmMessage);
+            if (!ok) return;
+        }
+
+        var seen = Object.create(null);
+        var targets = [];
+        var alreadyArchived = 0;
+
+        ids.forEach(function (gridId) {
+            var row = (window.vsRowMap && window.vsRowMap[gridId]) || null;
+            var rawId = row ? (row.ID ?? row.id ?? row.Id) : gridId;
+            var scriptId = extractScriptId(rawId);
+            if (!scriptId) return;
+            if (seen[scriptId]) return;
+            if (row && isArchivedValue(row.doctor_archive_action ?? row.Doctor_Archive_Action ?? row.doctorArchiveAction ?? row.DoctorArchiveAction)) {
+                alreadyArchived++;
+                return;
+            }
+            seen[scriptId] = true;
+            targets.push({ gridId: gridId, scriptId: scriptId, row: row });
+        });
+
+        if (targets.length === 0) {
+            if (alreadyArchived > 0) {
+                alert('Selected script(s) are already archived.');
+            }
+            return;
+        }
+
+        var results = await Promise.all(targets.map(function (entry) {
+            return archiveOne(entry.scriptId);
+        }));
+
+        var okCount = 0;
+        var fail = null;
+        results.forEach(function (res, idx) {
+            if (res && res.ok) {
+                okCount++;
+                var entry = targets[idx];
+                if (entry && entry.row) {
+                    entry.row.doctor_archive_action = true;
+                    entry.row.Doctor_Archive_Action = true;
+                }
+                if (window.vsRowMap && entry && entry.gridId && window.vsRowMap[entry.gridId]) {
+                    window.vsRowMap[entry.gridId].doctor_archive_action = true;
+                    window.vsRowMap[entry.gridId].Doctor_Archive_Action = true;
+                }
+            } else if (!fail) {
+                fail = res;
+            }
+        });
+
+        if (okCount > 0) {
+            alert('Archived ' + okCount + ' script' + (okCount === 1 ? '' : 's') + '.');
+        }
+        if (fail) {
+            alert('Some updates failed: ' + (fail && fail.error ? fail.error : 'Unknown error'));
+        } else if (okCount === 0 && alreadyArchived > 0) {
+            alert('Selected script(s) are already archived.');
+        }
+
+        if (typeof window.vsRefreshScriptsTable === 'function') {
+            try {
+                window.vsRefreshScriptsTable();
+            } catch (err) {
+                console.warn('Failed to refresh table after archive', err);
+            }
         }
     };
 

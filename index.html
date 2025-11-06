@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.ckeditor.com/ckeditor5/41.3.1/super-build/ckeditor.js"></script>
     <link href="main.css" rel="stylesheet" />
+    <script defer src="js/scriptsToggle.js"></script>
     <script
       async
       src="https://static-au03.vitalstats.app/static/dynamic-list/v1/latest.js"
@@ -213,7 +214,23 @@
     <!-- Clinical notes end-->
 
     <!-- Scripts table -->
-    <div class="thc-datalist-wrap">
+    <div class="scripts-toggle py-4">
+      <button
+        type="button"
+        class="scripts-toggle-btn is-active"
+        data-scripts-view="all"
+      >
+        All
+      </button>
+      <button
+        type="button"
+        class="scripts-toggle-btn"
+        data-scripts-view="archived"
+      >
+        Archived
+      </button>
+    </div>
+    <div class="thc-datalist-wrap all-data" data-scripts-view="all">
       <div
         id="thc-datalist"
         class="thc-datalist"
@@ -227,6 +244,23 @@
         data-init-cb-name="vsInit"
       ></div>
     </div>
+
+    <div
+      class="thc-datalist-wrap archived-data hidden"
+      data-scripts-view="archived"
+    >
+      <div
+        data-dynamic-list="yxunIBRjRNa40HmpWGViO"
+        data-var-uid="EV7U000"
+        data-url-var-uid="uid"
+        data-entity="thc"
+        data-entity-key="awWH16PsRms2px8-93-Uw"
+        data-table="true"
+        data-op="subscribe"
+        data-init-cb-name="vsInit"
+      ></div>
+    </div>
+    <!-- Scripts table -->
 
     <div class="flex flex-col lg:flex-row items-start gap-6">
       <div

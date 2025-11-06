@@ -348,6 +348,29 @@
     height: 14px;
 }
 
+.dl-btn-archive {
+    padding: 4px 10px;
+    font-size: 12px;
+    line-height: 18px;
+    border: 1px solid #92400e;
+    background: #f97316;
+    color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.dl-btn-archive:hover {
+    background: #ea580c;
+}
+
+.dl-btn-archive svg {
+    width: 14px;
+    height: 14px;
+}
+
  .css-vubbuv {
      display: none !important;
  }
@@ -378,6 +401,35 @@
  .dl-btn-create:hover {
      background: #1e40af;
  }
+
+.scripts-toggle {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.scripts-toggle-btn {
+    padding: 6px 16px;
+    font-size: 13px;
+    line-height: 20px;
+    border-radius: 9999px;
+    border: 1px solid #c7d2fe;
+    background: #f8fafc;
+    color: #1d4ed8;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.scripts-toggle-btn:hover {
+    background: #e0e7ff;
+}
+
+.scripts-toggle-btn.is-active {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #1d4ed8;
+}
 
  .items-grid {
      grid-template-columns: repeat(4, 1fr);
