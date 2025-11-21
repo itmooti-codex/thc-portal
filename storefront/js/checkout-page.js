@@ -184,6 +184,50 @@
     return str ? str.charAt(0).toUpperCase() : "•";
   };
 
+  const normaliseSupplyValue = (value) => {
+    if (value === null || value === undefined) return "";
+    const str = String(value).trim();
+    if (!str || placeholderTokenRegex.test(str)) return "";
+    return str;
+  };
+
+  const parseNonNegativeInt = (value) => {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return null;
+    const intVal = Math.floor(num);
+    return intVal < 0 ? null : intVal;
+  };
+
+  const buildSupplyLabel = (item, qtyOverride) => {
+    if (!item || (!item.isScript && !item.scriptId)) return "";
+    const qty = Math.max(0, Math.floor(Number(qtyOverride ?? item.qty) || 0));
+    const remainingNum = parseNonNegativeInt(item.remaining);
+    const limitNum = parseNonNegativeInt(item.supplyLimit);
+    const remainingDisplay =
+      remainingNum === null
+        ? normaliseSupplyValue(item.remaining)
+        : String(Math.max(0, remainingNum - qty));
+    const limitDisplay =
+      limitNum === null
+        ? normaliseSupplyValue(item.supplyLimit)
+        : String(limitNum);
+    if (remainingDisplay && limitDisplay) return `Supply: ${remainingDisplay}/${limitDisplay}`;
+    if (remainingDisplay) return `Supply: ${remainingDisplay}`;
+    if (limitDisplay) return `Supply limit: ${limitDisplay}`;
+    return "";
+  };
+
+  const getScriptMaxQuantity = (item) => {
+    if (!item || (!item.isScript && !item.scriptId)) return null;
+    const remaining = parseNonNegativeInt(item.remaining);
+    const dispenseQty = parseNonNegativeInt(item.dispenseQuantity);
+    const limits = [];
+    if (dispenseQty !== null) limits.push(dispenseQty);
+    if (remaining !== null) limits.push(remaining);
+    if (!limits.length) return 1;
+    return Math.min(...limits);
+  };
+
   const fallbackRenderAvatar = (
     image,
     name,
@@ -2756,25 +2800,54 @@
           ? `<div class="text-xs text-gray-500 truncate">${item.brand}</div>`
           : "";
         const scriptLine = isScriptCartItem(item);
+        const qtyDisplay = qty > 0 ? qty : 1;
+        const maxScriptQty = scriptLine ? getScriptMaxQuantity(item) : null;
+        const effectiveMax =
+          scriptLine && maxScriptQty !== null ? maxScriptQty : scriptLine ? 1 : Infinity;
+        const supplyLabel = scriptLine ? buildSupplyLabel(item, qty) : "";
+        const decrDisabled = qty <= 0;
+        const canIncrease =
+          !scriptLine ||
+          effectiveMax === Infinity ||
+          (effectiveMax > 0 && qtyDisplay < effectiveMax);
+        const lockInput =
+          scriptLine && effectiveMax !== Infinity && effectiveMax <= 0;
         let infoBody = `
           <div class="font-semibold text-sm sm:text-base text-gray-900 truncate">${itemName}</div>
           ${brandLine}
           <div class="text-xs text-gray-500">Unit price ${formatMoney(unitPrice)}</div>
         `;
-        if (readOnly || scriptLine) {
-          infoBody += `
-            <div class="text-xs text-gray-500 mt-2">Qty ${qty} · ${gstLabel}</div>
-          `;
-        } else {
-          infoBody += `
-            <div class="mt-3 flex items-center gap-2">
-              <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${item.id}" aria-label="Decrease quantity">−</button>
-              <input class="qty-input w-12 text-center rounded-lg border px-2 py-1" value="${qty}" data-id="${item.id}" inputmode="numeric" aria-label="Quantity"/>
-              <button class="qty-incr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${item.id}" aria-label="Increase quantity">+</button>
+        const qtyBlockReadOnly = `<div class="text-xs text-gray-500">Qty ${qty} · ${gstLabel}</div>`;
+        const qtyControls = readOnly
+          ? supplyLabel
+            ? `<div class="mt-2 space-y-1"><div class="text-xs text-gray-700">${escapeHtml(
+                supplyLabel
+              )}</div>${qtyBlockReadOnly}</div>`
+            : `<div class="text-xs text-gray-500 mt-2">Qty ${qty} · ${gstLabel}</div>`
+          : `
+            <div class="mt-3 space-y-1">
+              ${supplyLabel ? `<div class="text-xs text-gray-700">${escapeHtml(supplyLabel)}</div>` : ""}
+              <div class="flex items-center gap-2">
+                <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100 ${
+                  decrDisabled ? "opacity-50 cursor-not-allowed" : ""
+                }" data-id="${item.id}" aria-label="Decrease quantity" ${
+          decrDisabled ? 'disabled aria-disabled="true"' : ""
+        }>−</button>
+                <input class="qty-input w-12 text-center rounded-lg border px-2 py-1 ${
+                  lockInput ? "opacity-50 cursor-not-allowed" : ""
+                }" value="${qty}" data-id="${item.id}" inputmode="numeric" aria-label="Quantity" ${
+          lockInput ? 'readonly aria-readonly="true"' : ""
+        }/>
+                <button class="qty-incr w-8 h-8 rounded-lg border hover:bg-gray-100 ${
+                  !canIncrease ? "opacity-50 cursor-not-allowed" : ""
+                }" data-id="${item.id}" aria-label="Increase quantity" ${
+          !canIncrease ? 'disabled aria-disabled="true"' : ""
+        }>+</button>
+              </div>
+              <div class="text-xs text-gray-500">${gstLabel}</div>
             </div>
-            <div class="text-xs text-gray-500 mt-2">${gstLabel}</div>
           `;
-        }
+        infoBody += qtyControls;
 
         let actionColumn = `
           <div class="text-sm font-semibold text-gray-900 text-right">${formatMoney(lineTotal)}</div>
@@ -3769,6 +3842,14 @@
           infoLines.push(
             `<div class="text-xs text-gray-500">Unit price ${formatMoney(unitPrice)}</div>`
           );
+          const supplyLabel = isScriptCartItem(item)
+            ? buildSupplyLabel(item)
+            : "";
+          if (supplyLabel) {
+            infoLines.push(
+              `<div class="text-xs text-gray-700">${escapeHtml(supplyLabel)}</div>`
+            );
+          }
           infoLines.push(
             `<div class="text-xs text-gray-500">Qty ${qty} · ${gstLabel}</div>`
           );

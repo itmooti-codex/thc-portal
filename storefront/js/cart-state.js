@@ -257,6 +257,9 @@
       "requiresShipping",
       "dispenseItemId",
       "itemId",
+      "dispenseQuantity",
+      "remaining",
+      "supplyLimit",
     ];
     optionalKeys.forEach((key) => {
       if (product[key] !== undefined) {
@@ -407,6 +410,9 @@
       "url",
       "dispenseItemId",
       "itemId",
+      "dispenseQuantity",
+      "remaining",
+      "supplyLimit",
     ];
     passthroughKeys.forEach((key) => {
       if (Object.prototype.hasOwnProperty.call(patch, key)) {

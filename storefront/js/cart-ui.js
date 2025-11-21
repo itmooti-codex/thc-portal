@@ -974,6 +974,22 @@ const dlog = (...args) => {
       product.taxable = taxable;
     }
 
+    const dispenseQtyRaw =
+      card.dataset.dispenseQunatity ||
+      card.dataset.dispenseQuantity ||
+      card.dataset.dispenseqty;
+    if (dispenseQtyRaw !== undefined && dispenseQtyRaw !== null && dispenseQtyRaw !== "") {
+      product.dispenseQuantity = dispenseQtyRaw;
+    }
+    const remainingRaw = card.dataset.remaining;
+    if (remainingRaw !== undefined && remainingRaw !== null && remainingRaw !== "") {
+      product.remaining = remainingRaw;
+    }
+    const supplyLimitRaw = card.dataset.supplyLimit;
+    if (supplyLimitRaw !== undefined && supplyLimitRaw !== null && supplyLimitRaw !== "") {
+      product.supplyLimit = supplyLimitRaw;
+    }
+
     const scriptIdRaw = card.dataset.scriptId || card.dataset.scriptID;
     if (scriptIdRaw) {
       const scriptId = String(scriptIdRaw).trim();
@@ -1105,6 +1121,21 @@ const dlog = (...args) => {
       const taxable = parseBooleanish(source.tax);
       if (taxable !== undefined) patch.taxable = taxable === null ? null : taxable;
     }
+    if (source.dispenseQuantity !== undefined) {
+      patch.dispenseQuantity = source.dispenseQuantity;
+    } else if (source.dispense_quantity !== undefined) {
+      patch.dispenseQuantity = source.dispense_quantity;
+    } else if (source.dispenseQunatity !== undefined) {
+      patch.dispenseQuantity = source.dispenseQunatity;
+    }
+    if (source.remaining !== undefined) {
+      patch.remaining = source.remaining;
+    }
+    if (source.supplyLimit !== undefined) {
+      patch.supplyLimit = source.supplyLimit;
+    } else if (source.supply_limit !== undefined) {
+      patch.supplyLimit = source.supply_limit;
+    }
     return patch;
   };
 
@@ -1145,6 +1176,52 @@ const dlog = (...args) => {
 
   const isItemDispenseCandidate = (item) =>
     !!item && !isScriptCartItem(item);
+
+  const parseNonNegativeInt = (value) => {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return null;
+    const intVal = Math.floor(num);
+    return intVal < 0 ? null : intVal;
+  };
+
+  const normaliseSupplyValue = (value) => {
+    if (value === null || value === undefined) return "";
+    const str = String(value).trim();
+    if (!str || placeholderTokenRegex.test(str)) return "";
+    return str;
+  };
+
+  const getScriptMaxQuantity = (item) => {
+    if (!isScriptCartItem(item)) return null;
+    const remaining = parseNonNegativeInt(item?.remaining);
+    const dispenseQty = parseNonNegativeInt(item?.dispenseQuantity);
+    const limits = [];
+    if (dispenseQty !== null) limits.push(dispenseQty);
+    if (remaining !== null) limits.push(remaining);
+    if (!limits.length) return 1;
+    return Math.min(...limits);
+  };
+
+  const buildScriptSupplyLabel = (item, qtyOverride) => {
+    if (!item || !isScriptCartItem(item)) return "";
+    const qty = Math.max(0, Math.floor(Number(qtyOverride ?? item.qty) || 0));
+    const remainingNum = parseNonNegativeInt(item.remaining);
+    const limitNum = parseNonNegativeInt(item.supplyLimit);
+    const remainingDisplay =
+      remainingNum === null
+        ? normaliseSupplyValue(item.remaining)
+        : String(Math.max(0, remainingNum - qty));
+    const limitDisplay =
+      limitNum === null
+        ? normaliseSupplyValue(item.supplyLimit)
+        : String(limitNum);
+    if (remainingDisplay && limitDisplay) {
+      return `Supply: ${remainingDisplay}/${limitDisplay}`;
+    }
+    if (remainingDisplay) return `Supply: ${remainingDisplay}`;
+    if (limitDisplay) return `Supply limit: ${limitDisplay}`;
+    return "";
+  };
 
   const getDispenseItemId = (entity) => {
     if (!entity) return null;
@@ -1890,40 +1967,49 @@ const dlog = (...args) => {
         const row = document.createElement("div");
         row.className = "p-4 flex gap-3 items-start";
         const scriptLine = isScriptCartItem(item);
+        const rawQty = Number(item.qty) || 0;
+        const maxScriptQty = scriptLine ? getScriptMaxQuantity(item) : null;
+        const effectiveMax =
+          scriptLine && maxScriptQty !== null ? maxScriptQty : scriptLine ? 1 : Infinity;
+        const qtyBase = Math.max(1, rawQty || 1);
         const qtyValue = scriptLine
-          ? 1
-          : Math.max(1, Number(item.qty) || 1);
-        if (
-          scriptLine &&
-          typeof Cart?.updateQuantity === "function" &&
-          Number(item.qty) !== 1
-        ) {
-          Promise.resolve().then(() => {
-            try {
-              const result = Cart.updateQuantity(item.id, 1);
-              if (result && typeof result.catch === "function") {
-                result.catch((err) => {
-                  dlog("Failed to normalise script quantity", err);
-                });
-              }
-            } catch (err) {
-              dlog("Failed to normalise script quantity", err);
-            }
-          });
-        }
-        const quantityControlsHtml = scriptLine
-          ? `<div class="mt-2 text-xs text-gray-500">Qty ${qtyValue}</div>`
-          : `
-            <div class="mt-2 inline-flex items-center gap-2">
-              <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${
-                item.id
-              }" aria-label="Decrease quantity">−</button>
-              <input class="qty-input w-12 text-center rounded-lg border px-2 py-1" value="${
-                qtyValue
-              }" data-id="${item.id}" inputmode="numeric" aria-label="Quantity"/>
-              <button class="qty-incr w-8 h-8 rounded-lg border hover:bg-gray-100" data-id="${
-                item.id
-              }" aria-label="Increase quantity">+</button>
+          ? Math.max(1, Math.min(qtyBase, effectiveMax ?? qtyBase))
+          : qtyBase;
+        const supplyLabel = scriptLine
+          ? buildScriptSupplyLabel(item, qtyValue)
+          : "";
+        const decrDisabled = qtyValue <= 0;
+        const canIncrease =
+          !scriptLine ||
+          effectiveMax === Infinity ||
+          (effectiveMax > 0 && qtyValue < effectiveMax);
+        const lockInput =
+          scriptLine && effectiveMax !== Infinity && effectiveMax <= 0;
+        const supplyInfoHtml = supplyLabel
+          ? `<div class="text-xs text-gray-700">${escapeHtml(supplyLabel)}</div>`
+          : "";
+        const quantityControlsHtml = `
+            <div class="mt-2 space-y-1">
+              ${supplyInfoHtml}
+              <div class="inline-flex items-center gap-2">
+                <button class="qty-decr w-8 h-8 rounded-lg border hover:bg-gray-100 ${
+                  decrDisabled ? "opacity-50 cursor-not-allowed" : ""
+                }" data-id="${item.id}" aria-label="Decrease quantity" ${
+          decrDisabled ? 'disabled aria-disabled="true"' : ""
+        }>−</button>
+                <input class="qty-input w-12 text-center rounded-lg border px-2 py-1 ${
+                  lockInput ? "opacity-50 cursor-not-allowed" : ""
+                }" value="${qtyValue}" data-id="${
+          item.id
+        }" inputmode="numeric" aria-label="Quantity" ${
+          lockInput ? 'readonly aria-readonly="true"' : ""
+        }/>
+                <button class="qty-incr w-8 h-8 rounded-lg border hover:bg-gray-100 ${
+                  !canIncrease ? "opacity-50 cursor-not-allowed" : ""
+                }" data-id="${item.id}" aria-label="Increase quantity" ${
+          !canIncrease ? 'disabled aria-disabled="true"' : ""
+        }>+</button>
+              </div>
             </div>
           `;
         const avatarHtml = renderAvatarHtml(item.image, item.name, {
@@ -2418,15 +2504,29 @@ const dlog = (...args) => {
       const id = decr.dataset.id;
       const item = Cart.getItem(id);
       if (!item) return;
-      if (isScriptCartItem(item)) {
-        return;
-      }
+      const scriptLine = isScriptCartItem(item);
       const nextQty = Math.max(0, (Number(item.qty) || 0) - 1);
-      if (nextQty === 0 && shouldHandleItemDispenses()) {
+      if (scriptLine && nextQty === 0) {
+        updateProductCardDataset(
+          [item.id, item.productId],
+          {
+            dispenseStatus: "Cancelled",
+            dispenseStatusId: null,
+            dispenseId: null,
+            scriptId: item.scriptId,
+            suppressAutoSeed: true,
+          },
+          { syncButtons: true }
+        );
+        clearScriptCartMetadata(item).catch((err) => {
+          console.error("Failed to clear script metadata", err);
+        });
+      }
+      if (nextQty === 0 && shouldHandleItemDispenses() && !scriptLine) {
         await cancelItemDispense(item);
       }
       await Cart.updateQuantity(id, nextQty);
-      if (nextQty > 0 && shouldHandleItemDispenses()) {
+      if (!scriptLine && nextQty > 0 && shouldHandleItemDispenses()) {
         const updated = Cart.getItem(id);
         if (updated) await updateItemDispenseQuantity(updated);
       }
@@ -2439,12 +2539,19 @@ const dlog = (...args) => {
       const id = incr.dataset.id;
       const item = Cart.getItem(id);
       if (!item) return;
-      if (isScriptCartItem(item)) {
-        return;
+      const scriptLine = isScriptCartItem(item);
+      let nextQty = (Number(item.qty) || 0) + 1;
+      if (scriptLine) {
+        const maxQty = getScriptMaxQuantity(item);
+        if (maxQty !== null) {
+          if (maxQty <= 0) return;
+          nextQty = Math.min(nextQty, maxQty);
+        } else {
+          nextQty = Math.min(nextQty, 1);
+        }
       }
-      const nextQty = (Number(item.qty) || 0) + 1;
       await Cart.updateQuantity(id, nextQty);
-      if (shouldHandleItemDispenses()) {
+      if (!scriptLine && shouldHandleItemDispenses()) {
         const updated = Cart.getItem(id);
         if (updated) await updateItemDispenseQuantity(updated);
       }
@@ -2541,19 +2648,41 @@ const dlog = (...args) => {
     const id = input.dataset.id;
     const item = Cart.getItem(id);
     if (!item) return;
-    if (isScriptCartItem(item)) {
-      input.value = "1";
-      if (Number(item.qty) !== 1) {
-        await Cart.updateQuantity(id, 1);
+    const scriptLine = isScriptCartItem(item);
+    let value = Math.max(0, parseInt(input.value || "0", 10) || 0);
+    if (scriptLine) {
+      const maxQty = getScriptMaxQuantity(item);
+      if (maxQty !== null) {
+        if (maxQty <= 0) {
+          value = Math.min(value, 0);
+        } else {
+          value = Math.min(value, maxQty);
+        }
+      } else {
+        value = Math.min(value, 1);
       }
-      return;
     }
-    const value = Math.max(0, parseInt(input.value || "0", 10) || 0);
-    if (value === 0 && shouldHandleItemDispenses()) {
+    if (scriptLine && value === 0) {
+      updateProductCardDataset(
+        [item.id, item.productId],
+        {
+          dispenseStatus: "Cancelled",
+          dispenseStatusId: null,
+          dispenseId: null,
+          scriptId: item.scriptId,
+          suppressAutoSeed: true,
+        },
+        { syncButtons: true }
+      );
+      clearScriptCartMetadata(item).catch((err) => {
+        console.error("Failed to clear script metadata", err);
+      });
+    }
+    if (!scriptLine && value === 0 && shouldHandleItemDispenses()) {
       await cancelItemDispense(item);
     }
     await Cart.updateQuantity(id, value);
-    if (value > 0 && shouldHandleItemDispenses()) {
+    if (!scriptLine && value > 0 && shouldHandleItemDispenses()) {
       const updated = Cart.getItem(id);
       if (updated) await updateItemDispenseQuantity(updated);
     }
