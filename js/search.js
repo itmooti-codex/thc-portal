@@ -7,9 +7,21 @@
   const PAGINATION = document.getElementById('gridPagination');
   const SEARCH_INPUT = document.querySelector('input[placeholder="Search products"]');
   const SEARCH_BTN = (SEARCH_INPUT && SEARCH_INPUT.parentElement) ? SEARCH_INPUT.parentElement.querySelector('button') : null;
+  const PARTIAL_MATCH_MIN_LENGTH = 3;
   let PRICE_FILTER_ACTIVE = false;
   const SEARCH_NOTES_WRAPPER = document.querySelector('.json-search-notes');
   let currentNotesKey = '';
+  let initialOrderCounter = 0;
+  const initialOrderById = new Map();
+
+  function isPlaceholderId(value) {
+    if (!value) return true;
+    const trimmed = String(value).trim();
+    if (!trimmed) return true;
+    const lowered = trimmed.toLowerCase();
+    if (lowered === 'undefined' || lowered === 'null') return true;
+    return /\[[^\]]+\]/.test(trimmed);
+  }
 
   let searchTermEntries = [];
   const searchTermLookup = new Map();
@@ -172,6 +184,10 @@
     const base = norm(value);
     if (!base) return '';
     return base.replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function isNumericToken(value) {
+    return /^\d+$/.test(value);
   }
 
   function collapseTokens(value) {
@@ -503,8 +519,9 @@
     const normalized = normalizeForSearch(input);
     if (!normalized) return [];
     const parts = normalized.split(' ').filter(Boolean);
-    const tokens = new Set(parts);
-    if (parts.length === 1) {
+    const filtered = parts.filter((part) => part.length >= PARTIAL_MATCH_MIN_LENGTH || isNumericToken(part));
+    const tokens = new Set(filtered);
+    if (filtered.length === 1) {
       const collapsed = collapseTokens(normalized);
       if (collapsed && collapsed.length > 1) tokens.add(collapsed);
     }
@@ -515,9 +532,76 @@
     if (!queryTokens.length) return true;
     for (let i = 0; i < queryTokens.length; i++) {
       const token = queryTokens[i];
-      if (!item.tokens.has(token)) return false;
+      if (item.tokens.has(token)) continue;
+      if (token.length >= PARTIAL_MATCH_MIN_LENGTH && !isNumericToken(token)) {
+        const list = item.tokenList || [];
+        let matched = false;
+        for (let j = 0; j < list.length; j++) {
+          if (list[j].startsWith(token)) {
+            matched = true;
+            break;
+          }
+        }
+        if (matched) continue;
+      }
+      return false;
     }
     return true;
+  }
+
+  function getInitialOrder(card, itemId) {
+    const hasRealId = itemId && !isPlaceholderId(itemId);
+    if (card && card.dataset) {
+      const existing = card.dataset.initialOrder;
+      if (existing != null && existing !== '') {
+        const parsed = parseInt(existing, 10);
+        if (!Number.isNaN(parsed)) {
+          if (hasRealId && !initialOrderById.has(itemId)) {
+            initialOrderById.set(itemId, parsed);
+          }
+          if (parsed >= initialOrderCounter) {
+            initialOrderCounter = parsed + 1;
+          }
+          return parsed;
+        }
+      }
+    }
+    if (hasRealId && initialOrderById.has(itemId)) {
+      return initialOrderById.get(itemId);
+    }
+    const next = initialOrderCounter++;
+    if (hasRealId) initialOrderById.set(itemId, next);
+    if (card && card.dataset) card.dataset.initialOrder = String(next);
+    return next;
+  }
+
+  function hasLooseMatchToken(tokens) {
+    return tokens.some((token) => token.length >= 2 && !isNumericToken(token));
+  }
+
+  function matchesLooseQuery(item, queryTokens) {
+    if (!queryTokens.length) return true;
+    const list = item.tokenList || [];
+    let evaluated = false;
+    for (let i = 0; i < queryTokens.length; i++) {
+      const token = queryTokens[i];
+      if (item.tokens.has(token)) {
+        evaluated = true;
+        continue;
+      }
+      if (isNumericToken(token)) return false;
+      if (token.length < 2) continue;
+      evaluated = true;
+      let matched = false;
+      for (let j = 0; j < list.length; j++) {
+        if (list[j].includes(token)) {
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) return false;
+    }
+    return evaluated;
   }
 
   function baseSortCompare(a, b) {
@@ -660,10 +744,11 @@
       };
 
       const meta = parseCardMeta(card);
-      items.push({ id, node: card, tokens, primaryTokens, searchBlob, filterValues, meta, score: 0, dominanceTokens, terpeneTokens, isOrganic, originCountryCode });
+      const tokenList = Array.from(tokens);
+      const order = getInitialOrder(card, id);
+      items.push({ id, node: card, tokens, tokenList, primaryTokens, searchBlob, filterValues, meta, score: 0, dominanceTokens, terpeneTokens, isOrganic, originCountryCode, _ord: order });
     }
     state.items = items;
-    state.items.forEach((it, idx) => { it._ord = idx; });
   }
 
   function scoreItem(item, queryTokens) {
@@ -789,6 +874,30 @@
         if (!item.originCountryCode) return false;
         return countryCodeSet.has(item.originCountryCode);
       });
+    }
+
+    if (!filtered.length && tokens.length && hasLooseMatchToken(tokens)) {
+      let fallback = state.items.filter((item) => matchesLooseQuery(item, tokens));
+      if (matchedTermEntry) {
+        let fallbackTermMatches = 0;
+        fallback.forEach((item) => {
+          const matches = itemMatchesSearchTerm(item, matchedTermEntry);
+          item._matchesTerm = matches;
+          if (matches) fallbackTermMatches += 1;
+        });
+        if (fallbackTermMatches > 0 && !containsOrganicToken) {
+          fallback = fallback.filter((item) => item._matchesTerm);
+        }
+      }
+      fallback = fallback.filter((item) => itemMatchesFilters(item, filters));
+      if (countryCodeSet) {
+        fallback = fallback.filter((item) => {
+          if (!item.originCountryCode) return false;
+          return countryCodeSet.has(item.originCountryCode);
+        });
+      }
+      fallback.forEach((item) => { item.score = scoreItem(item, tokens); });
+      filtered = fallback;
     }
 
     filtered.forEach((item) => {
